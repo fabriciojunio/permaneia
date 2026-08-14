@@ -1,0 +1,192 @@
+// Modelo de dados do PermaneIA.
+//
+// Banco: Postgres (Supabase) com a extensão pgvector, usada na busca por
+// similaridade do RAG. O Prisma ainda não tem um tipo nativo para `vector`, por
+// isso a coluna é declarada como `Unsupported`: o Prisma cria e migra a coluna
+// normalmente, mas leitura e escrita dela passam por SQL parametrizado nos
+// repositórios. O ADR 005 registra essa decisão.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [vector, pgcrypto]
+}
+
+/// Conta de acesso. Um usuário de papel "aluno" aponta para o registro de Aluno
+/// correspondente; coordenação e administração não apontam para nenhum.
+model Usuario {
+  id            String   @id @default(uuid()) @db.Uuid
+  nome          String
+  email         String   @unique
+  senhaHash     String   @map("senha_hash")
+  papel         Papel    @default(aluno)
+  ativo         Boolean  @default(true)
+  /// Incrementada a cada troca de senha ou revogação; invalida sessões antigas na hora.
+  versaoSessao  Int      @default(0) @map("versao_sessao")
+  trocarSenha   Boolean  @default(false) @map("trocar_senha")
+  ultimoAcesso  DateTime? @map("ultimo_acesso") @db.Timestamptz(6)
+  aluno         Aluno?   @relation(fields: [alunoId], references: [id], onDelete: SetNull)
+  alunoId       String?  @unique @map("aluno_id") @db.Uuid
+  criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([papel])
+  @@map("usuarios")
+}
+
+enum Papel {
+  aluno
+  coordenacao
+  admin
+}
+
+model Aluno {
+  id         String      @id @default(uuid()) @db.Uuid
+  nome       String
+  email      String      @unique
+  curso      String?
+  /// Anonimização por LGPD marca a data aqui e apaga os campos identificáveis.
+  anonimizadoEm DateTime? @map("anonimizado_em") @db.Timestamptz(6)
+  criadoEm   DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
+  matriculas Matricula[]
+  consultas  ConsultaRag[]
+  usuario    Usuario?
+
+  @@index([curso])
+  @@map("alunos")
+}
+
+model Disciplina {
+  id         String       @id @default(uuid()) @db.Uuid
+  nome       String
+  professor  String?
+  periodo    String?
+  criadoEm   DateTime     @default(now()) @map("criado_em") @db.Timestamptz(6)
+  matriculas Matricula[]
+  documentos Documento[]
+  consultas  ConsultaRag[]
+
+  @@unique([nome, periodo])
+  @@index([periodo])
+  @@map("disciplinas")
+}
+
+/// Vínculo aluno x disciplina e os três sinais que alimentam o sistema fuzzy.
+model Matricula {
+  id                    String     @id @default(uuid()) @db.Uuid
+  aluno                 Aluno      @relation(fields: [alunoId], references: [id], onDelete: Cascade)
+  alunoId               String     @map("aluno_id") @db.Uuid
+  disciplina            Disciplina @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  disciplinaId          String     @map("disciplina_id") @db.Uuid
+  frequenciaPercentual  Decimal    @default(0) @map("frequencia_percentual") @db.Decimal(5, 2)
+  mediaNotas            Decimal    @default(0) @map("media_notas") @db.Decimal(4, 2)
+  acessosPlataforma     Int        @default(0) @map("acessos_plataforma")
+  /// Saída defuzzificada, de 0.000 a 1.000. Nulo enquanto o cálculo não roda.
+  scoreRisco            Decimal?   @map("score_risco") @db.Decimal(4, 3)
+  faixaRisco            FaixaRisco? @map("faixa_risco")
+  /// Fuzzificação, regras disparadas e ação sugerida, para a tela de explicação.
+  scoreDetalhes         Json?      @map("score_detalhes")
+  calculadoEm           DateTime?  @map("calculado_em") @db.Timestamptz(6)
+  atualizadoEm          DateTime   @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  @@unique([alunoId, disciplinaId])
+  @@index([scoreRisco(sort: Desc)])
+  @@index([disciplinaId, scoreRisco(sort: Desc)])
+  @@map("matriculas")
+}
+
+enum FaixaRisco {
+  baixo
+  medio
+  alto
+  critico
+}
+
+/// Documento institucional ingerido (ementa, cronograma, material de apoio).
+model Documento {
+  id           String            @id @default(uuid()) @db.Uuid
+  disciplina   Disciplina        @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  disciplinaId String            @map("disciplina_id") @db.Uuid
+  titulo       String
+  /// Data do documento na fonte. Vai citada na resposta: ementa desatualizada é o principal risco do RAG neste domínio.
+  referencia   String?
+  origem       OrigemDocumento   @default(upload)
+  totalChunks  Int               @default(0) @map("total_chunks")
+  criadoEm     DateTime          @default(now()) @map("criado_em") @db.Timestamptz(6)
+  chunks       DocumentoChunk[]
+
+  @@index([disciplinaId])
+  @@map("documentos")
+}
+
+enum OrigemDocumento {
+  upload
+  seed
+  texto
+}
+
+/// Pedaço indexado de um documento, com seu vetor.
+model DocumentoChunk {
+  id          String    @id @default(uuid()) @db.Uuid
+  documento   Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  documentoId String    @map("documento_id") @db.Uuid
+  /// Repetido aqui de propósito: a busca vetorial filtra por disciplina e este índice evita o join no caminho quente.
+  disciplinaId String   @map("disciplina_id") @db.Uuid
+  indice      Int
+  texto       String
+  /// Vetor de 768 posições. Gravado e lido por SQL parametrizado (ADR 005).
+  embedding   Unsupported("vector(768)")?
+  /// Provedor que gerou o vetor. Misturar vetores de provedores diferentes na mesma busca produz resultado sem sentido.
+  origemEmbedding String @default("local") @map("origem_embedding")
+  criadoEm    DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@unique([documentoId, indice])
+  @@index([disciplinaId])
+  @@index([disciplinaId, origemEmbedding])
+  @@map("documento_chunks")
+}
+
+/// Log de cada pergunta respondida pelo RAG. Serve à avaliação de qualidade do
+/// relatório e à auditoria exigida pela LGPD.
+model ConsultaRag {
+  id                String      @id @default(uuid()) @db.Uuid
+  aluno             Aluno?      @relation(fields: [alunoId], references: [id], onDelete: SetNull)
+  alunoId           String?     @map("aluno_id") @db.Uuid
+  disciplina        Disciplina  @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
+  disciplinaId      String      @map("disciplina_id") @db.Uuid
+  pergunta          String
+  resposta          String
+  /// Título, referência e similaridade de cada trecho usado.
+  fontes            Json
+  origemIa          String      @map("origem_ia")
+  similaridadeMaxima Decimal?   @map("similaridade_maxima") @db.Decimal(5, 4)
+  /// Verdadeiro quando o sistema respondeu que não sabe, por falta de contexto.
+  admitiuNaoSaber   Boolean     @default(false) @map("admitiu_nao_saber")
+  duracaoMs         Int?        @map("duracao_ms")
+  criadoEm          DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([disciplinaId, criadoEm(sort: Desc)])
+  @@index([criadoEm])
+  @@map("consultas_rag")
+}
+
+/// Trilha de auditoria das ações sensíveis (LGPD.md).
+model RegistroAuditoria {
+  id        String   @id @default(uuid()) @db.Uuid
+  atorId    String?  @map("ator_id") @db.Uuid
+  atorEmail String?  @map("ator_email")
+  acao      String
+  recurso   String
+  recursoId String?  @map("recurso_id")
+  detalhes  Json?
+  criadoEm  DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  @@index([criadoEm(sort: Desc)])
+  @@index([acao])
+  @@map("registros_auditoria")
+}

@@ -1,0 +1,19 @@
+{
+  "extends": ["next/core-web-vitals"],
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "rules": {
+    "no-console": ["error", { "allow": ["error"] }],
+    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+    "eqeqeq": ["error", "smart"],
+    "no-var": "error",
+    "prefer-const": "error"
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**/*", "prisma/**/*", "__tests__/**/*", "e2e/**/*"],
+      "rules": { "no-console": "off" }
+    }
+  ],
+  "ignorePatterns": ["node_modules/", ".next/", "coverage/", "playwright-report/"]
+}
