@@ -48,17 +48,38 @@ export function distanciaParaSimilaridade(distancia: number): number {
 /**
  * Similaridade mínima para um trecho ser considerado relevante.
  *
- * É o parâmetro que decide entre responder e admitir que não sabe, e por isso
- * é o parâmetro mais importante do sistema inteiro para o objetivo do projeto.
- * Baixo demais, o modelo recebe contexto irrelevante e passa a inventar em cima
- * dele, que é exatamente o que o RAG deveria evitar. Alto demais, o sistema diz
- * "não sei" para pergunta que o documento responde, e o aluno para de usar.
+ * É o parâmetro que decide entre responder e admitir que não sabe, e por isso é
+ * o mais importante do sistema inteiro para o objetivo do projeto. Baixo
+ * demais, o modelo recebe contexto irrelevante e passa a inventar em cima dele,
+ * que é exatamente o que o RAG deveria evitar. Alto demais, o sistema diz "não
+ * sei" para pergunta que o documento responde, e o aluno para de usar.
  *
- * O valor foi calibrado com o conjunto de perguntas de avaliação
- * (`docs/AVALIACAO-RAG.md`), separando as que o cronograma responde das que ele
- * não responde.
+ * O limiar é POR PROVEDOR, e isso não é um detalhe de implementação.
+ *
+ * Os dois espaços de embedding têm geometrias diferentes. O text-embedding-004
+ * é treinado com objetivo de recuperação: a pergunta e o trecho que a responde
+ * são deliberadamente aproximados, e a similaridade de um par relevante fica
+ * na casa de 0,6 a 0,8. O provedor local é um saco de palavras projetado por
+ * hashing, sem treino nenhum: ali a similaridade entre uma pergunta de cinco
+ * palavras e um trecho de duzentas é limitada pela própria aritmética do
+ * cosseno, e um par plenamente relevante raramente passa de 0,35.
+ *
+ * Usar um número só para os dois significaria, na prática, desligar o
+ * assistente em um dos modos. Os valores abaixo saíram da execução de
+ * `scripts/avaliar-rag.ts`, que separa perguntas que o material responde das
+ * que ele não responde e mede cobertura e recusa em cada limiar.
  */
-export const LIMIAR_RELEVANCIA = 0.35;
+export const LIMIARES: Record<"gemini" | "local", number> = {
+  gemini: 0.62,
+  local: 0.15,
+};
+
+/** Limiar padrão, usado quando o provedor não é informado. */
+export const LIMIAR_RELEVANCIA = LIMIARES.local;
+
+export function limiarDoProvedor(provedor: "gemini" | "local"): number {
+  return LIMIARES[provedor];
+}
 
 /** Diferença mínima para tratar um trecho como claramente melhor que o seguinte. */
 export const MARGEM_DOMINANCIA = 0.08;

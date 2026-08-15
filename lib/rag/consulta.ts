@@ -27,8 +27,8 @@ import {
   montarPrompt,
 } from "./prompt";
 import {
-  LIMIAR_RELEVANCIA,
   filtrarRelevantes,
+  limiarDoProvedor,
   removerRedundantes,
   similaridadeMaxima,
   type TrechoRecuperado,
@@ -79,10 +79,13 @@ function paraFonte(t: TrechoRecuperado): FonteCitada {
 
 export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
   const inicio = Date.now();
-  const limiar = opcoes.limiar ?? LIMIAR_RELEVANCIA;
 
   // 1. Vetor da pergunta.
   const embedding = await gerarEmbeddingComFallback(opcoes.pergunta);
+
+  // O limiar depende do provedor que gerou o vetor: os dois espaços têm
+  // geometrias diferentes e um número só desligaria o assistente num deles.
+  const limiar = opcoes.limiar ?? limiarDoProvedor(embedding.origem);
 
   // 2. Busca vetorial, restrita à disciplina e ao mesmo espaço de embedding.
   const candidatos = await buscarTrechosSimilares(

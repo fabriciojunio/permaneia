@@ -10,8 +10,9 @@ import { MODO_DEMO } from "@/lib/demo";
 const PUBLICAS = [
   "/",
   "/login",
-  "/sobre",
+  "/cadastro",
   "/api/auth/login",
+  "/api/auth/cadastrar",
   "/api/health",
   ...(MODO_DEMO ? ["/api/auth/demo"] : []),
 ];

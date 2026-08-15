@@ -50,11 +50,37 @@ export function normalizarTexto(texto: string): string {
     .trim();
 }
 
-/** Palavras sem valor discriminante em português. Mantidas curtas de propósito: lista grande demais derruba recall. */
+/**
+ * Palavras sem valor discriminante.
+ *
+ * A lista tem duas partes, e a segunda é a que importa aqui. Além dos artigos e
+ * preposições de sempre, ela remove os INTERROGATIVOS: "quando", "qual",
+ * "quanto", "como", "onde", "quem". Praticamente toda pergunta feita ao
+ * assistente começa por um deles, e nenhum diz nada sobre qual trecho responde.
+ *
+ * Sem essa remoção o efeito é mensurável e foi observado na avaliação: uma
+ * pergunta fora do material, "como faço para trancar a matrícula", pontuava
+ * 0,210 apenas porque "como" aparece em quase todo trecho do enunciado do
+ * projeto, ficando ACIMA de perguntas que o material realmente responde. É o
+ * mesmo problema que o IDF resolve num TF-IDF clássico; aqui, sem corpus para
+ * estimar frequência documental, a lista fixa cumpre o papel.
+ */
 const VAZIAS = new Set([
+  // Artigos, preposições, conjunções e pronomes.
   "a", "as", "o", "os", "um", "uma", "uns", "umas", "de", "da", "do", "das", "dos",
   "em", "na", "no", "nas", "nos", "por", "para", "pra", "com", "sem", "sob", "sobre",
-  "e", "ou", "que", "se", "ao", "aos",
+  "e", "ou", "que", "se", "ao", "aos", "ate", "apos", "entre", "mais", "menos",
+  "eu", "voce", "ele", "ela", "nos", "meu", "minha", "seu", "sua", "este", "esta",
+  "esse", "essa", "isso", "aquele", "aquela", "lhe", "me", "te", "ja", "nao", "sim",
+
+  // Interrogativos e verbos de pergunta.
+  "quando", "qual", "quais", "quanto", "quanta", "quantos", "quantas", "como",
+  "onde", "quem", "porque", "por que", "sera",
+
+  // Verbos auxiliares e de ligação, que aparecem em todo texto.
+  "ser", "sao", "foi", "era", "estar", "esta", "estao", "ter", "tem", "tinha",
+  "haver", "ha", "fazer", "faco", "faz", "feito", "poder", "pode", "posso",
+  "devo", "deve", "dever", "preciso", "precisa", "vai", "vou", "ir",
 ]);
 
 export function tokenizar(texto: string): string[] {
@@ -64,10 +90,31 @@ export function tokenizar(texto: string): string[] {
 }
 
 /**
- * Gera as unidades indexadas de um texto: as palavras, os pares de palavras
- * vizinhas e os trigramas de caracteres de cada palavra. Os trigramas dão
- * tolerância a plural e a flexão verbal, que em português mudam o fim da
- * palavra sem mudar o sentido buscado.
+ * Reduz a palavra ao radical aproximado, cortando as terminações mais comuns do
+ * português. Não é um stemmer linguístico, é o suficiente para "avaliações" e
+ * "avaliação" caírem no mesmo token.
+ *
+ * Substituiu uma versão anterior que indexava trigramas de caracteres. Os
+ * trigramas davam a mesma tolerância a flexão, mas multiplicavam por cinco o
+ * número de unidades e, em 768 dimensões, a colisão resultante afogava o sinal:
+ * na avaliação, perguntas que o material respondia pontuavam MENOS que
+ * perguntas fora do material. Radical curto resolve o mesmo problema sem
+ * inundar o vetor.
+ */
+export function radical(palavra: string): string {
+  if (palavra.length <= 4) return palavra;
+  for (const fim of ["acoes", "coes", "mente", "ncia", "agem", "ados", "idos", "adas", "idas", "ar", "er", "ir", "os", "as", "es", "s"]) {
+    if (palavra.length - fim.length >= 4 && palavra.endsWith(fim)) {
+      return palavra.slice(0, palavra.length - fim.length);
+    }
+  }
+  return palavra;
+}
+
+/**
+ * Unidades indexadas de um texto: a palavra, o radical dela e o par de palavras
+ * vizinhas. O bigrama é o que distingue "prova p1" de uma menção solta a
+ * "prova", que é justamente o tipo de pergunta que o assistente mais recebe.
  */
 export function unidades(texto: string): string[] {
   const tokens = tokenizar(texto);
@@ -75,13 +122,12 @@ export function unidades(texto: string): string[] {
   for (let i = 0; i < tokens.length; i += 1) {
     const atual = tokens[i]!;
     saida.push(`p:${atual}`);
+
+    const raiz = radical(atual);
+    if (raiz !== atual) saida.push(`r:${raiz}`);
+
     const proximo = tokens[i + 1];
-    if (proximo) saida.push(`b:${atual}_${proximo}`);
-    if (atual.length > 3) {
-      for (let j = 0; j + 3 <= atual.length; j += 1) {
-        saida.push(`t:${atual.slice(j, j + 3)}`);
-      }
-    }
+    if (proximo) saida.push(`b:${radical(atual)}_${radical(proximo)}`);
   }
   return saida;
 }
@@ -99,12 +145,12 @@ export function embeddingLocal(texto: string): number[] {
   for (const u of unidades(texto)) {
     contagem.set(u, (contagem.get(u) ?? 0) + 1);
   }
-  // Peso menor para trigramas: eles existem para tolerar flexão, não para
-  // dominar a similaridade de uma palavra longa qualquer.
+  // O radical vale menos que a palavra inteira: ele existe para tolerar flexão,
+  // e não para empatar com a correspondência exata.
   for (const [unidade, vezes] of contagem) {
     const indice = hash32(unidade) % DIMENSAO_EMBEDDING;
     const sinal = hash32(`sinal:${unidade}`) % 2 === 0 ? 1 : -1;
-    const peso = unidade.startsWith("t:") ? 0.35 : 1;
+    const peso = unidade.startsWith("r:") ? 0.5 : 1;
     vetor[indice] = (vetor[indice] ?? 0) + sinal * peso * (1 + Math.log(vezes));
   }
   return normalizarVetor(vetor);
@@ -118,53 +164,63 @@ export function frases(texto: string): string[] {
     .filter((f) => f.length > 0);
 }
 
+export const SEM_RESPOSTA_LOCAL =
+  "Não encontrei essa informação no material desta disciplina. Vale confirmar diretamente com o professor ou com a coordenação.";
+
 /**
- * Resposta extrativa: escolhe, dentro do contexto recebido, as frases com maior
- * sobreposição de termos com a pergunta, e as devolve na ordem original.
+ * Resposta extrativa: devolve, literalmente, os trechos recuperados que mais se
+ * aproximam da pergunta.
  *
- * O prompt que chega aqui já vem montado pela camada de RAG e traz o contexto
- * delimitado por marcadores. Extraímos o contexto e a pergunta desses
- * marcadores em vez de mudar a interface, para que o mesmo prompt sirva aos
- * dois provedores sem ramificação no chamador.
+ * Devolve o TRECHO INTEIRO, e não as frases que casam com a pergunta. Uma
+ * versão anterior selecionava frase a frase e falhava de um jeito instrutivo:
+ * para "quando é a Prova P1", o cronograma quebra em duas frases separadas,
+ * "24 de setembro de 2026, quinta-feira" e "Avaliação. Prova P1". A seleção por
+ * sobreposição de termos escolhia a segunda, que casa com a pergunta, e
+ * descartava a primeira, que tem a resposta. O aluno recebia a confirmação de
+ * que a prova existe, sem a data.
+ *
+ * A lição vale além deste código: recortar abaixo da unidade em que a
+ * informação foi escrita quebra a informação. O trecho já é a unidade
+ * escolhida na ingestão, e é nela que a resposta está inteira.
+ *
+ * O prompt que chega aqui vem montado pela camada de RAG, com o contexto
+ * delimitado por marcadores. Lemos o contexto desses marcadores em vez de mudar
+ * a interface, para que o mesmo prompt sirva aos dois provedores.
  */
 export function responderExtrativo(prompt: string): string {
   const contexto = prompt.match(/<contexto>([\s\S]*?)<\/contexto>/)?.[1]?.trim() ?? "";
   const pergunta = prompt.match(/<pergunta>([\s\S]*?)<\/pergunta>/)?.[1]?.trim() ?? "";
 
-  if (!contexto) {
-    return "Não encontrei nada no material desta disciplina que responda a essa pergunta. Vale confirmar com o professor ou com a coordenação.";
-  }
+  if (!contexto) return SEM_RESPOSTA_LOCAL;
+
+  // A camada de RAG separa os trechos por uma linha de três hifens.
+  const blocos = contexto
+    .split(/\n\s*---\s*\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  if (blocos.length === 0) return SEM_RESPOSTA_LOCAL;
 
   const termosPergunta = new Set(tokenizar(pergunta));
-  const candidatas = frases(contexto)
-    .map((frase) => {
-      const termosFrase = tokenizar(frase);
-      let acertos = 0;
-      for (const t of new Set(termosFrase)) {
-        if (termosPergunta.has(t)) acertos += 1;
-      }
-      // Normaliza pelo tamanho para não premiar frase longa que só acumula termos.
-      const escore = termosFrase.length === 0 ? 0 : acertos / Math.sqrt(termosFrase.length);
-      return { frase, escore, acertos };
-    })
-    .filter((c) => c.acertos > 0)
-    .sort((a, b) => b.escore - a.escore)
-    .slice(0, 3);
+  const pontuados = blocos.map((bloco) => {
+    const termosBloco = new Set(tokenizar(bloco));
+    let acertos = 0;
+    for (const t of termosPergunta) if (termosBloco.has(t)) acertos += 1;
+    return { bloco, acertos };
+  });
 
-  if (candidatas.length === 0) {
-    return "Não encontrei nada no material desta disciplina que responda a essa pergunta. Vale confirmar com o professor ou com a coordenação.";
-  }
-
-  const ordemOriginal = frases(contexto);
-  const selecionadas = candidatas
-    .map((c) => c.frase)
-    .sort((a, b) => ordemOriginal.indexOf(a) - ordemOriginal.indexOf(b));
+  // A ordem em que os blocos chegaram já é a da similaridade vetorial. A
+  // contagem de termos exatos serve de desempate, sem reordenar tudo: ela não
+  // tem visão semântica nenhuma e não deve sobrepor a busca vetorial.
+  const escolhidos = pontuados.some((p) => p.acertos > 0)
+    ? pontuados.filter((p) => p.acertos > 0).slice(0, 2)
+    : pontuados.slice(0, 1);
 
   return [
-    "Modo de leitura direta do material (sem geração de texto). Estes são os trechos do documento que respondem à sua pergunta:",
+    "Leitura direta do material, sem geração de texto. Copio abaixo os trechos do documento que respondem à sua pergunta:",
     "",
-    ...selecionadas.map((f) => `• ${f}`),
-  ].join("\n");
+    ...escolhidos.map((p) => p.bloco),
+  ].join("\n\n");
 }
 
 export class ProvedorLocal implements ProvedorIA {
