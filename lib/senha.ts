@@ -31,6 +31,9 @@ export async function conferirSenha(senha: string, hash: string): Promise<boolea
 export type ForcaSenha = {
   valida: boolean;
   problemas: string[];
+  /** 0 a 4, para a barra de força do formulário. */
+  pontuacao: number;
+  rotulo: "muito fraca" | "fraca" | "razoável" | "boa" | "forte";
 };
 
 /** Senhas comuns demais para serem aceitas, mesmo satisfazendo as demais regras. */
@@ -73,6 +76,42 @@ export function avaliarForca(senha: string): ForcaSenha {
   if (PROIBIDAS.has(senha.toLowerCase())) {
     problemas.push("Essa senha é fácil de adivinhar. Escolha outra.");
   }
+  if (SEQUENCIAS.some((s) => senha.toLowerCase().includes(s))) {
+    problemas.push("A senha não pode conter uma sequência óbvia como \"1234\" ou \"abcd\".");
+  }
 
-  return { valida: problemas.length === 0, problemas };
+  return {
+    valida: problemas.length === 0,
+    problemas,
+    pontuacao: pontuar(senha),
+    rotulo: ROTULOS[pontuar(senha)]!,
+  };
+}
+
+const SEQUENCIAS = ["1234", "2345", "3456", "4567", "5678", "6789", "abcd", "qwer", "asdf"];
+
+const ROTULOS = ["muito fraca", "fraca", "razoável", "boa", "forte"] as const;
+
+/**
+ * Pontuação de 0 a 4 para a barra de força.
+ *
+ * Serve à interface, não à decisão: quem aceita ou recusa a senha é
+ * `avaliarForca`. Uma barra que diz "forte" para algo que a política recusa
+ * seria pior do que não ter barra nenhuma, então a pontuação nunca passa de 1
+ * enquanto a senha for inválida.
+ */
+export function pontuar(senha: string): number {
+  if (senha.length < TAMANHO_MINIMO_SENHA) return senha.length === 0 ? 0 : 1;
+
+  let pontos = 1;
+  if (senha.length >= 14) pontos += 1;
+  if (senha.length >= 20) pontos += 1;
+
+  const variedade = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter((r) => r.test(senha)).length;
+  if (variedade >= 3) pontos += 1;
+
+  // Poucos caracteres distintos indicam repetição, que anula o ganho do comprimento.
+  if (new Set(senha).size < Math.min(8, senha.length / 2)) pontos -= 1;
+
+  return Math.max(0, Math.min(4, pontos));
 }

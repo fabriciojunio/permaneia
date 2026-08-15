@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Identidade visual do PermaneIA.
+
+  A referência não é um produto de tecnologia, é um painel institucional de
+  secretaria acadêmica: fundo escuro e sóbrio, tipografia com serifa nos
+  títulos, e uma única cor de marca. A escala de risco é o único lugar onde a
+  cor grita, porque ali ela carrega informação e não decoração.
+*/
+
+:root {
+  --fonte-texto: var(--fonte-inter), system-ui, -apple-system, sans-serif;
+  --fonte-titulo: var(--fonte-lora), Georgia, serif;
+  --fonte-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace;
+
+  --fundo: #0b1018;
+  --fundo-painel: #141b26;
+  --fundo-painel-alto: #1d2735;
+  --borda: #2b3849;
+  --texto: #e6eaef;
+  --texto-suave: #9fadbe;
+  --texto-fraco: #71829a;
+  --marca: #22a06e;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--fundo);
+  color: var(--texto);
+  font-family: var(--fonte-texto);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@layer base {
+  h1, h2, h3 {
+    font-family: var(--fonte-titulo);
+    letter-spacing: -0.01em;
+  }
+
+  /* Foco sempre visível: navegação por teclado é requisito de acessibilidade,
+     não preferência. */
+  :focus-visible {
+    outline: 2px solid var(--marca);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  ::selection {
+    background: rgba(34, 160, 110, 0.32);
+  }
+}
+
+@layer components {
+  .painel {
+    @apply rounded-lg border border-tinta-700 bg-tinta-800/70 shadow-painel;
+  }
+
+  .rotulo-campo {
+    @apply mb-1.5 block text-sm font-medium text-tinta-200;
+  }
+
+  .campo {
+    @apply w-full rounded-md border border-tinta-600 bg-tinta-900 px-3 py-2 text-tinta-50
+           placeholder:text-tinta-400 focus:border-permanencia-500 focus:outline-none
+           focus:ring-1 focus:ring-permanencia-500 disabled:opacity-50;
+  }
+
+  .botao {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium
+           transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .botao-primario {
+    @apply botao bg-permanencia-600 text-white hover:bg-permanencia-500;
+  }
+
+  .botao-secundario {
+    @apply botao border border-tinta-600 bg-tinta-800 text-tinta-100 hover:bg-tinta-700;
+  }
+
+  .etiqueta {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+}
+
+/* Barra de rolagem discreta, para não competir com o conteúdo do painel. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2b3849 transparent;
+}
+
+/* Respeita quem desligou animação no sistema operacional. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
