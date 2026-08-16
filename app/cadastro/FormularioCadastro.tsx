@@ -4,13 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { avaliarForca } from "@/lib/senha";
 
-const CORES_FORCA = [
-  "bg-red-600",
-  "bg-red-500",
-  "bg-amber-500",
-  "bg-permanencia-500",
-  "bg-permanencia-400",
-];
+const CORES_FORCA = ["bg-risco-critico", "bg-risco-critico", "bg-risco-medio", "bg-risco-baixo", "bg-risco-baixo"];
 
 export function FormularioCadastro({ tamanhoMinimoSenha }: { tamanhoMinimoSenha: number }) {
   const router = useRouter();
@@ -24,9 +18,8 @@ export function FormularioCadastro({ tamanhoMinimoSenha }: { tamanhoMinimoSenha:
   const [aviso, setAviso] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
-  // A mesma função que o servidor usa para decidir. Rodá-la também no cliente
-  // dá retorno imediato, mas ela nunca substitui a validação do servidor: o
-  // navegador é do usuário e nada que roda nele é confiável.
+  // A mesma função que o servidor usa para decidir. Aqui ela só dá retorno
+  // imediato; a validação que vale é a do servidor.
   const forca = useMemo(() => avaliarForca(senha), [senha]);
 
   async function cadastrar(evento: React.FormEvent) {
@@ -60,8 +53,6 @@ export function FormularioCadastro({ tamanhoMinimoSenha }: { tamanhoMinimoSenha:
         router.replace("/inicio");
         router.refresh();
       } else {
-        // Caminho do e-mail já cadastrado: a resposta é deliberadamente igual
-        // à de sucesso, então a interface encaminha para o login.
         setAviso(dados.mensagem);
       }
     } catch {
@@ -76,7 +67,7 @@ export function FormularioCadastro({ tamanhoMinimoSenha }: { tamanhoMinimoSenha:
     nome.trim().length > 0 && email.trim().length > 0 && forca.valida && senha === confirmacao && aceite;
 
   return (
-    <form onSubmit={cadastrar} className="painel space-y-4 p-6" noValidate>
+    <form onSubmit={cadastrar} className="folha space-y-4 p-6" noValidate>
       <div>
         <label htmlFor="nome" className="rotulo-campo">Nome completo</label>
         <input
@@ -88,7 +79,7 @@ export function FormularioCadastro({ tamanhoMinimoSenha }: { tamanhoMinimoSenha:
           className="campo"
           aria-invalid={Boolean(campos.nome)}
         />
-        {campos.nome && <p className="mt-1 text-xs text-red-300">{campos.nome}</p>}
+        {campos.nome && <p className="mt-1 text-xs text-sagrado-escuro">{campos.nome}</p>}
       </div>
 
       <div>
@@ -104,12 +95,12 @@ export function FormularioCadastro({ tamanhoMinimoSenha }: { tamanhoMinimoSenha:
           placeholder="voce@unisagrado.edu.br"
           aria-invalid={Boolean(campos.email)}
         />
-        {campos.email && <p className="mt-1 text-xs text-red-300">{campos.email}</p>}
+        {campos.email && <p className="mt-1 text-xs text-sagrado-escuro">{campos.email}</p>}
       </div>
 
       <div>
         <label htmlFor="curso" className="rotulo-campo">
-          Curso <span className="font-normal text-tinta-500">(opcional)</span>
+          Curso <span className="normal-case tracking-normal text-tinta-apagada">(opcional)</span>
         </label>
         <input
           id="curso"
@@ -139,26 +130,26 @@ export function FormularioCadastro({ tamanhoMinimoSenha }: { tamanhoMinimoSenha:
             {[0, 1, 2, 3].map((i) => (
               <span
                 key={i}
-                className={`h-1 flex-1 rounded-full ${
-                  senha.length > 0 && i < forca.pontuacao ? CORES_FORCA[forca.pontuacao] : "bg-tinta-700"
+                className={`h-[3px] flex-1 ${
+                  senha.length > 0 && i < forca.pontuacao ? CORES_FORCA[forca.pontuacao] : "bg-regua"
                 }`}
               />
             ))}
           </div>
-          <p className="mt-1.5 text-xs text-tinta-400">
+          <p className="mt-1.5 text-xs text-tinta-fraca">
             {senha.length === 0
               ? `Pelo menos ${tamanhoMinimoSenha} caracteres, com letra e número.`
               : `Força: ${forca.rotulo}.`}
           </p>
           {senha.length > 0 && forca.problemas.length > 0 && (
-            <ul className="mt-1 space-y-0.5 text-xs text-amber-300">
+            <ul className="mt-1 space-y-0.5 text-xs text-risco-alto">
               {forca.problemas.map((p) => (
                 <li key={p}>{p}</li>
               ))}
             </ul>
           )}
         </div>
-        {campos.senha && <p className="mt-1 text-xs text-red-300">{campos.senha}</p>}
+        {campos.senha && <p className="mt-1 text-xs text-sagrado-escuro">{campos.senha}</p>}
       </div>
 
       <div>
@@ -173,34 +164,34 @@ export function FormularioCadastro({ tamanhoMinimoSenha }: { tamanhoMinimoSenha:
           className="campo"
           aria-invalid={!senhasBatem}
         />
-        {!senhasBatem && <p className="mt-1 text-xs text-red-300">As senhas não são iguais.</p>}
-        {campos.confirmacao && <p className="mt-1 text-xs text-red-300">{campos.confirmacao}</p>}
+        {!senhasBatem && <p className="mt-1 text-xs text-sagrado-escuro">As senhas não são iguais.</p>}
+        {campos.confirmacao && <p className="mt-1 text-xs text-sagrado-escuro">{campos.confirmacao}</p>}
       </div>
 
-      <div className="flex items-start gap-2.5 rounded-md border border-tinta-700 bg-tinta-900/60 p-3">
+      <div className="flex items-start gap-2.5 border border-regua bg-papel p-3">
         <input
           id="aceite"
           type="checkbox"
           checked={aceite}
           onChange={(e) => setAceite(e.target.checked)}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-permanencia-500"
+          className="mt-0.5 h-4 w-4 shrink-0 accent-sagrado"
         />
-        <label htmlFor="aceite" className="text-xs leading-relaxed text-tinta-300">
+        <label htmlFor="aceite" className="text-xs leading-relaxed text-tinta-media">
           Entendo que esta é uma instalação acadêmica com dados sintéticos, que minhas perguntas ao
-          assistente ficam registradas para avaliação do sistema, e que posso baixar ou pedir a exclusão dos
-          meus dados a qualquer momento.
+          assistente ficam registradas para avaliação do sistema, e que posso baixar ou pedir a
+          exclusão dos meus dados a qualquer momento.
         </label>
       </div>
-      {campos.aceiteTermos && <p className="text-xs text-red-300">{campos.aceiteTermos}</p>}
+      {campos.aceiteTermos && <p className="text-xs text-sagrado-escuro">{campos.aceiteTermos}</p>}
 
       {aviso && (
-        <p role="alert" className="rounded-md border border-tinta-600 bg-tinta-900 px-3 py-2 text-sm text-tinta-200">
+        <p role="alert" className="aviso">
           {aviso}
         </p>
       )}
 
       <button type="submit" disabled={enviando || !podeEnviar} className="botao-primario w-full">
-        {enviando ? "Criando conta…" : "Criar conta"}
+        {enviando ? "Criando conta" : "Criar conta"}
       </button>
     </form>
   );

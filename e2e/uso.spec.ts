@@ -57,7 +57,7 @@ test.describe("assistente de estudos", () => {
     test.skip(opcoes < 2, "só há uma disciplina com documento indexado");
 
     await page.locator("#disciplina").selectOption({ index: 1 });
-    await expect(page.getByText("Comece por uma destas perguntas:")).toBeVisible();
+    await expect(page.getByText("Comece por uma destas perguntas")).toBeVisible();
   });
 
   test("o aluno não enxerga o painel de risco na navegação", async ({ page }) => {
@@ -83,8 +83,10 @@ test.describe("painel de risco", () => {
     // A ordenação é a funcionalidade: a coordenação trabalha de cima para baixo.
     const etiquetas = page.locator("tbody .etiqueta");
     await expect(etiquetas.first()).toBeVisible();
+    // innerText devolve o texto já com o text-transform aplicado, então a
+    // comparação precisa ignorar a caixa.
     const primeira = await etiquetas.first().innerText();
-    expect(primeira).toMatch(/Risco (crítico|alto)/);
+    expect(primeira).toMatch(/crítico|alto/i);
   });
 
   test("abre o detalhamento com as regras fuzzy que produziram o score", async ({ page }) => {
@@ -93,7 +95,7 @@ test.describe("painel de risco", () => {
     // "a ação sugerida", e um seletor por substring casaria com ele. O teste
     // passaria sem o detalhamento ter sequer carregado.
     await expect(page.getByText("Ação sugerida", { exact: true })).toBeVisible();
-    await expect(page.getByText(/Regra \d+/).first()).toBeVisible();
+    await expect(page.getByText(/regra \d+/i).first()).toBeVisible();
     await expect(page.getByText(/força \d/).first()).toBeVisible();
   });
 

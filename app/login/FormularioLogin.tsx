@@ -33,7 +33,7 @@ export function FormularioLogin({
         setErro(dados?.erro?.mensagem ?? "Não foi possível entrar.");
         return;
       }
-      // replace e não push: o login não deve ficar no histórico de navegação.
+      // replace: o login não deve ficar no histórico de navegação.
       router.replace(dados.usuario?.trocarSenha ? "/trocar-senha" : "/inicio");
       router.refresh();
     } catch {
@@ -68,7 +68,7 @@ export function FormularioLogin({
 
   return (
     <>
-      <form onSubmit={entrar} className="painel space-y-4 p-6">
+      <form onSubmit={entrar} className="folha space-y-4 p-6">
         <div>
           <label htmlFor="email" className="rotulo-campo">
             E-mail
@@ -103,19 +103,19 @@ export function FormularioLogin({
         </div>
 
         {erro && (
-          <p role="alert" className="rounded-md border border-red-900 bg-red-950/60 px-3 py-2 text-sm text-red-200">
+          <p role="alert" className="border-l-2 border-risco-critico bg-sagrado-fraco px-3 py-2 text-sm text-sagrado-escuro">
             {erro}
           </p>
         )}
 
         <button type="submit" disabled={enviando} className="botao-primario w-full">
-          {enviando ? "Entrando…" : "Entrar"}
+          {enviando ? "Entrando" : "Entrar"}
         </button>
       </form>
 
       {modoDemo && contasDemo.length > 0 && (
         <section className="mt-6" aria-labelledby="demo">
-          <h2 id="demo" className="mb-3 text-sm font-medium text-tinta-300">
+          <h2 id="demo" className="carimbo mb-2">
             Ou entre na demonstração
           </h2>
           <div className="space-y-2">
@@ -125,16 +125,18 @@ export function FormularioLogin({
                 type="button"
                 onClick={() => entrarDemo(conta.papel)}
                 disabled={enviando}
-                className="botao-secundario w-full justify-start text-left"
+                className="w-full border border-regua-forte bg-papel-alto p-3 text-left transition-colors hover:border-sagrado disabled:opacity-45"
               >
-                <span className="block">
-                  <span className="block font-medium capitalize">{conta.papel}</span>
-                  <span className="block text-xs text-tinta-400">{conta.descricao}</span>
+                <span className="block font-mono text-[11px] uppercase tracking-carimbo text-sagrado">
+                  {conta.papel}
+                </span>
+                <span className="mt-0.5 block text-[13px] leading-snug text-tinta-media">
+                  {conta.descricao}
                 </span>
               </button>
             ))}
           </div>
-          <p className="mt-3 text-xs text-tinta-500">
+          <p className="mt-3 text-xs leading-relaxed text-tinta-fraca">
             A base da demonstração é sintética. Nenhum dado corresponde a uma pessoa real.
           </p>
         </section>

@@ -31,11 +31,11 @@ export function GestaoDisciplinas({ disciplinas }: { disciplinas: Disciplina[] }
       {mensagem && (
         <p
           role="status"
-          className={`rounded-md border px-3 py-2 text-sm ${
+          className={
             mensagem.tipo === "ok"
-              ? "border-permanencia-800 bg-permanencia-950/50 text-permanencia-200"
-              : "border-red-900 bg-red-950/60 text-red-200"
-          }`}
+              ? "border-l-2 border-risco-baixo bg-papel-alto px-4 py-3 text-sm text-tinta"
+              : "aviso"
+          }
         >
           {mensagem.texto}
         </p>
@@ -50,43 +50,46 @@ export function GestaoDisciplinas({ disciplinas }: { disciplinas: Disciplina[] }
       />
 
       {disciplinas.length === 0 ? (
-        <div className="painel p-6 text-sm text-tinta-300">
+        <div className="folha p-6 text-[15px] text-tinta-media">
           Nenhuma disciplina cadastrada ainda.
         </div>
       ) : (
         <ul className="space-y-4">
           {disciplinas.map((d) => (
-            <li key={d.id} className="painel p-5">
-              <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg text-tinta-50">{d.nome}</h2>
-                  <p className="text-xs text-tinta-500">
-                    {[d.professor, d.periodo].filter(Boolean).join(" · ") || "Sem professor ou período informado"}
-                    {" · "}
-                    {pluralizar(d.matriculas, "matrícula", "matrículas")}
-                  </p>
-                </div>
+            <li key={d.id} className="folha p-5">
+              <div className="mb-3 border-b border-regua pb-2">
+                <h2 className="text-lg text-tinta">{d.nome}</h2>
+                <p className="carimbo mt-0.5">
+                  {[d.professor, d.periodo].filter(Boolean).join(" · ") || "Sem professor ou período"}
+                  {" · "}
+                  {pluralizar(d.matriculas, "matrícula", "matrículas")}
+                </p>
               </div>
 
               {d.documentos.length === 0 ? (
-                <p className="mb-4 rounded-md border border-amber-900/60 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
-                  Sem documento indexado. O assistente não responde perguntas desta disciplina até que a
-                  ementa ou o cronograma seja enviado.
+                <p className="mb-4 border-l-2 border-risco-medio bg-papel px-3 py-2 text-[13px] text-tinta-media">
+                  Sem documento indexado. O assistente não responde perguntas desta disciplina até
+                  que a ementa ou o cronograma seja enviado.
                 </p>
               ) : (
-                <ul className="mb-4 space-y-1.5">
-                  {d.documentos.map((doc) => (
-                    <li
-                      key={doc.id}
-                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md border border-tinta-700 bg-tinta-900/50 px-3 py-2 text-xs"
-                    >
-                      <span className="text-tinta-100">{doc.titulo}</span>
-                      {doc.referencia && <span className="text-permanencia-400">{doc.referencia}</span>}
-                      <span className="font-mono text-tinta-500">{doc.totalChunks} trecho(s)</span>
-                      <span className="ml-auto text-tinta-500">{formatarData(doc.criadoEm)}</span>
-                    </li>
-                  ))}
-                </ul>
+                <table className="mb-4 w-full text-left text-[13px]">
+                  <tbody>
+                    {d.documentos.map((doc) => (
+                      <tr key={doc.id} className="border-b border-regua-fraca last:border-0">
+                        <td className="py-1.5 pr-4 text-tinta">{doc.titulo}</td>
+                        <td className="py-1.5 pr-4 font-mono text-[11px] text-sagrado">
+                          {doc.referencia ?? ""}
+                        </td>
+                        <td className="py-1.5 pr-4 text-right font-mono text-[11px] text-tinta-fraca">
+                          {doc.totalChunks} trecho(s)
+                        </td>
+                        <td className="py-1.5 text-right font-mono text-[11px] text-tinta-fraca">
+                          {formatarData(doc.criadoEm)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
 
               <EnvioDocumento
@@ -146,8 +149,8 @@ function NovaDisciplina({
   }
 
   return (
-    <form onSubmit={criar} className="painel space-y-3 p-5">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-tinta-400">Nova disciplina</h2>
+    <form onSubmit={criar} className="folha space-y-3 p-5">
+      <h2 className="carimbo border-b border-regua pb-2">Nova disciplina</h2>
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label htmlFor="nome" className="rotulo-campo">Nome</label>
@@ -169,7 +172,7 @@ function NovaDisciplina({
         </div>
       </div>
       <button type="submit" disabled={enviando || !nome.trim()} className="botao-primario">
-        {enviando ? "Criando…" : "Criar disciplina"}
+        {enviando ? "Criando" : "Criar disciplina"}
       </button>
     </form>
   );
@@ -223,17 +226,17 @@ function EnvioDocumento({
   }
 
   return (
-    <form onSubmit={enviar} className="grid gap-3 border-t border-tinta-700 pt-4 sm:grid-cols-[1.4fr_1fr_1fr_auto]">
+    <form onSubmit={enviar} className="grid gap-3 border-t border-regua pt-4 sm:grid-cols-[1.4fr_1fr_1fr_auto]">
       <div>
         <label htmlFor={`arquivo-${disciplinaId}`} className="rotulo-campo">
-          PDF da ementa ou do cronograma
+          PDF da ementa ou cronograma
         </label>
         <input
           id={`arquivo-${disciplinaId}`}
           type="file"
           accept="application/pdf"
           onChange={(e) => setArquivo(e.target.files?.[0] ?? null)}
-          className="campo file:mr-3 file:rounded file:border-0 file:bg-tinta-700 file:px-3 file:py-1 file:text-xs file:text-tinta-100"
+          className="campo file:mr-3 file:border file:border-regua-forte file:bg-papel file:px-2 file:py-0.5 file:font-mono file:text-[11px] file:text-tinta"
         />
       </div>
       <div>
@@ -258,7 +261,7 @@ function EnvioDocumento({
       </div>
       <div className="flex items-end">
         <button type="submit" disabled={enviando || !arquivo} className="botao-primario w-full">
-          {enviando ? "Indexando…" : "Indexar"}
+          {enviando ? "Indexando" : "Indexar"}
         </button>
       </div>
     </form>

@@ -28,7 +28,7 @@ type Mensagem =
 const SUGESTOES = [
   "Quando é a Prova P1?",
   "Qual é o limite de faltas da disciplina?",
-  "Quanto vale o quiz na nota final?",
+  "Quanto vale o quiz na nota?",
   "Que conteúdo cai na aula de lógica fuzzy?",
 ];
 
@@ -71,7 +71,6 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
           diagnostico: dados.diagnostico,
         },
       ]);
-      // Rola só depois de a resposta entrar, para o aluno ver o começo dela.
       requestAnimationFrame(() => fim.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
     } catch {
       setErro("Falha de conexão. Verifique sua internet e tente de novo.");
@@ -84,7 +83,7 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="painel p-4">
+      <div className="folha p-4">
         <label htmlFor="disciplina" className="rotulo-campo">
           Disciplina
         </label>
@@ -94,7 +93,7 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
           onChange={(e) => {
             setDisciplinaId(e.target.value);
             // Trocar de disciplina zera o histórico: manter a conversa daria a
-            // impressão de que o contexto anterior ainda vale, e ele não vale.
+            // impressão de que o contexto anterior ainda vale.
             setMensagens([]);
             setErro(null);
           }}
@@ -108,17 +107,17 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
           ))}
         </select>
         {disciplinaAtual && (
-          <p className="mt-2 text-xs text-tinta-500">
+          <p className="carimbo mt-2">
             {disciplinaAtual.professor ? `${disciplinaAtual.professor} · ` : ""}
             {disciplinaAtual.documentos} documento(s) indexado(s)
           </p>
         )}
       </div>
 
-      <div className="painel min-h-[20rem] p-4" role="log" aria-live="polite" aria-label="Conversa">
+      <div className="folha min-h-[20rem] p-4" role="log" aria-live="polite" aria-label="Conversa">
         {mensagens.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="mb-4 text-sm text-tinta-400">Comece por uma destas perguntas:</p>
+            <p className="carimbo mb-4">Comece por uma destas perguntas</p>
             <div className="flex flex-wrap justify-center gap-2">
               {SUGESTOES.map((s) => (
                 <button
@@ -126,7 +125,7 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
                   type="button"
                   onClick={() => perguntar(s)}
                   disabled={carregando}
-                  className="botao-secundario text-xs"
+                  className="border border-regua-forte bg-papel px-3 py-1.5 text-[13px] text-tinta-media transition-colors hover:border-sagrado hover:text-tinta disabled:opacity-45"
                 >
                   {s}
                 </button>
@@ -134,52 +133,56 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
             </div>
           </div>
         ) : (
-          <ul className="space-y-5">
+          <ul className="space-y-6">
             {mensagens.map((m, i) => (
               <li key={i}>
                 {m.autor === "aluno" ? (
-                  <div className="flex justify-end">
-                    <p className="max-w-[85%] rounded-lg rounded-br-sm bg-permanencia-800 px-4 py-2 text-sm text-permanencia-50">
-                      {m.texto}
-                    </p>
+                  <div className="border-l-2 border-tinta pl-3">
+                    <p className="carimbo mb-1">Pergunta</p>
+                    <p className="text-[15px] text-tinta">{m.texto}</p>
                   </div>
                 ) : (
-                  <div className="max-w-[92%]">
+                  <div>
+                    <p className="carimbo mb-1">
+                      {m.diagnostico.bloqueada ? "Pergunta barrada" : "Resposta"}
+                    </p>
                     <div
-                      className={`rounded-lg rounded-bl-sm px-4 py-3 ${
+                      className={
                         m.diagnostico.bloqueada
-                          ? "border border-amber-900/70 bg-amber-950/30"
-                          : "bg-tinta-700/60"
-                      }`}
+                          ? "aviso"
+                          : "border-l-2 border-sagrado bg-papel px-4 py-3"
+                      }
                     >
-                      <p className="whitespace-pre-wrap text-sm leading-relaxed text-tinta-100">{m.texto}</p>
+                      <p className="whitespace-pre-wrap text-[15px] leading-[1.65] text-tinta">
+                        {m.texto}
+                      </p>
                     </div>
 
                     {m.fontes.length > 0 && (
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-xs text-tinta-400 hover:text-tinta-200">
+                        <summary className="carimbo cursor-pointer hover:text-tinta">
                           {m.fontes.length} trecho(s) usado(s) como fonte
                         </summary>
-                        <ul className="mt-2 space-y-2">
+                        <ol className="mt-2 space-y-2">
                           {m.fontes.map((f, j) => (
-                            <li key={j} className="rounded-md border border-tinta-700 bg-tinta-900/60 p-3">
-                              <p className="mb-1 text-xs font-medium text-permanencia-300">
+                            <li key={j} className="border border-regua bg-papel p-3">
+                              <p className="mb-1 font-mono text-[11px] text-sagrado">
                                 {f.titulo}
                                 {f.referencia ? ` · ${f.referencia}` : ""}
-                                <span className="ml-2 font-mono text-tinta-500">
+                                <span className="ml-2 text-tinta-fraca">
                                   similaridade {f.similaridade.toFixed(2)}
                                 </span>
                               </p>
-                              <p className="text-xs leading-relaxed text-tinta-400">{f.trecho}</p>
+                              <p className="text-[13px] leading-relaxed text-tinta-media">{f.trecho}</p>
                             </li>
                           ))}
-                        </ul>
+                        </ol>
                       </details>
                     )}
 
-                    <p className="mt-1.5 text-[11px] text-tinta-500">
+                    <p className="mt-1.5 font-mono text-[11px] text-tinta-fraca">
                       {m.diagnostico.bloqueada ? (
-                        <>Pergunta barrada antes de consultar a IA · {m.diagnostico.duracaoMs} ms</>
+                        <>Barrada antes de consultar a IA · {m.diagnostico.duracaoMs} ms</>
                       ) : (
                         <>
                           {m.diagnostico.origemIa === "gemini"
@@ -198,12 +201,14 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
           </ul>
         )}
 
-        {carregando && <p className="mt-4 text-sm text-tinta-400">Procurando no material da disciplina…</p>}
+        {carregando && (
+          <p className="carimbo mt-4">Procurando no material da disciplina…</p>
+        )}
         <div ref={fim} />
       </div>
 
       {erro && (
-        <p role="alert" className="rounded-md border border-red-900 bg-red-950/60 px-3 py-2 text-sm text-red-200">
+        <p role="alert" className="aviso">
           {erro}
         </p>
       )}
@@ -223,7 +228,7 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
           value={pergunta}
           onChange={(e) => setPergunta(e.target.value)}
           className="campo flex-1"
-          placeholder="Pergunte sobre datas, critérios de avaliação ou conteúdo…"
+          placeholder="Pergunte sobre datas, critérios de avaliação ou conteúdo"
           maxLength={1000}
           disabled={carregando}
         />

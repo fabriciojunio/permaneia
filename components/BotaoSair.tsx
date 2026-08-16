@@ -18,8 +18,13 @@ export function BotaoSair() {
   }
 
   return (
-    <button type="button" onClick={sair} disabled={saindo} className="text-sm text-tinta-400 hover:text-tinta-100">
-      {saindo ? "Saindo…" : "Sair"}
+    <button
+      type="button"
+      onClick={sair}
+      disabled={saindo}
+      className="font-mono text-[11px] uppercase tracking-carimbo text-tinta-fraca hover:text-sagrado"
+    >
+      {saindo ? "Saindo" : "Sair"}
     </button>
   );
 }

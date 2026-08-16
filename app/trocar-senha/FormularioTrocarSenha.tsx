@@ -38,7 +38,7 @@ export function FormularioTrocarSenha() {
   }
 
   return (
-    <form onSubmit={trocar} className="painel space-y-4 p-6">
+    <form onSubmit={trocar} className="folha space-y-4 p-6">
       <div>
         <label htmlFor="senha-atual" className="rotulo-campo">Senha atual</label>
         <input
@@ -79,7 +79,7 @@ export function FormularioTrocarSenha() {
       </div>
 
       {problemas.length > 0 && (
-        <ul role="alert" className="space-y-1 rounded-md border border-red-900 bg-red-950/60 px-3 py-2 text-sm text-red-200">
+        <ul role="alert" className="aviso space-y-1">
           {problemas.map((p) => (
             <li key={p}>{p}</li>
           ))}
@@ -87,7 +87,7 @@ export function FormularioTrocarSenha() {
       )}
 
       <button type="submit" disabled={enviando} className="botao-primario w-full">
-        {enviando ? "Trocando…" : "Trocar senha"}
+        {enviando ? "Trocando" : "Trocar senha"}
       </button>
     </form>
   );

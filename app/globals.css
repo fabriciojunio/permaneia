@@ -3,103 +3,128 @@
 @tailwind utilities;
 
 /*
-  Identidade visual do PermaneIA.
-
-  A referência não é um produto de tecnologia, é um painel institucional de
-  secretaria acadêmica: fundo escuro e sóbrio, tipografia com serifa nos
-  títulos, e uma única cor de marca. A escala de risco é o único lugar onde a
-  cor grita, porque ali ela carrega informação e não decoração.
+  A tela imita o papel que circula numa secretaria, e não um painel de produto:
+  a coordenação lê ata, diário de classe e ficha de matrícula o dia inteiro.
+  Daí o canto reto, a régua no lugar da sombra, a seção numerada, a nota de
+  rodapé e todo número em monoespaçada.
 */
 
-:root {
-  --fonte-texto: var(--fonte-inter), system-ui, -apple-system, sans-serif;
-  --fonte-titulo: var(--fonte-lora), Georgia, serif;
-  --fonte-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", monospace;
-
-  --fundo: #0b1018;
-  --fundo-painel: #141b26;
-  --fundo-painel-alto: #1d2735;
-  --borda: #2b3849;
-  --texto: #e6eaef;
-  --texto-suave: #9fadbe;
-  --texto-fraco: #71829a;
-  --marca: #22a06e;
-}
-
 html {
-  color-scheme: dark;
+  color-scheme: light;
+  background-color: #ebe5da;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(34, 30, 26, 0.014) 0px,
+    rgba(34, 30, 26, 0.014) 1px,
+    transparent 1px,
+    transparent 4px
+  );
 }
 
 body {
-  background-color: var(--fundo);
-  color: var(--texto);
-  font-family: var(--fonte-texto);
+  color: #221e1a;
+  font-family: var(--fonte-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 @layer base {
   h1, h2, h3 {
-    font-family: var(--fonte-titulo);
-    letter-spacing: -0.01em;
+    font-family: var(--fonte-display);
+    font-weight: 600;
+    letter-spacing: -0.008em;
   }
 
-  /* Foco sempre visível: navegação por teclado é requisito de acessibilidade,
-     não preferência. */
   :focus-visible {
-    outline: 2px solid var(--marca);
+    outline: 2px solid #a81c2b;
     outline-offset: 2px;
-    border-radius: 3px;
   }
 
   ::selection {
-    background: rgba(34, 160, 110, 0.32);
+    background: rgba(168, 28, 43, 0.15);
   }
 }
 
 @layer components {
-  .painel {
-    @apply rounded-lg border border-tinta-700 bg-tinta-800/70 shadow-painel;
+  .folha {
+    @apply border border-regua bg-papel-alto shadow-folha;
+  }
+
+  .carimbo {
+    @apply font-mono text-[11px] uppercase tracking-carimbo text-tinta-fraca;
+  }
+
+  .secao {
+    @apply mb-5 flex items-baseline gap-3 border-b-2 border-tinta pb-2;
+  }
+
+  .secao-numero {
+    @apply font-mono text-sm text-sagrado;
   }
 
   .rotulo-campo {
-    @apply mb-1.5 block text-sm font-medium text-tinta-200;
+    @apply mb-1 block font-mono text-[11px] uppercase tracking-carimbo text-tinta-media;
   }
 
   .campo {
-    @apply w-full rounded-md border border-tinta-600 bg-tinta-900 px-3 py-2 text-tinta-50
-           placeholder:text-tinta-400 focus:border-permanencia-500 focus:outline-none
-           focus:ring-1 focus:ring-permanencia-500 disabled:opacity-50;
+    @apply w-full border border-regua-forte bg-papel-alto px-3 py-2 font-sans text-tinta
+           placeholder:text-tinta-apagada focus:border-sagrado focus:outline-none
+           focus:ring-1 focus:ring-sagrado disabled:bg-papel-fundo disabled:text-tinta-fraca;
   }
 
   .botao {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium
-           transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 border px-4 py-2 font-mono text-[12px]
+           uppercase tracking-carimbo transition-colors disabled:cursor-not-allowed
+           disabled:opacity-45;
   }
 
   .botao-primario {
-    @apply botao bg-permanencia-600 text-white hover:bg-permanencia-500;
+    @apply botao border-sagrado bg-sagrado text-papel-alto hover:bg-sagrado-escuro;
   }
 
   .botao-secundario {
-    @apply botao border border-tinta-600 bg-tinta-800 text-tinta-100 hover:bg-tinta-700;
+    @apply botao border-regua-forte bg-papel-alto text-tinta hover:border-tinta-fraca hover:bg-papel;
   }
 
   .etiqueta {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center gap-1.5 border px-2 py-0.5 font-mono text-[11px] uppercase;
+  }
+
+  .nota-rodape {
+    @apply font-sans text-[13px] leading-relaxed text-tinta-media;
+  }
+
+  .marcador-nota {
+    @apply align-super font-mono text-[10px] text-sagrado;
+  }
+
+  .aviso {
+    @apply border-l-2 border-sagrado bg-sagrado-fraco px-4 py-3 text-sm leading-relaxed text-tinta;
   }
 }
 
-/* Barra de rolagem discreta, para não competir com o conteúdo do painel. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2b3849 transparent;
+  scrollbar-color: #b8ad9c transparent;
 }
 
-/* Respeita quem desligou animação no sistema operacional. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* O painel de risco é o tipo de coisa que a coordenação imprime para a reunião. */
+@media print {
+  .nao-imprime {
+    display: none !important;
+  }
+  html {
+    background: #fff;
+    background-image: none;
+  }
+  .folha {
+    box-shadow: none;
   }
 }

@@ -22,12 +22,13 @@ export default async function PaginaDisciplinas() {
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl text-tinta-50">Disciplinas e documentos</h1>
-        <p className="mt-2 max-w-2xl text-tinta-400">
-          O assistente só responde com base no que estiver indexado aqui. Envie a ementa, o cronograma e o
-          contrato didático, e informe a data ou versão de cada documento: é essa referência que aparece na
-          citação da resposta.
+      <header className="border-b-2 border-tinta pb-3">
+        <p className="carimbo mb-2">Coordenação pedagógica</p>
+        <h1 className="font-display text-3xl text-tinta">Disciplinas e documentos</h1>
+        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-tinta-media">
+          O assistente só responde com base no que estiver indexado aqui. Informe a data ou versão
+          de cada documento: é essa referência que aparece na citação da resposta, e é ela que
+          permite ao aluno perceber material desatualizado.
         </p>
       </header>
 

@@ -1,20 +1,27 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Lora } from "next/font/google";
+import { Courier_Prime, Libre_Franklin, Zilla_Slab } from "next/font/google";
 import "./globals.css";
 
-// next/font baixa a fonte no build e a serve pela própria origem. Isso mantém a
-// CSP em font-src 'self' e evita uma requisição a um domínio de terceiro a cada
-// carregamento de página.
-const inter = Inter({
+// next/font baixa e serve as fontes pela própria origem, o que mantém a CSP
+// em font-src 'self'.
+const zillaSlab = Zilla_Slab({
   subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
-  variable: "--fonte-inter",
+  variable: "--fonte-display",
 });
 
-const lora = Lora({
+const libreFranklin = Libre_Franklin({
   subsets: ["latin", "latin-ext"],
   display: "swap",
-  variable: "--fonte-lora",
+  variable: "--fonte-sans",
+});
+
+const courierPrime = Courier_Prime({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "700"],
+  display: "swap",
+  variable: "--fonte-mono",
 });
 
 export const metadata: Metadata = {
@@ -25,24 +32,25 @@ export const metadata: Metadata = {
   description:
     "Assistente de estudos com RAG e painel de risco de evasão por lógica fuzzy, para coordenação pedagógica do ensino superior.",
   applicationName: "PermaneIA",
-  // A aplicação lida com dado acadêmico e não tem por que aparecer em busca.
   robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b1018",
+  themeColor: "#a81c2b",
   width: "device-width",
   initialScale: 1,
 };
 
 export default function LayoutRaiz({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${lora.variable}`}>
+    <html
+      lang="pt-BR"
+      className={`${zillaSlab.variable} ${libreFranklin.variable} ${courierPrime.variable}`}
+    >
       <body className="min-h-screen antialiased">
-        {/* Atalho de teclado para quem navega sem mouse pular a navegação. */}
         <a
           href="#conteudo"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-permanencia-600 focus:px-4 focus:py-2 focus:text-white"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:border focus:border-sagrado focus:bg-papel-alto focus:px-4 focus:py-2 focus:font-mono focus:text-sm"
         >
           Pular para o conteúdo
         </a>

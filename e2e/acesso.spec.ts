@@ -17,7 +17,7 @@ test.describe("página pública", () => {
 
   test("oferece entrar e criar conta", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("link", { name: "Entrar no sistema" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Entrar", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "Criar conta" })).toBeVisible();
   });
 });

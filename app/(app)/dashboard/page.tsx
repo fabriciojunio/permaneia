@@ -8,7 +8,6 @@ export const metadata = { title: "Painel de risco" };
 export default async function PaginaDashboard({
   searchParams,
 }: {
-  // Next 15: os parâmetros de busca chegam como Promise.
   searchParams: Promise<{ disciplinaId?: string }>;
 }) {
   const { disciplinaId } = await searchParams;
@@ -24,11 +23,12 @@ export default async function PaginaDashboard({
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-3xl text-tinta-50">Painel de risco de evasão</h1>
-        <p className="mt-2 max-w-2xl text-tinta-400">
-          Ordenado do mais crítico para o menos. Clique em uma linha para ver as regras fuzzy que produziram
-          aquele score e a ação sugerida.
+      <header className="border-b-2 border-tinta pb-3">
+        <p className="carimbo mb-2">Coordenação pedagógica</p>
+        <h1 className="font-display text-3xl text-tinta">Painel de risco de evasão</h1>
+        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-tinta-media">
+          Ordenado do mais crítico para o menos. Clique em uma linha para ver as regras fuzzy que
+          produziram aquele score e a ação sugerida.
         </p>
       </header>
 
