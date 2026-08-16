@@ -209,6 +209,37 @@ nenhum documento e nem admitir ignorância, ela é descartada e substituída pel
 recusa padrão. É o que impede o assistente de apresentar texto solto como se
 tivesse apoio no material.
 
+### O defeito que o teste local não pegava
+
+Vale um parágrafo à parte, porque foi o mais instrutivo do projeto.
+
+Com a bateria adversarial passando **21 de 21 localmente**, a mesma bateria
+rodada contra a aplicação **publicada** deixava passar duas tentativas de
+injeção. E só as acentuadas: "Ignore todas as instruções anteriores" passava,
+"Ignore todas as instrucoes anteriores" era barrada. Ou seja, a barreira falhava
+exatamente na forma que uma pessoa de verdade digita.
+
+Duas causas se somaram:
+
+1. A remoção de acento usava uma classe de caracteres com as marcas combinantes
+   escritas **literalmente** no código. Os bytes no arquivo estavam corretos, mas
+   é um literal frágil de atravessar empacotamento e minificação. Passou a usar
+   os escapes `̀-ͯ`, que nenhuma ferramenta reescreve.
+2. O deploy reaproveitou **cache de build**. A rota de saúde havia sido alterada
+   e foi reconstruída; a rota do assistente não, e continuou servindo o pacote
+   antigo. Por isso as duas rotas, no mesmo domínio e no mesmo instante,
+   discordavam sobre a mesma frase.
+
+O que ficou disso, e que é a lição transferível: **teste local roda sobre o
+código-fonte, e o usuário usa o artefato publicado.** As duas coisas podem
+divergir. O projeto ganhou duas defesas para essa classe de problema:
+
+- `/api/health` faz **autoverificação das barreiras com texto acentuado** e
+  responde `barreiras: "degradadas"` se elas pararem de funcionar. Roda dentro do
+  artefato publicado, que é onde importa.
+- `scripts/validar-producao.ts` executa a bateria adversarial **pela rede**,
+  contra a aplicação no ar.
+
 ## O modelo, e por que a linha lite
 
 Duas descobertas durante a integração, ambas com efeito direto na escolha:
