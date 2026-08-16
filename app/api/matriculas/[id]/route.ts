@@ -12,24 +12,26 @@ import { registrar } from "@/lib/auditoria";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Contexto = { params: { id: string } };
+// Next 15: os parâmetros da rota dinâmica chegam como Promise.
+type Contexto = { params: Promise<{ id: string }> };
 
 export const GET = comTratamentoDeErro(async (_requisicao: NextRequest, { params }: Contexto) => {
-  const sessao = sessaoAtual();
+  const { id: idBruto } = await params;
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "matricula.ler");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
-  const id = uuidSchema.safeParse(params.id);
-  if (!id.success) return respostaDeErro(erro("VALIDACAO", "Identificador de matrícula inválido."));
+  const id = uuidSchema.safeParse(idBruto);
+  if (!id.success) return await respostaDeErro(erro("VALIDACAO", "Identificador de matrícula inválido."));
 
   const detalhe = await buscarDetalhe(id.data);
-  if (!detalhe) return respostaDeErro(erro("NAO_ENCONTRADO", "Matrícula não encontrada."));
+  if (!detalhe) return await respostaDeErro(erro("NAO_ENCONTRADO", "Matrícula não encontrada."));
 
   if (!podeVerDadosDoAluno(permissao.valor, detalhe.aluno.id)) {
-    return respostaDeErro(erro("PROIBIDO", "Você não tem acesso aos dados desta matrícula."));
+    return await respostaDeErro(erro("PROIBIDO", "Você não tem acesso aos dados desta matrícula."));
   }
 
-  return respostaOk({ matricula: detalhe });
+  return await respostaOk({ matricula: detalhe });
 });
 
 /**
@@ -41,17 +43,18 @@ export const GET = comTratamentoDeErro(async (_requisicao: NextRequest, { params
  * fuzzy, que é aritmética pura e roda em menos de um milissegundo.
  */
 export const PATCH = comTratamentoDeErro(async (requisicao: NextRequest, { params }: Contexto) => {
-  const sessao = sessaoAtual();
+  const { id: idBruto } = await params;
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "matricula.escrever");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
-  const id = uuidSchema.safeParse(params.id);
-  if (!id.success) return respostaDeErro(erro("VALIDACAO", "Identificador de matrícula inválido."));
+  const id = uuidSchema.safeParse(idBruto);
+  if (!id.success) return await respostaDeErro(erro("VALIDACAO", "Identificador de matrícula inválido."));
 
   const corpo = await requisicao.json().catch(() => null);
   const analisado = atualizarMatriculaSchema.safeParse(corpo);
   if (!analisado.success) {
-    return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+    return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
   }
 
   const dados: Prisma.MatriculaUpdateInput = {};
@@ -69,7 +72,7 @@ export const PATCH = comTratamentoDeErro(async (requisicao: NextRequest, { param
     await prisma.matricula.update({ where: { id: id.data }, data: dados });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
-      return respostaDeErro(erro("NAO_ENCONTRADO", "Matrícula não encontrada."));
+      return await respostaDeErro(erro("NAO_ENCONTRADO", "Matrícula não encontrada."));
     }
     throw e;
   }
@@ -85,5 +88,5 @@ export const PATCH = comTratamentoDeErro(async (requisicao: NextRequest, { param
     detalhes: { alterados: Object.keys(analisado.data), novoScore: risco?.score, novaFaixa: risco?.faixa },
   });
 
-  return respostaOk({ matricula: await buscarDetalhe(id.data) });
+  return await respostaOk({ matricula: await buscarDetalhe(id.data) });
 });

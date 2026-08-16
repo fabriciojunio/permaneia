@@ -16,17 +16,19 @@ export const dynamic = "force-dynamic";
 // Ingestão gera embeddings de todos os trechos; um cronograma inteiro leva tempo.
 export const maxDuration = 120;
 
-type Contexto = { params: { id: string } };
+// Next 15: os parâmetros da rota dinâmica chegam como Promise.
+type Contexto = { params: Promise<{ id: string }> };
 
 export const GET = comTratamentoDeErro(async (_requisicao: NextRequest, { params }: Contexto) => {
-  const sessao = sessaoAtual();
+  const { id: idBruto } = await params;
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "disciplina.ler");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
-  const id = uuidSchema.safeParse(params.id);
-  if (!id.success) return respostaDeErro(erro("VALIDACAO", "Identificador de disciplina inválido."));
+  const id = uuidSchema.safeParse(idBruto);
+  if (!id.success) return await respostaDeErro(erro("VALIDACAO", "Identificador de disciplina inválido."));
 
-  return respostaOk({ documentos: await listarDocumentosDaDisciplina(id.data) });
+  return await respostaOk({ documentos: await listarDocumentosDaDisciplina(id.data) });
 });
 
 /**
@@ -38,20 +40,21 @@ export const GET = comTratamentoDeErro(async (_requisicao: NextRequest, { params
  * As duas convergem para o mesmo pipeline de ingestão.
  */
 export const POST = comTratamentoDeErro(async (requisicao: NextRequest, { params }: Contexto) => {
-  const sessao = sessaoAtual();
+  const { id: idBruto } = await params;
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "documento.ingerir");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const limite = consumir(identificarCliente(requisicao.headers, "upload"), REGRA_UPLOAD);
   if (!limite.permitido) {
-    return respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitos envios seguidos. Aguarde alguns minutos."));
+    return await respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitos envios seguidos. Aguarde alguns minutos."));
   }
 
-  const id = uuidSchema.safeParse(params.id);
-  if (!id.success) return respostaDeErro(erro("VALIDACAO", "Identificador de disciplina inválido."));
+  const id = uuidSchema.safeParse(idBruto);
+  if (!id.success) return await respostaDeErro(erro("VALIDACAO", "Identificador de disciplina inválido."));
 
   const disciplina = await prisma.disciplina.findUnique({ where: { id: id.data }, select: { id: true, nome: true } });
-  if (!disciplina) return respostaDeErro(erro("NAO_ENCONTRADO", "Disciplina não encontrada."));
+  if (!disciplina) return await respostaDeErro(erro("NAO_ENCONTRADO", "Disciplina não encontrada."));
 
   const tipo = requisicao.headers.get("content-type") ?? "";
 
@@ -64,10 +67,10 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest, { params
     const formulario = await requisicao.formData();
     const arquivo = formulario.get("arquivo");
     if (!(arquivo instanceof File)) {
-      return respostaDeErro(erro("VALIDACAO", "Envie o arquivo no campo \"arquivo\"."));
+      return await respostaDeErro(erro("VALIDACAO", "Envie o arquivo no campo \"arquivo\"."));
     }
     if (arquivo.size > TAMANHO_MAXIMO_PDF) {
-      return respostaDeErro(
+      return await respostaDeErro(
         erro("VALIDACAO", `O arquivo passa do limite de ${TAMANHO_MAXIMO_PDF / 1024 / 1024} MB.`)
       );
     }
@@ -77,7 +80,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest, { params
       const extraido = await extrairTextoDePdf(bytes);
       conteudo = extraido.texto;
     } catch (e) {
-      return respostaDeErro(erro("VALIDACAO", (e as Error).message));
+      return await respostaDeErro(erro("VALIDACAO", (e as Error).message));
     }
 
     titulo = String(formulario.get("titulo") ?? arquivo.name.replace(/\.pdf$/i, "")).trim().slice(0, 200);
@@ -85,12 +88,12 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest, { params
     referencia = refBruta ? String(refBruta).trim().slice(0, 120) : undefined;
     origem = "upload";
 
-    if (!titulo) return respostaDeErro(erro("VALIDACAO", "Informe o título do documento."));
+    if (!titulo) return await respostaDeErro(erro("VALIDACAO", "Informe o título do documento."));
   } else {
     const corpo = await requisicao.json().catch(() => null);
     const analisado = documentoTextoSchema.safeParse(corpo);
     if (!analisado.success) {
-      return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+      return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
     }
     titulo = analisado.data.titulo;
     referencia = analisado.data.referencia;
@@ -108,7 +111,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest, { params
       origem,
     });
   } catch (e) {
-    return respostaDeErro(erro("VALIDACAO", (e as Error).message));
+    return await respostaDeErro(erro("VALIDACAO", (e as Error).message));
   }
 
   await registrar({
@@ -125,5 +128,5 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest, { params
     },
   });
 
-  return respostaOk({ documento: resultado }, 201);
+  return await respostaOk({ documento: resultado }, 201);
 });

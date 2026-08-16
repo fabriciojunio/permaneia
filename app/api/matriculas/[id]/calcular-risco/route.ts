@@ -10,19 +10,21 @@ import { registrar } from "@/lib/auditoria";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type Contexto = { params: { id: string } };
+// Next 15: os parâmetros da rota dinâmica chegam como Promise.
+type Contexto = { params: Promise<{ id: string }> };
 
 /** Roda o sistema fuzzy sobre a matrícula e grava score, faixa e detalhamento. */
 export const POST = comTratamentoDeErro(async (_requisicao: NextRequest, { params }: Contexto) => {
-  const sessao = sessaoAtual();
+  const { id: idBruto } = await params;
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "risco.calcular");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
-  const id = uuidSchema.safeParse(params.id);
-  if (!id.success) return respostaDeErro(erro("VALIDACAO", "Identificador de matrícula inválido."));
+  const id = uuidSchema.safeParse(idBruto);
+  if (!id.success) return await respostaDeErro(erro("VALIDACAO", "Identificador de matrícula inválido."));
 
   const detalhe = await calcularEGravarRisco(id.data);
-  if (!detalhe) return respostaDeErro(erro("NAO_ENCONTRADO", "Matrícula não encontrada."));
+  if (!detalhe) return await respostaDeErro(erro("NAO_ENCONTRADO", "Matrícula não encontrada."));
 
   await registrar({
     acao: "risco.calculado",
@@ -33,5 +35,5 @@ export const POST = comTratamentoDeErro(async (_requisicao: NextRequest, { param
     detalhes: { score: detalhe.score, faixa: detalhe.faixa, regraDominante: detalhe.regraDominante?.id },
   });
 
-  return respostaOk({ risco: detalhe });
+  return await respostaOk({ risco: detalhe });
 });

@@ -22,7 +22,7 @@ const CREDENCIAL_INVALIDA = "E-mail ou senha incorretos.";
 export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
   const limite = consumir(identificarCliente(requisicao.headers, "login"), REGRA_LOGIN);
   if (!limite.permitido) {
-    const resposta = respostaDeErro(
+    const resposta = await respostaDeErro(
       erro("LIMITE_EXCEDIDO", "Muitas tentativas seguidas. Aguarde um instante e tente de novo.")
     );
     resposta.headers.set("Retry-After", String(limite.esperarSegundos));
@@ -32,7 +32,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
   const corpo = await requisicao.json().catch(() => null);
   const analisado = loginSchema.safeParse(corpo);
   if (!analisado.success) {
-    return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+    return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
   }
 
   const { email, senha } = analisado.data;
@@ -59,7 +59,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
 
   if (!usuario || !senhaConfere || !usuario.ativo) {
     await registrar({ acao: "login.falha", recurso: "usuario", atorEmail: email });
-    return respostaDeErro(erro("NAO_AUTORIZADO", CREDENCIAL_INVALIDA));
+    return await respostaDeErro(erro("NAO_AUTORIZADO", CREDENCIAL_INVALIDA));
   }
 
   const token = await assinarSessao({

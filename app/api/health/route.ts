@@ -45,5 +45,5 @@ export const GET = comTratamentoDeErro(async () => {
   };
 
   if (!saudavel) return NextResponse.json(corpo, { status: 503 });
-  return respostaOk(corpo);
+  return await respostaOk(corpo);
 });

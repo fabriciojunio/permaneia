@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = comTratamentoDeErro(async () => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   if (sessao) {
     await registrar({
       acao: "logout",

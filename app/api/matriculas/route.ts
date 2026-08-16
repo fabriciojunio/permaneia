@@ -14,19 +14,19 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "matricula.escrever");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const limite = consumir(identificarCliente(requisicao.headers, "escrita"), REGRA_ESCRITA);
   if (!limite.permitido) {
-    return respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitas requisições seguidas. Aguarde um instante."));
+    return await respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitas requisições seguidas. Aguarde um instante."));
   }
 
   const corpo = await requisicao.json().catch(() => null);
   const analisado = matriculaSchema.safeParse(corpo);
   if (!analisado.success) {
-    return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+    return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
   }
 
   const dados = analisado.data;
@@ -56,14 +56,14 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
       detalhes: { score: risco?.score, faixa: risco?.faixa },
     });
 
-    return respostaOk({ matricula: { id: matricula.id, risco } }, 201);
+    return await respostaOk({ matricula: { id: matricula.id, risco } }, 201);
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
       if (e.code === "P2002") {
-        return respostaDeErro(erro("CONFLITO", "Este aluno já está matriculado nesta disciplina."));
+        return await respostaDeErro(erro("CONFLITO", "Este aluno já está matriculado nesta disciplina."));
       }
       if (e.code === "P2003") {
-        return respostaDeErro(erro("VALIDACAO", "Aluno ou disciplina não encontrados."));
+        return await respostaDeErro(erro("VALIDACAO", "Aluno ou disciplina não encontrados."));
       }
     }
     throw e;

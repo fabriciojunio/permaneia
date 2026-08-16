@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 
 /** Quem está logado e o que pode fazer. A interface usa isto para esconder o que não é permitido. */
 export const GET = comTratamentoDeErro(async () => {
-  const sessao = sessaoAtual();
-  if (!sessao) return respostaDeErro(erro("NAO_AUTORIZADO", "Sessão não encontrada."));
+  const sessao = await sessaoAtual();
+  if (!sessao) return await respostaDeErro(erro("NAO_AUTORIZADO", "Sessão não encontrada."));
 
-  return respostaOk({
+  return await respostaOk({
     usuario: {
       nome: sessao.nome,
       email: sessao.email,

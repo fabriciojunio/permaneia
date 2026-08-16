@@ -9,10 +9,12 @@
 import { headers } from "next/headers";
 import type { Papel, Sessao } from "./sessao";
 
-export function sessaoAtual(): Sessao | null {
+// A partir do Next 15, headers() é assíncrona: a requisição pode não estar
+// disponível no momento da chamada, e a API passou a refletir isso.
+export async function sessaoAtual(): Promise<Sessao | null> {
   let cabecalhos: Headers;
   try {
-    cabecalhos = headers();
+    cabecalhos = await headers();
   } catch {
     return null;
   }

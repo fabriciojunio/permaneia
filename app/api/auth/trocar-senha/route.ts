@@ -12,28 +12,28 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
-  const sessao = sessaoAtual();
-  if (!sessao) return respostaDeErro(erro("NAO_AUTORIZADO", "Faça login para continuar."));
+  const sessao = await sessaoAtual();
+  if (!sessao) return await respostaDeErro(erro("NAO_AUTORIZADO", "Faça login para continuar."));
 
   const corpo = await requisicao.json().catch(() => null);
   const analisado = trocarSenhaSchema.safeParse(corpo);
   if (!analisado.success) {
-    return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+    return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
   }
 
   const forca = avaliarForca(analisado.data.senhaNova);
   if (!forca.valida) {
-    return respostaDeErro(erro("VALIDACAO", "A senha nova não atende à política.", { senhaNova: forca.problemas.join(" ") }));
+    return await respostaDeErro(erro("VALIDACAO", "A senha nova não atende à política.", { senhaNova: forca.problemas.join(" ") }));
   }
 
   const usuario = await prisma.usuario.findUnique({
     where: { id: sessao.usuarioId },
     select: { id: true, nome: true, email: true, papel: true, senhaHash: true, versaoSessao: true, alunoId: true },
   });
-  if (!usuario) return respostaDeErro(erro("NAO_AUTORIZADO", "Sessão inválida."));
+  if (!usuario) return await respostaDeErro(erro("NAO_AUTORIZADO", "Sessão inválida."));
 
   if (!(await conferirSenha(analisado.data.senhaAtual, usuario.senhaHash))) {
-    return respostaDeErro(erro("NAO_AUTORIZADO", "A senha atual não confere.", { senhaAtual: "Senha incorreta." }));
+    return await respostaDeErro(erro("NAO_AUTORIZADO", "A senha atual não confere.", { senhaAtual: "Senha incorreta." }));
   }
 
   // Incrementar a versão derruba na hora todos os tokens emitidos antes da

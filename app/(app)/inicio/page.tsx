@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Início" };
 
 export default async function PaginaInicio() {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   if (!sessao) return null;
 
   const verPainel = podeFazer(sessao.papel, "dashboard.ver");
