@@ -6,7 +6,7 @@ import { responder } from "@/lib/rag/consulta";
 import { perguntaSchema, camposComErro } from "@/lib/validacoes";
 import { comTratamentoDeErro, respostaDeErro, respostaOk } from "@/lib/observabilidade";
 import { erro } from "@/lib/resultado";
-import { consumir, identificarCliente, REGRA_RAG } from "@/lib/rate-limit";
+import { consumir, REGRA_RAG } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

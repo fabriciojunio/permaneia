@@ -79,8 +79,40 @@ export async function verificarSessao(token: string | undefined): Promise<Sessao
   }
 }
 
-/** Opções do cookie de sessão. `secure` só fora de desenvolvimento, senão o login local por http não funciona. */
-export function opcoesCookie(): {
+/**
+ * A conexão que originou a requisição é HTTPS?
+ *
+ * Atrás de um proxy, como na Vercel, quem carrega essa informação é o
+ * x-forwarded-proto: a conexão entre o proxy e a função é interna e aparece
+ * como http, mesmo com o usuário navegando em https.
+ */
+export function requisicaoEhSegura(cabecalhos: Headers, url?: string): boolean {
+  const encaminhado = cabecalhos.get("x-forwarded-proto");
+  if (encaminhado) return encaminhado.split(",")[0]?.trim() === "https";
+  if (url) {
+    try {
+      return new URL(url).protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
+/**
+ * Opções do cookie de sessão.
+ *
+ * O atributo `secure` acompanha o PROTOCOLO DA REQUISIÇÃO, e não o NODE_ENV.
+ * A diferença não é cosmética: um cookie marcado como Secure é simplesmente
+ * descartado pelo navegador em conexão http, sem erro nenhum. Amarrar isso ao
+ * NODE_ENV fazia o build de produção servido em http, que é exatamente o caso
+ * dos testes E2E e de qualquer instalação local, aceitar o login e perder a
+ * sessão em seguida, sem nada nos logs indicando o motivo.
+ *
+ * Em produção de verdade a requisição chega por https e o cookie continua
+ * Secure, que é o comportamento desejado.
+ */
+export function opcoesCookie(conexaoSegura: boolean): {
   httpOnly: true;
   sameSite: "lax";
   secure: boolean;
@@ -92,7 +124,7 @@ export function opcoesCookie(): {
     // "lax" e não "strict": com "strict" o cookie não acompanha a navegação
     // vinda de um link externo e o usuário cairia no login logo após entrar.
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: conexaoSegura,
     path: "/",
     maxAge: DURACAO_SEGUNDOS,
   };

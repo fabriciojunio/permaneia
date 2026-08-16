@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hostDe, validarOrigem } from "@/lib/csrf";
 import {
   DURACAO_SEGUNDOS,
   NOME_COOKIE,
   assinarSessao,
   opcoesCookie,
+  requisicaoEhSegura,
   verificarSessao,
 } from "@/lib/sessao";
 
@@ -12,7 +13,11 @@ const SEGREDO = "segredo-de-teste-com-mais-de-32-caracteres-ok";
 
 beforeEach(() => {
   process.env.SESSION_SECRET = SEGREDO;
-  process.env.NODE_ENV = "test";
+  vi.stubEnv("NODE_ENV", "test");
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("hostDe", () => {
@@ -193,33 +198,60 @@ describe("assinarSessao e verificarSessao", () => {
   });
 });
 
+describe("requisicaoEhSegura", () => {
+  it("reconhece https pelo x-forwarded-proto, que é o caso atrás de proxy", () => {
+    // Na Vercel a conexão entre o proxy e a função é interna e aparece como
+    // http, mesmo com o usuário navegando em https.
+    expect(requisicaoEhSegura(new Headers({ "x-forwarded-proto": "https" }))).toBe(true);
+  });
+
+  it("usa apenas o primeiro protocolo da lista encaminhada", () => {
+    expect(requisicaoEhSegura(new Headers({ "x-forwarded-proto": "https, http" }))).toBe(true);
+    expect(requisicaoEhSegura(new Headers({ "x-forwarded-proto": "http, https" }))).toBe(false);
+  });
+
+  it("cai para o protocolo da URL quando não há cabeçalho encaminhado", () => {
+    expect(requisicaoEhSegura(new Headers(), "https://permaneia.app/api/x")).toBe(true);
+    expect(requisicaoEhSegura(new Headers(), "http://localhost:3100/api/x")).toBe(false);
+  });
+
+  it("sem cabeçalho e sem URL, assume conexão insegura", () => {
+    expect(requisicaoEhSegura(new Headers())).toBe(false);
+  });
+
+  it("URL malformada não derruba a requisição", () => {
+    expect(requisicaoEhSegura(new Headers(), "não é url")).toBe(false);
+  });
+});
+
 describe("opcoesCookie", () => {
   it("é HttpOnly, para que script na página não leia o token", () => {
-    expect(opcoesCookie().httpOnly).toBe(true);
+    expect(opcoesCookie(true).httpOnly).toBe(true);
   });
 
   it("usa SameSite lax", () => {
     // "strict" faria o cookie não acompanhar a navegação vinda de um link
     // externo, e o usuário cairia no login logo depois de entrar.
-    expect(opcoesCookie().sameSite).toBe("lax");
+    expect(opcoesCookie(true).sameSite).toBe("lax");
   });
 
-  it("é secure em produção", () => {
-    process.env.NODE_ENV = "production";
-    expect(opcoesCookie().secure).toBe(true);
+  it("marca Secure quando a conexão é https", () => {
+    expect(opcoesCookie(true).secure).toBe(true);
   });
 
-  it("não é secure fora de produção, senão o login local por http não funciona", () => {
-    process.env.NODE_ENV = "development";
-    expect(opcoesCookie().secure).toBe(false);
+  it("não marca Secure em http, senão o navegador descarta o cookie em silêncio", () => {
+    // Foi o defeito que os testes E2E revelaram: com Secure amarrado ao
+    // NODE_ENV, o build de produção servido em http aceitava o login e perdia
+    // a sessão logo depois, sem nada nos logs indicando o motivo.
+    expect(opcoesCookie(false).secure).toBe(false);
   });
 
   it("vale para o site inteiro", () => {
-    expect(opcoesCookie().path).toBe("/");
+    expect(opcoesCookie(true).path).toBe("/");
   });
 
   it("expira junto com o token", () => {
-    expect(opcoesCookie().maxAge).toBe(DURACAO_SEGUNDOS);
+    expect(opcoesCookie(true).maxAge).toBe(DURACAO_SEGUNDOS);
   });
 
   it("a duração é de uma jornada de estudo, e não de um mês", () => {

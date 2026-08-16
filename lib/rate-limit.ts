@@ -16,8 +16,26 @@ export type Regra = {
   janelaMs: number;
 };
 
+/**
+ * Lê um limite do ambiente, caindo no padrão quando ausente ou inválido.
+ *
+ * O limite de login precisa ser configurável por um motivo concreto: numa
+ * instituição, uma sala inteira sai pelo mesmo endereço IP. Cinco tentativas
+ * por minuto protegem contra adivinhação de senha vinda de uma máquina, e
+ * derrubam uma turma de trinta alunos entrando ao mesmo tempo no laboratório.
+ * Quem opera a instalação conhece a topologia da rede; o código, não.
+ */
+function doAmbiente(variavel: string, padrao: number): number {
+  const bruto = Number(process.env[variavel]);
+  if (!Number.isFinite(bruto) || bruto < 1) return padrao;
+  return Math.trunc(bruto);
+}
+
 /** Login: apertado, porque o alvo é adivinhação de senha. */
-export const REGRA_LOGIN: Regra = { limite: 5, janelaMs: 60_000 };
+export const REGRA_LOGIN: Regra = {
+  limite: doAmbiente("RATE_LIMIT_LOGIN", 5),
+  janelaMs: 60_000,
+};
 /** Pergunta ao assistente: cada uma consome cota do Gemini. */
 export const REGRA_RAG: Regra = { limite: 20, janelaMs: 60_000 };
 /** Ingestão de documento: operação cara, feita por coordenação, e rara. */

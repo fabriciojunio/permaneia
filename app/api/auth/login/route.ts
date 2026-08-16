@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { conferirSenha } from "@/lib/senha";
-import { assinarSessao, NOME_COOKIE, opcoesCookie } from "@/lib/sessao";
+import { assinarSessao, NOME_COOKIE, opcoesCookie, requisicaoEhSegura } from "@/lib/sessao";
 import { loginSchema, camposComErro } from "@/lib/validacoes";
 import { comTratamentoDeErro, respostaDeErro } from "@/lib/observabilidade";
 import { erro } from "@/lib/resultado";
@@ -89,6 +89,6 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
       trocarSenha: usuario.trocarSenha,
     },
   });
-  resposta.cookies.set(NOME_COOKIE, token, opcoesCookie());
+  resposta.cookies.set(NOME_COOKIE, token, opcoesCookie(requisicaoEhSegura(requisicao.headers, requisicao.url)));
   return resposta;
 });
