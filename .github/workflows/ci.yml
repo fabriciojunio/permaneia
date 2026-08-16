@@ -1,0 +1,229 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancela execuções antigas do mesmo ramo: só o último commit interessa.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualidade:
+    name: Qualidade de codigo
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      SESSION_SECRET: segredo-de-ci-com-mais-de-32-caracteres-ok
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Verificar tipos
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes unitarios com gate de cobertura
+        run: npm run test:coverage
+
+      - name: Diagnostico do sistema fuzzy
+        # Falha se a base de regras deixar de ser monotona, ou se o artefato de
+        # inversao do centroide passar do limite documentado.
+        run: npx tsx scripts/diagnostico-fuzzy.ts
+
+      - name: Build de producao
+        run: npm run build
+
+  integracao:
+    name: Testes de integracao (Postgres com pgvector)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: permaneia_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      SESSION_SECRET: segredo-de-ci-com-mais-de-32-caracteres-ok
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/permaneia_test
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/permaneia_test
+      IA_EXTERNA: "off"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Aplicar o schema
+        run: |
+          npx prisma generate
+          npx prisma db push --skip-generate
+
+      - name: Testes de integracao
+        run: npm run test:integration
+
+  e2e:
+    name: Testes E2E (Playwright)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: permaneia_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SESSION_SECRET: segredo-de-ci-com-mais-de-32-caracteres-ok
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/permaneia_e2e
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/permaneia_e2e
+      DEMO_MODE: "on"
+      IA_EXTERNA: "off"
+      E2E_PORTA: "3100"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Preparar o banco com dados sinteticos
+        run: |
+          npx prisma generate
+          npx prisma db push --skip-generate
+          npm run db:seed
+
+      - name: Build de producao
+        run: npm run build
+
+      - name: Instalar navegador
+        run: npx playwright install --with-deps chromium
+
+      - name: Testes E2E
+        run: npm run test:e2e
+
+      - name: Publicar relatorio em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  avaliacao-rag:
+    name: Avaliacao de qualidade do RAG
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: permaneia_rag
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SESSION_SECRET: segredo-de-ci-com-mais-de-32-caracteres-ok
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/permaneia_rag
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/permaneia_rag
+      IA_EXTERNA: "off"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Preparar o banco e indexar os documentos
+        run: |
+          npx prisma generate
+          npx prisma db push --skip-generate
+          npm run db:seed
+
+      - name: Medir cobertura e recusa do assistente
+        # Informativo: publica os numeros a cada commit para que uma queda de
+        # qualidade do RAG apareca no historico. O gate de merge sao os outros
+        # jobs. Ver docs/AVALIACAO-RAG.md.
+        continue-on-error: true
+        run: npx tsx scripts/avaliar-rag.ts
+
+  seguranca:
+    name: Analise de seguranca
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Auditoria de dependencias de producao
+        # Falha apenas em vulnerabilidade de producao de severidade alta. As de
+        # desenvolvimento nao embarcam no artefato publicado.
+        run: npm run audit:prod -- --audit-level=high
+
+      - name: Analise estatica
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/typescript
+            p/nodejs
+            p/nextjs
+            p/owasp-top-ten
+            p/sql-injection
+            p/xss
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+        continue-on-error: true
