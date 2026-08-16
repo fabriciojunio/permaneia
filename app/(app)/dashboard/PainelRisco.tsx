@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { EtiquetaRisco, type Faixa } from "@/components/EtiquetaRisco";
 import { formatarNota, formatarNumero, formatarPercentual, formatarDataHora } from "@/lib/formato";
 
@@ -134,35 +134,49 @@ export function PainelRisco({
               )}
 
               {linhas.map((l) => (
-                <tr key={l.matriculaId} className="border-b border-tinta-800 last:border-0">
-                  <td colSpan={6} className="p-0">
-                    <button
-                      type="button"
-                      onClick={() => alternar(l.matriculaId)}
-                      aria-expanded={aberta === l.matriculaId}
-                      className="block w-full text-left transition-colors hover:bg-tinta-800/60"
-                    >
-                      <span className="grid grid-cols-[2fr_1.4fr_0.8fr_0.6fr_0.6fr_1fr] items-center gap-2 px-4 py-3">
-                        <span className="min-w-0">
-                          <span className="block truncate text-tinta-100">{l.alunoNome}</span>
-                          <span className="block truncate text-xs text-tinta-500">{l.curso ?? l.alunoEmail}</span>
-                        </span>
-                        <span className="truncate text-tinta-300">{l.disciplinaNome}</span>
-                        <span className="text-right font-mono text-tinta-300">
-                          {formatarPercentual(l.frequenciaPercentual, 0)}
-                        </span>
-                        <span className="text-right font-mono text-tinta-300">{formatarNota(l.mediaNotas)}</span>
-                        <span className="text-right font-mono text-tinta-300">
-                          {formatarNumero(l.acessosPlataforma)}
-                        </span>
-                        <span>
-                          <EtiquetaRisco faixa={l.faixaRisco} score={l.scoreRisco} />
-                        </span>
-                      </span>
-                    </button>
+                <Fragment key={l.matriculaId}>
+                  {/*
+                    A linha inteira é o alvo do clique, com role e teclado
+                    próprios. Uma versão anterior punha um botão com grid dentro
+                    de uma célula de colSpan 6: funcionava no clique, mas as
+                    colunas do corpo deixavam de se alinhar com o cabeçalho da
+                    tabela, porque eram dois sistemas de layout diferentes.
+                  */}
+                  <tr
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={aberta === l.matriculaId}
+                    onClick={() => alternar(l.matriculaId)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        alternar(l.matriculaId);
+                      }
+                    }}
+                    className="cursor-pointer border-b border-tinta-800 transition-colors last:border-0 hover:bg-tinta-800/60"
+                  >
+                    <td className="max-w-0 px-4 py-3">
+                      <span className="block truncate text-tinta-100">{l.alunoNome}</span>
+                      <span className="block truncate text-xs text-tinta-500">{l.curso ?? l.alunoEmail}</span>
+                    </td>
+                    <td className="max-w-0 truncate px-4 py-3 text-tinta-300">{l.disciplinaNome}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-tinta-300">
+                      {formatarPercentual(l.frequenciaPercentual, 0)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-tinta-300">
+                      {formatarNota(l.mediaNotas)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-tinta-300">
+                      {formatarNumero(l.acessosPlataforma)}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <EtiquetaRisco faixa={l.faixaRisco} score={l.scoreRisco} />
+                    </td>
+                  </tr>
 
-                    {aberta === l.matriculaId && (
-                      <div className="border-t border-tinta-800 bg-tinta-900/50 px-4 py-4">
+                  {aberta === l.matriculaId && (
+                    <tr className="border-b border-tinta-800 last:border-0">
+                      <td colSpan={6} className="bg-tinta-900/50 px-4 py-4">
                         {carregando === l.matriculaId && (
                           <p className="text-sm text-tinta-400">Carregando o detalhamento…</p>
                         )}
@@ -177,10 +191,10 @@ export function PainelRisco({
                         {detalhes[l.matriculaId] && (
                           <DetalheDoScore detalhe={detalhes[l.matriculaId]!} calculadoEm={l.calculadoEm} />
                         )}
-                      </div>
-                    )}
-                  </td>
-                </tr>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>

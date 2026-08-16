@@ -17,3 +17,5 @@ next-env.d.ts
 Thumbs.db
 
 e2e/.auth/
+.vercel
+vistoria/

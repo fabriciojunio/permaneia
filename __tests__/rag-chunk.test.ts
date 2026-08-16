@@ -100,6 +100,20 @@ describe("recortarCauda", () => {
     expect("uma frase razoavelmente longa para testar o corte").toContain(cauda);
   });
 
+  it("prefere começar depois de um fim de frase", () => {
+    // O trecho é mostrado literalmente ao aluno como citação; começar em
+    // "de 2026, quinta-feira." parece defeito do sistema.
+    const texto = "Primeira frase qualquer. Segunda frase bem mais longa que serve de cauda.";
+    const cauda = recortarCauda(texto, 60);
+    expect(cauda.startsWith("Segunda")).toBe(true);
+  });
+
+  it("cai para a fronteira de palavra quando não há fim de frase na janela", () => {
+    const cauda = recortarCauda("palavras sem nenhuma pontuacao final aqui dentro", 20);
+    expect(cauda).not.toContain(".");
+    expect(cauda.startsWith(" ")).toBe(false);
+  });
+
   it("nunca devolve mais que n caracteres", () => {
     const texto = "palavra ".repeat(50);
     for (const n of [5, 10, 40, 100]) {

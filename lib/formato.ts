@@ -72,6 +72,22 @@ export function resumir(texto: string, maximo = 220): string {
   return `${(ultimoEspaco > maximo * 0.6 ? cortado.slice(0, ultimoEspaco) : cortado).trimEnd()}…`;
 }
 
+/**
+ * Nome legível do papel.
+ *
+ * O banco guarda o valor sem acento, porque é um enum do Postgres; a interface
+ * é lida por pessoas e mostra "Coordenação".
+ */
+export const ROTULO_PAPEL: Record<string, string> = {
+  aluno: "Aluno",
+  coordenacao: "Coordenação",
+  admin: "Administração",
+};
+
+export function rotuloPapel(papel: string): string {
+  return ROTULO_PAPEL[papel] ?? papel;
+}
+
 /** Plural simples, para contagens na interface. */
 export function pluralizar(quantidade: number, singular: string, plural: string): string {
   return `${formatarNumero(quantidade)} ${quantidade === 1 ? singular : plural}`;

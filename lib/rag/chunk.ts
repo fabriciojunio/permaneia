@@ -127,11 +127,28 @@ export function dividirEmTrechos(
     .filter((t) => t.texto.length > 0);
 }
 
-/** Últimos `n` caracteres do texto, começando numa fronteira de palavra para não cortar termo ao meio. */
+/**
+ * Últimos `n` caracteres do texto, começando numa fronteira legível.
+ *
+ * Prefere começar logo depois de um fim de frase; se não houver nenhum dentro
+ * da janela, cai para a fronteira de palavra. A diferença aparece na tela: o
+ * trecho recuperado é mostrado literalmente ao aluno como citação, e um trecho
+ * que começa em "de 2026, quinta-feira. Aula normal…" parece um erro do
+ * sistema, mesmo sendo um recorte correto.
+ */
 export function recortarCauda(texto: string, n: number): string {
   if (n <= 0 || texto.length === 0) return "";
   if (texto.length <= n) return texto;
+
   const bruto = texto.slice(texto.length - n);
+
+  const fimDeFrase = bruto.search(/[.!?]\s+\S/);
+  if (fimDeFrase !== -1) {
+    const depois = bruto.slice(fimDeFrase + 1).replace(/^\s+/, "");
+    // Só vale a pena se ainda sobrar conteúdo suficiente para dar contexto.
+    if (depois.length >= n * 0.4) return depois;
+  }
+
   const espaco = bruto.indexOf(" ");
   return espaco === -1 ? bruto : bruto.slice(espaco + 1);
 }
