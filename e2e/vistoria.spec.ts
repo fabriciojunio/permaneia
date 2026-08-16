@@ -63,7 +63,11 @@ test("painel de risco", async ({ page }) => {
 
   // Abre o detalhamento do primeiro aluno, que é o de maior risco.
   await page.locator('tbody tr[role="button"]').first().click();
-  await page.waitForTimeout(1500);
+  await page.getByText("Carregando o detalhamento").waitFor({ state: "detached", timeout: 30_000 });
+  const acao = page.getByText("Ação sugerida", { exact: true });
+  await acao.waitFor({ timeout: 30_000 });
+  await acao.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(500);
   await page.screenshot({ path: `${PASTA}/07-detalhe-regras-fuzzy.png`, fullPage: false });
 });
 

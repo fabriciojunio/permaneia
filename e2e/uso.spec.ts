@@ -89,7 +89,10 @@ test.describe("painel de risco", () => {
 
   test("abre o detalhamento com as regras fuzzy que produziram o score", async ({ page }) => {
     await page.locator('tbody tr[role="button"]').first().click();
-    await expect(page.getByText("Ação sugerida")).toBeVisible();
+    // O texto exato importa: o parágrafo de introdução da página também contém
+    // "a ação sugerida", e um seletor por substring casaria com ele. O teste
+    // passaria sem o detalhamento ter sequer carregado.
+    await expect(page.getByText("Ação sugerida", { exact: true })).toBeVisible();
     await expect(page.getByText(/Regra \d+/).first()).toBeVisible();
     await expect(page.getByText(/força \d/).first()).toBeVisible();
   });
@@ -97,6 +100,7 @@ test.describe("painel de risco", () => {
   test("o detalhamento explica a decisão em linguagem natural", async ({ page }) => {
     await page.locator('tbody tr[role="button"]').first().click();
     await expect(page.getByText(/Engajamento normalizado/)).toBeVisible();
+    await expect(page.getByText(/então risco é/).first()).toBeVisible();
   });
 
   test("filtra por disciplina", async ({ page }) => {

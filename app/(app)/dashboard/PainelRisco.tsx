@@ -110,10 +110,23 @@ export function PainelRisco({
 
       <div className="painel overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[52rem] text-sm">
+          <table className="w-full min-w-[52rem] table-fixed text-sm">
             <caption className="sr-only">
               Alunos ordenados por score de risco de evasão, do maior para o menor
             </caption>
+            {/*
+              Larguras fixas em vez de layout automático: com auto, uma linha
+              com nome longo espremia as colunas numéricas, e a tabela mudava de
+              forma a cada filtro aplicado.
+            */}
+            <colgroup>
+              <col className="w-[26%]" />
+              <col className="w-[24%]" />
+              <col className="w-[13%]" />
+              <col className="w-[10%]" />
+              <col className="w-[11%]" />
+              <col className="w-[16%]" />
+            </colgroup>
             <thead>
               <tr className="border-b border-tinta-700 text-left text-xs uppercase tracking-wide text-tinta-400">
                 <th scope="col" className="px-4 py-3 font-medium">Aluno</th>
@@ -155,11 +168,11 @@ export function PainelRisco({
                     }}
                     className="cursor-pointer border-b border-tinta-800 transition-colors last:border-0 hover:bg-tinta-800/60"
                   >
-                    <td className="max-w-0 px-4 py-3">
+                    <td className="px-4 py-3">
                       <span className="block truncate text-tinta-100">{l.alunoNome}</span>
                       <span className="block truncate text-xs text-tinta-500">{l.curso ?? l.alunoEmail}</span>
                     </td>
-                    <td className="max-w-0 truncate px-4 py-3 text-tinta-300">{l.disciplinaNome}</td>
+                    <td className="truncate px-4 py-3 text-tinta-300">{l.disciplinaNome}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-tinta-300">
                       {formatarPercentual(l.frequenciaPercentual, 0)}
                     </td>
