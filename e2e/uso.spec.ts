@@ -88,14 +88,14 @@ test.describe("painel de risco", () => {
   });
 
   test("abre o detalhamento com as regras fuzzy que produziram o score", async ({ page }) => {
-    await page.locator("tbody button").first().click();
+    await page.locator('tbody tr[role="button"]').first().click();
     await expect(page.getByText("Ação sugerida")).toBeVisible();
     await expect(page.getByText(/Regra \d+/).first()).toBeVisible();
     await expect(page.getByText(/força \d/).first()).toBeVisible();
   });
 
   test("o detalhamento explica a decisão em linguagem natural", async ({ page }) => {
-    await page.locator("tbody button").first().click();
+    await page.locator('tbody tr[role="button"]').first().click();
     await expect(page.getByText(/Engajamento normalizado/)).toBeVisible();
   });
 

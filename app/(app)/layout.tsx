@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { sessaoAtual } from "@/lib/auth";
 import { podeFazer } from "@/lib/acesso";
-import { primeiroNome } from "@/lib/formato";
+import { primeiroNome, rotuloPapel } from "@/lib/formato";
 import { BotaoSair } from "@/components/BotaoSair";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +43,7 @@ export default function LayoutAplicacao({ children }: { children: React.ReactNod
 
           <div className="ml-auto flex items-center gap-3">
             <span className="hidden text-sm text-tinta-400 sm:inline">
-              {primeiroNome(sessao.nome)} · <span className="capitalize">{sessao.papel}</span>
+              {primeiroNome(sessao.nome)} · {rotuloPapel(sessao.papel)}
             </span>
             <BotaoSair />
           </div>

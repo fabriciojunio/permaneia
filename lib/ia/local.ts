@@ -235,7 +235,6 @@ export function responderExtrativo(prompt: string): string {
 
   return [
     "Leitura direta do material, sem geração de texto. Copio abaixo os trechos do documento que respondem à sua pergunta:",
-    "",
     ...escolhidos.map((p) => p.bloco),
   ].join("\n\n");
 }

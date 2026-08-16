@@ -5,6 +5,9 @@ const URL_BASE = `http://127.0.0.1:${PORTA}`;
 
 export default defineConfig({
   testDir: "./e2e",
+  // A vistoria é inspeção visual contra a aplicação publicada, não asserção.
+  // Roda por playwright.producao.config.ts, sob demanda.
+  testIgnore: /vistoria\.spec\.ts/,
   fullyParallel: false,
   // Um trabalhador só: os testes compartilham a mesma base semeada.
   workers: 1,
