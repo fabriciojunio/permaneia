@@ -70,7 +70,7 @@ export function distanciaParaSimilaridade(distancia: number): number {
  * que ele não responde e mede cobertura e recusa em cada limiar.
  */
 export const LIMIARES: Record<"gemini" | "local", number> = {
-  gemini: 0.62,
+  gemini: 0.65,
   local: 0.15,
 };
 

@@ -33,6 +33,48 @@ As não respondíveis foram escritas de propósito no mesmo vocabulário das
 outras. Perguntar "qual o valor da mensalidade" com termos que não aparecem em
 lugar nenhum tornaria a recusa fácil demais e a métrica, inútil.
 
+## Resultado no modo generativo (Gemini)
+
+Modelo `gemini-flash-lite-latest`, embeddings `gemini-embedding-001` em 768
+dimensões.
+
+| Limiar de similaridade | Cobertura | Recusa correta |
+|---|---|---|
+| 0,55 | 88,9% (16/18) | 87,5% (7/8) |
+| 0,60 | 88,9% (16/18) | 12,5% (1/8) |
+| **0,65** | **83,3% a 88,9%** | **75,0% a 100,0%** |
+| 0,70 | 72,2% (13/18) | 100,0% (8/8) |
+| 0,75 | 22,2% (4/18) | 100,0% (8/8) |
+
+**Valor adotado: 0,65.** Acima dele a cobertura despenca: em 0,70 o sistema já
+recusa uma em cada quatro perguntas que o material responde, e em 0,75 ele
+praticamente para de responder.
+
+### Duas ressalvas que a própria tabela obriga a fazer
+
+**O modo generativo não é determinístico, e a métrica oscila entre execuções.**
+A linha de 0,65 traz faixa, e não número único, porque execuções sucessivas da
+mesma bateria devolveram 15/18 e 16/18 de cobertura, e 6/8 e 8/8 de recusa. O
+modelo reformula a resposta a cada chamada, e uma reformulação pode deixar de
+conter a palavra que o teste procura, ou deixar de soar como recusa. Isso não é
+defeito do sistema: é a natureza de avaliar saída de modelo de linguagem, e
+qualquer número aqui apresentado como exato seria uma escolha de rodada.
+
+**A não monotonicidade de 0,60 é ruído, não sinal.** Recusa de 87,5% em 0,55 e
+12,5% em 0,60 é fisicamente impossível como comportamento real: limiar maior não
+pode recusar menos. São 8 casos, então **cada caso vale 12,5 pontos**, e uma
+única resposta reformulada move a métrica em um oitavo. A tabela serve para
+comparar ordens de grandeza e localizar a região de trabalho, e não para
+afirmar uma taxa com uma casa decimal.
+
+O modo de leitura direta, logo abaixo, é determinístico e não sofre disso. Foi
+nele que a calibração de fato se apoiou.
+
+Registro honesto: antes de medir, este limiar estava fixado em **0,62**, por
+estimativa. Na primeira medição, a estimativa entregava **37,5% de recusa
+correta**. Era o parâmetro mais importante do sistema, definido no chute, e só a
+medição mostrou isso.
+
 ## Resultado no modo de leitura direta
 
 O modo de leitura direta é o que roda sem `GEMINI_API_KEY`: sem geração de
@@ -123,6 +165,72 @@ duzentas é limitada pela própria aritmética do cosseno, e raramente passa de
 0,35 mesmo quando o trecho responde perfeitamente.
 
 Um limiar único desligaria o assistente em um dos dois modos.
+
+## Barreiras de entrada, e o teste adversarial
+
+O limiar recusa o que está fora do material, mas não cobre duas coisas: tentativa
+de **injeção de prompt**, que pode até recuperar contexto legítimo enquanto tenta
+fazer o modelo abandonar as regras, e pedido **ilícito**, que não deve consumir
+cota nem receber a resposta educada de "não encontrei no material", que soa como
+se a pergunta fosse aceitável e só faltasse o documento.
+
+`lib/rag/guardrails.ts` avalia a pergunta antes de qualquer chamada externa.
+`scripts/testar-barreiras.ts` roda a bateria adversarial contra a aplicação real.
+
+| Categoria | Casos | Resultado |
+|---|---|---|
+| Injeção de prompt | 6 | 6 bloqueadas |
+| Conteúdo ilícito | 3 | 3 bloqueadas |
+| Dado de terceiro | 2 | 2 bloqueadas |
+| Fora de assunto (recusa pelo limiar) | 5 | 5 recusadas |
+| Legítimas (precisam continuar passando) | 5 | 5 respondidas corretamente |
+| **Total** | **21** | **21 (100%)** |
+
+Três decisões de calibração merecem registro:
+
+**Precisão acima de cobertura.** Os padrões exigem *intenção explícita junto do
+objeto*, e não palavra solta. "Arma" não bloqueia; "como fabricar uma arma"
+bloqueia. Um falso positivo barra um aluno com dúvida legítima, o que é pior do
+que deixar passar uma pergunta estranha que o limiar recusa em seguida. O
+conjunto de teste inclui negativos de propósito, como "estudo de caso sobre
+segurança e invasão de sistemas".
+
+**Sinal de automutilação tem tratamento próprio, e vem primeiro.** Ele também
+casa com os padrões de conteúdo ilícito, e a resposta genérica de "fora do meu
+escopo" seria a pior possível. A ordem de avaliação garante que esse caso receba
+encaminhamento ao CVV e ao apoio da instituição. Um sistema de permanência
+estudantil que ignora esse sinal falha exatamente no que diz querer evitar.
+
+**A recusa nunca explica o que disparou o bloqueio.** Dizer qual padrão casou
+ensina a contorná-lo. Há teste que verifica isso.
+
+Além da entrada, há verificação na **saída**: se a resposta gerada não citar
+nenhum documento e nem admitir ignorância, ela é descartada e substituída pela
+recusa padrão. É o que impede o assistente de apresentar texto solto como se
+tivesse apoio no material.
+
+## O modelo, e por que a linha lite
+
+Duas descobertas durante a integração, ambas com efeito direto na escolha:
+
+**Versão fixa é bomba-relógio.** `gemini-2.0-flash` e `gemini-2.5-flash`, os
+modelos que a especificação original do projeto indicava, respondem **404 para
+chaves novas**. Foram aposentados. O código usa o alias `-latest`, que
+normalmente seria má prática, e aqui é o oposto: é o que impede a aplicação de
+parar de responder no meio do semestre.
+
+**A cota gratuita da linha flash acabou durante uma única sessão de avaliação.**
+Calibrar o limiar exigiu rodar 26 perguntas em 6 limiares, e isso bastou para o
+`gemini-flash-latest` passar a responder 429. A linha `lite` tem cota diária
+várias vezes maior e, medida no mesmo conjunto, devolveu **a mesma resposta com
+a mesma citação de fonte**, sem gastar tokens de raciocínio. Para uma tarefa que
+é transcrever de um contexto curto já selecionado pela busca vetorial, o modelo
+maior não acrescenta nada e custa disponibilidade.
+
+Um detalhe que custou tempo: pedir `thinkingConfig` para desligar o raciocínio
+faz a linha lite responder **400 invalid argument**. E, com teto de tokens
+apertado, os modelos que raciocinam devolvem texto **vazio sem finishReason**,
+que parece falha de rede e é falta de orçamento.
 
 ## Limitações honestas desta avaliação
 

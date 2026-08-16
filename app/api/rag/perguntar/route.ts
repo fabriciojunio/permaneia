@@ -70,6 +70,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
       similaridadeMaxima: resultado.similaridadeMaxima,
       admitiuNaoSaber: resultado.admitiuNaoSaber,
       respostaFundamentada: resultado.respostaFundamentada,
+      bloqueada: resultado.bloqueada ?? null,
       duracaoMs: resultado.duracaoMs,
     },
   });

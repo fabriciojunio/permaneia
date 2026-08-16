@@ -100,8 +100,11 @@ s.addText("Assistente de estudo e alerta de risco de evasão", {
 s.addText("IA generativa com RAG e lógica fuzzy contra a evasão no ensino superior", {
   x: 0.7, y: 4.1, w: 11, h: 0.5, fontSize: 14, color: SUAVE, fontFace: FONTE,
 });
+s.addText("Camila Pereira Raimundo · Fabrício Júnio Almeida Dias · Kauã Limão Nunes · Luan Padilha Miranda", {
+  x: 0.7, y: A - 1.35, w: 12, h: 0.4, fontSize: 13, color: SUAVE, fontFace: FONTE,
+});
 s.addText("Projeto Prático de IA Generativa · Prof. Patrick Pedreira Silva · 19 de novembro de 2026", {
-  x: 0.7, y: A - 1.0, w: 11, h: 0.4, fontSize: 12, color: FRACO, fontFace: FONTE,
+  x: 0.7, y: A - 0.9, w: 11, h: 0.4, fontSize: 12, color: FRACO, fontFace: FONTE,
 });
 
 // ---------------------------------------------------------------- SLIDE 2
@@ -258,7 +261,7 @@ titulo(s, "Visão crítica", "O que medimos, e o que não conseguimos resolver")
 metrica(s, 0.7, 1.95, 2.8, "83,3%", "das perguntas respondíveis foram respondidas", VERDE_CLARO);
 metrica(s, 3.75, 1.95, 2.8, "75,0%", "das perguntas fora do material foram recusadas", VERDE_CLARO);
 metrica(s, 6.8, 1.95, 2.8, "0", "inversões de faixa em 26.460 comparações", VERDE_CLARO);
-metrica(s, 9.85, 1.95, 2.8, "1.798", "testes automatizados", VERDE_CLARO);
+metrica(s, 9.85, 1.95, 2.8, "21/21", "casos da bateria adversarial de barreiras", VERDE_CLARO);
 
 cartao(s, 0.7, 4.2, 11.9, 2.1);
 s.addText("O risco que não conseguimos eliminar", {
@@ -283,8 +286,8 @@ s.addTable(
     ],
     ["ChatGPT", "Brainstorm de modelagem e critérios", "Sugere estruturas plausíveis, mas genéricas"],
     ["Claude", "Documentação técnica e código", "Escreve mais do que o necessário se não for contido"],
-    ["Gemini", "Motor embarcado: texto e embeddings", "Cota diária acaba; exigiu um modo de degradação"],
-    ["Grok", "Teste comparativo de respostas", "API paga por token; descartado como motor"],
+    ["Gemini", "Motor embarcado: texto e embeddings", "Cota da linha flash acaba; versões são aposentadas"],
+    ["Grok", "Teste comparativo de respostas", "Sem API gratuita e sem endpoint de embeddings"],
     ["Cursor", "Desenvolvimento do código", "Erra em silêncio no que parece certo"],
     ["Dify", "Protótipo do RAG antes do código", "Não permite controlar o limiar de relevância"],
   ],
@@ -365,6 +368,9 @@ s.addText("E a lógica fuzzy não prevê o futuro. Ela só recusa a fingir que o
 });
 s.addText("Obrigado. Perguntas?", {
   x: 0.7, y: 5.5, w: 11, h: 0.5, fontSize: 18, color: TEXTO, bold: true, fontFace: FONTE,
+});
+s.addText("Camila Pereira Raimundo · Fabrício Júnio Almeida Dias · Kauã Limão Nunes · Luan Padilha Miranda", {
+  x: 0.7, y: A - 1.35, w: 12, h: 0.4, fontSize: 12.5, color: SUAVE, fontFace: FONTE,
 });
 s.addText("github.com/fabriciojunio/permaneia · permaneia.vercel.app", {
   x: 0.7, y: A - 0.9, w: 11, h: 0.4, fontSize: 12, color: FRACO, fontFace: FONTE,

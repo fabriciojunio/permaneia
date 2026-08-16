@@ -26,6 +26,7 @@ import {
   citaAlgumaFonte,
   montarPrompt,
 } from "./prompt";
+import { avaliarPergunta, type CategoriaBloqueio } from "./guardrails";
 import {
   filtrarRelevantes,
   limiarDoProvedor,
@@ -54,6 +55,8 @@ export type RespostaRag = {
   admitiuNaoSaber: boolean;
   /** Falso quando o modelo respondeu sem apontar documento algum. A interface avisa. */
   respostaFundamentada: boolean;
+  /** Preenchido quando a pergunta foi barrada antes de chegar ao provedor. */
+  bloqueada?: CategoriaBloqueio;
   duracaoMs: number;
   motivoFallback?: string;
 };
@@ -79,6 +82,31 @@ function paraFonte(t: TrechoRecuperado): FonteCitada {
 
 export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
   const inicio = Date.now();
+
+  // 0. Barreiras de entrada, antes de qualquer chamada externa.
+  //
+  // Vem primeiro de propósito: uma tentativa de injeção de prompt ou um pedido
+  // ilícito não deve consumir cota do provedor, não deve entrar no índice de
+  // consultas como se fosse dúvida legítima, e não deve receber a resposta
+  // educada de "não encontrei no material", que soa como se a pergunta fosse
+  // aceitável e só faltasse o documento.
+  const veredicto = avaliarPergunta(opcoes.pergunta);
+  if (!veredicto.permitida) {
+    logger.warn("Pergunta bloqueada pelas barreiras de entrada", {
+      categoria: veredicto.categoria,
+      disciplinaId: opcoes.disciplinaId,
+    });
+    return {
+      resposta: veredicto.mensagem!,
+      fontes: [],
+      origemIa: "local",
+      similaridadeMaxima: 0,
+      admitiuNaoSaber: true,
+      respostaFundamentada: true,
+      bloqueada: veredicto.categoria,
+      duracaoMs: Date.now() - inicio,
+    };
+  }
 
   // 1. Vetor da pergunta.
   const embedding = await gerarEmbeddingComFallback(opcoes.pergunta);
@@ -121,25 +149,41 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
   // 6. Geração, com degradação para o modo extrativo.
   const geracao = await gerarTextoComFallback(prompt, {
     sistema: INSTRUCAO_SISTEMA,
-    maxTokens: 700,
+    // Teto largo porque os modelos atuais gastam tokens de raciocínio dentro
+    // deste mesmo limite. Ver o comentário em lib/ia/gemini.ts.
+    maxTokens: 1500,
     temperatura: 0.15,
   });
 
-  // 7. Verificação posterior da citação.
-  const fundamentada = geracao.origem === "local" || citaAlgumaFonte(geracao.valor, contexto);
+  // 7. Verificação posterior, e substituição quando ela falha.
+  //
+  // O modo local transcreve o documento, então é fundamentado por construção.
+  // Para o modo generativo, exigimos que a resposta ou cite um dos documentos
+  // fornecidos, ou admita não saber. Uma resposta que não faz nenhum dos dois
+  // é texto solto: pode ser o modelo divagando, pode ser efeito de uma
+  // instrução embutida no material. Em qualquer caso ela não tem apoio, e
+  // apresentá-la ao aluno como se tivesse seria o pior desfecho do sistema.
+  const admitiu = admitiuNaoSaber(geracao.valor);
+  const fundamentada = geracao.origem === "local" || admitiu || citaAlgumaFonte(geracao.valor, contexto);
+
+  let textoFinal = geracao.valor;
   if (!fundamentada) {
-    logger.warn("Resposta do RAG sem citação de fonte", {
+    logger.warn("Resposta do RAG descartada por não se apoiar no contexto", {
       disciplinaId: opcoes.disciplinaId,
       similaridadeMaxima: maxSimilaridade,
+      origemIa: geracao.origem,
     });
+    textoFinal = RESPOSTA_SEM_CONTEXTO;
   }
 
   const resultado: RespostaRag = {
-    resposta: geracao.valor,
+    resposta: textoFinal,
     fontes: contexto.map(paraFonte),
     origemIa: geracao.origem,
     similaridadeMaxima: maxSimilaridade,
-    admitiuNaoSaber: admitiuNaoSaber(geracao.valor),
+    // Reflete o texto EFETIVAMENTE devolvido, e não o que o modelo produziu:
+    // quando a resposta é descartada, o que o aluno lê é uma admissão.
+    admitiuNaoSaber: admitiuNaoSaber(textoFinal),
     respostaFundamentada: fundamentada,
     duracaoMs: Date.now() - inicio,
     ...(geracao.motivoFallback ? { motivoFallback: geracao.motivoFallback } : {}),

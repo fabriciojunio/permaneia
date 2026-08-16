@@ -17,6 +17,7 @@ type Diagnostico = {
   similaridadeMaxima: number;
   admitiuNaoSaber: boolean;
   respostaFundamentada: boolean;
+  bloqueada: "injecao" | "ilicito" | "dados-de-terceiros" | null;
   duracaoMs: number;
 };
 
@@ -144,7 +145,13 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
                   </div>
                 ) : (
                   <div className="max-w-[92%]">
-                    <div className="rounded-lg rounded-bl-sm bg-tinta-700/60 px-4 py-3">
+                    <div
+                      className={`rounded-lg rounded-bl-sm px-4 py-3 ${
+                        m.diagnostico.bloqueada
+                          ? "border border-amber-900/70 bg-amber-950/30"
+                          : "bg-tinta-700/60"
+                      }`}
+                    >
                       <p className="whitespace-pre-wrap text-sm leading-relaxed text-tinta-100">{m.texto}</p>
                     </div>
 
@@ -171,11 +178,18 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
                     )}
 
                     <p className="mt-1.5 text-[11px] text-tinta-500">
-                      {m.diagnostico.origemIa === "gemini" ? "Resposta gerada (Gemini)" : "Leitura direta do material"}
-                      {" · "}
-                      {m.diagnostico.duracaoMs} ms
-                      {m.diagnostico.admitiuNaoSaber && " · o assistente admitiu não ter a informação"}
-                      {!m.diagnostico.respostaFundamentada && " · atenção: resposta sem citação de fonte"}
+                      {m.diagnostico.bloqueada ? (
+                        <>Pergunta barrada antes de consultar a IA · {m.diagnostico.duracaoMs} ms</>
+                      ) : (
+                        <>
+                          {m.diagnostico.origemIa === "gemini"
+                            ? "Resposta gerada (Gemini)"
+                            : "Leitura direta do material"}
+                          {" · "}
+                          {m.diagnostico.duracaoMs} ms
+                          {m.diagnostico.admitiuNaoSaber && " · o assistente admitiu não ter a informação"}
+                        </>
+                      )}
                     </p>
                   </div>
                 )}

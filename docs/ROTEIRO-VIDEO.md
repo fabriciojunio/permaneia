@@ -95,7 +95,8 @@ Retomar a frase plantada no bloco 2:
 
 > "RAG não deixa a IA mais inteligente. Deixa ela mais honesta."
 
-Créditos: nomes dos integrantes, disciplina, professor e data.
+Créditos: Camila Pereira Raimundo, Fabrício Júnio Almeida Dias, Kauã Limão
+Nunes e Luan Padilha Miranda. Disciplina, professor e data.
 
 ---
 
@@ -109,7 +110,7 @@ Créditos: nomes dos integrantes, disciplina, professor e data.
 - [ ] Nenhum dado pessoal visível na tela: fechar abas, notificações e e-mail
 - [ ] Cortes a cada 30 segundos no máximo, mantendo o ritmo
 - [ ] Legendas, que ajudam a acessibilidade e a nota de didatismo
-- [ ] Créditos finais com os nomes dos integrantes
+- [ ] Créditos finais com os nomes dos quatro integrantes
 
 ## Relação com a Parte 1
 
