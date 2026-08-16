@@ -1,18 +1,6 @@
-// Montagem do prompt do assistente de estudos.
-//
-// Este arquivo é o coração do "não inventar". Três mecanismos independentes
-// sustentam essa garantia, e é importante que sejam três, porque nenhum deles
-// sozinho é confiável:
-//
-//   1. o limiar de similaridade (lib/rag/similaridade.ts) impede que contexto
-//      irrelevante chegue até aqui;
-//   2. a instrução de sistema abaixo obriga o modelo a citar a origem e a
-//      admitir quando a resposta não está no contexto;
-//   3. a verificação de citação (lib/rag/consulta.ts) confere, depois da
-//      resposta pronta, se ela realmente se apoia no contexto.
-//
-// Uma instrução de prompt é um pedido, não uma garantia. Os itens 1 e 3 são o
-// que transforma o pedido em contrato.
+// Uma instrução de prompt é pedido, não garantia. O que a transforma em contrato
+// são as outras duas barreiras: o limiar de similaridade, que impede contexto
+// irrelevante de chegar aqui, e a verificação de citação em consulta.ts.
 
 import { neutralizarMarcadores } from "./guardrails";
 import type { TrechoRecuperado } from "./similaridade";
@@ -50,12 +38,9 @@ export function formatarTrecho(trecho: TrechoRecuperado): string {
 }
 
 /**
- * Monta o prompt final.
- *
- * As marcações <contexto> e <pergunta> não são decorativas: o provedor local
- * as usa para separar as duas partes sem precisar de uma interface diferente
- * da do provedor externo. Trocar essas etiquetas quebra o modo de degradação,
- * e o teste `prompt.test.ts` protege esse contrato.
+ * As marcações <contexto> e <pergunta> são contrato: o provedor local as usa para
+ * separar as partes sem precisar de interface própria. Trocá-las quebra o modo de
+ * degradação, e há teste que protege isso.
  */
 export function montarPrompt(pergunta: string, trechos: TrechoRecuperado[]): string {
   const contexto = trechos.map(formatarTrecho).join("\n\n---\n\n");
@@ -75,22 +60,14 @@ export function montarPrompt(pergunta: string, trechos: TrechoRecuperado[]): str
   ].join("\n");
 }
 
-/**
- * Verifica, depois da resposta pronta, se ela cita ao menos um dos documentos
- * fornecidos. É a terceira barreira contra alucinação: uma resposta que afirma
- * algo sem apontar de onde tirou não deve ser apresentada como fundamentada.
- */
+/** Resposta que afirma sem apontar de onde tirou não é apresentada como fundamentada. */
 export function citaAlgumaFonte(resposta: string, trechos: TrechoRecuperado[]): boolean {
   if (trechos.length === 0) return false;
   const normalizada = resposta.toLowerCase();
   return trechos.some((t) => normalizada.includes(t.titulo.toLowerCase()));
 }
 
-/**
- * Detecta se a resposta é uma admissão de desconhecimento. Serve à métrica de
- * qualidade do relatório: quantas perguntas fora do material o sistema
- * recusou corretamente em vez de inventar.
- */
+/** Alimenta a métrica de recusa correta da avaliação. */
 export function admitiuNaoSaber(resposta: string): boolean {
   const t = resposta.toLowerCase();
   const marcas = [

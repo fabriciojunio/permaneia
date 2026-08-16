@@ -1,19 +1,10 @@
-// Provedor local determinístico.
+// Modo de degradação do sistema: sem chave de API, sem cota ou sem rede, o
+// assistente continua respondendo, só que transcrevendo os trechos recuperados
+// em vez de redigir. Transcrever honra o compromisso de não inventar de forma
+// mais estrita que o modo generativo.
 //
-// Não é um modelo de linguagem: é o modo de degradação graciosa do sistema.
-// Quando não há GEMINI_API_KEY, quando a cota do tier gratuito acaba no meio da
-// apresentação ou quando a rede da sala cai, o PermaneIA continua respondendo,
-// só que de forma EXTRATIVA: ele devolve os trechos recuperados do documento,
-// citando a origem, sem redigir nada por cima.
-//
-// Isso é uma escolha de projeto, não uma limitação aceita a contragosto. O
-// compromisso do assistente é "não inventar"; um modo que apenas transcreve o
-// que está no documento honra esse compromisso de forma ainda mais estrita do
-// que o modo generativo. O que se perde é fluência, não confiabilidade.
-//
-// O embedding usa o truque do hashing sobre n-gramas: sem tabela de vocabulário,
-// sem download de modelo, sem dependência, e determinístico entre execuções e
-// entre máquinas, o que é exatamente o que os testes precisam.
+// O embedding usa hashing sobre n-gramas: sem vocabulário, sem dependência e
+// determinístico, que é o que os testes precisam.
 
 import {
   DIMENSAO_EMBEDDING,
@@ -34,16 +25,11 @@ export function hash32(texto: string): number {
   return h >>> 0;
 }
 
-/**
- * Reduz o texto à forma comparável: minúsculas, sem acento e sem pontuação.
- * Remover acento é deliberado; aluno digita "prova p1 e amanha" e o documento
- * traz "amanhã", e essas duas formas precisam colidir no mesmo token.
- */
+/** Aluno digita "amanha" e o documento traz "amanhã": as formas precisam colidir. */
 export function normalizarTexto(texto: string): string {
   return texto
     .toLowerCase()
     .normalize("NFD")
-    // Faixa dos diacríticos combinantes que o NFD separa da letra base.
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
@@ -51,19 +37,10 @@ export function normalizarTexto(texto: string): string {
 }
 
 /**
- * Palavras sem valor discriminante.
- *
- * A lista tem duas partes, e a segunda é a que importa aqui. Além dos artigos e
- * preposições de sempre, ela remove os INTERROGATIVOS: "quando", "qual",
- * "quanto", "como", "onde", "quem". Praticamente toda pergunta feita ao
- * assistente começa por um deles, e nenhum diz nada sobre qual trecho responde.
- *
- * Sem essa remoção o efeito é mensurável e foi observado na avaliação: uma
- * pergunta fora do material, "como faço para trancar a matrícula", pontuava
- * 0,210 apenas porque "como" aparece em quase todo trecho do enunciado do
- * projeto, ficando ACIMA de perguntas que o material realmente responde. É o
- * mesmo problema que o IDF resolve num TF-IDF clássico; aqui, sem corpus para
- * estimar frequência documental, a lista fixa cumpre o papel.
+ * Os interrogativos entram junto com artigos e preposições: quase toda pergunta
+ * começa por um deles e nenhum diz qual trecho responde. Sem removê-los, "como
+ * faço para trancar a matrícula" pontuava 0,210 e ficava acima de perguntas que
+ * o material responde. Ver docs/AVALIACAO-RAG.md.
  */
 const VAZIAS = new Set([
   // Artigos, preposições, conjunções e pronomes.
@@ -90,16 +67,9 @@ export function tokenizar(texto: string): string[] {
 }
 
 /**
- * Reduz a palavra ao radical aproximado, cortando as terminações mais comuns do
- * português. Não é um stemmer linguístico, é o suficiente para "avaliações" e
- * "avaliação" caírem no mesmo token.
- *
- * Substituiu uma versão anterior que indexava trigramas de caracteres. Os
- * trigramas davam a mesma tolerância a flexão, mas multiplicavam por cinco o
- * número de unidades e, em 768 dimensões, a colisão resultante afogava o sinal:
- * na avaliação, perguntas que o material respondia pontuavam MENOS que
- * perguntas fora do material. Radical curto resolve o mesmo problema sem
- * inundar o vetor.
+ * Radical aproximado, o bastante para "avaliações" e "avaliação" caírem no mesmo
+ * token. Substituiu trigramas de caracteres, que davam a mesma tolerância mas
+ * multiplicavam as unidades por cinco e afogavam o sinal em 768 dimensões.
  */
 export function radical(palavra: string): string {
   if (palavra.length <= 3) return palavra;
@@ -124,11 +94,7 @@ export function radical(palavra: string): string {
   return palavra;
 }
 
-/**
- * Unidades indexadas de um texto: a palavra, o radical dela e o par de palavras
- * vizinhas. O bigrama é o que distingue "prova p1" de uma menção solta a
- * "prova", que é justamente o tipo de pergunta que o assistente mais recebe.
- */
+/** Palavra, radical e bigrama. O bigrama distingue "prova p1" de "prova" solto. */
 export function unidades(texto: string): string[] {
   const tokens = tokenizar(texto);
   const saida: string[] = [];
@@ -136,11 +102,8 @@ export function unidades(texto: string): string[] {
     const atual = tokens[i]!;
     saida.push(`p:${atual}`);
 
-    // O radical é emitido SEMPRE, inclusive quando é igual à palavra. Emitir só
-    // quando difere parecia economia, e quebrava justamente o caso que o
-    // radical existe para resolver: "prova" produziria apenas `p:prova` e
-    // "provas" apenas `p:provas` mais `r:prova`, sem nenhuma unidade em comum
-    // entre as duas formas.
+    // Sempre, inclusive quando igual à palavra: senão "prova" e "provas" não
+    // teriam nenhuma unidade em comum.
     saida.push(`r:${radical(atual)}`);
 
     const proximo = tokens[i + 1];
@@ -150,11 +113,8 @@ export function unidades(texto: string): string[] {
 }
 
 /**
- * Vetor esparso projetado em `DIMENSAO_EMBEDDING` posições pelo truque do
- * hashing, com sinal derivado de um segundo hash para que colisões tendam a se
- * cancelar em vez de se somar. Frequência entra em escala logarítmica, pelo
- * mesmo motivo do TF-IDF clássico: a décima ocorrência de um termo diz muito
- * menos do que a primeira.
+ * Vetor esparso projetado por hashing, com sinal de um segundo hash para que
+ * colisões se cancelem em vez de se somar. Frequência em escala logarítmica.
  */
 export function embeddingLocal(texto: string): number[] {
   const vetor = new Array<number>(DIMENSAO_EMBEDDING).fill(0);
@@ -162,8 +122,7 @@ export function embeddingLocal(texto: string): number[] {
   for (const u of unidades(texto)) {
     contagem.set(u, (contagem.get(u) ?? 0) + 1);
   }
-  // O radical vale menos que a palavra inteira: ele existe para tolerar flexão,
-  // e não para empatar com a correspondência exata.
+  // Radical pesa menos: tolera flexão sem empatar com a correspondência exata.
   for (const [unidade, vezes] of contagem) {
     const indice = hash32(unidade) % DIMENSAO_EMBEDDING;
     const sinal = hash32(`sinal:${unidade}`) % 2 === 0 ? 1 : -1;
@@ -185,24 +144,10 @@ export const SEM_RESPOSTA_LOCAL =
   "Não encontrei essa informação no material desta disciplina. Vale confirmar diretamente com o professor ou com a coordenação.";
 
 /**
- * Resposta extrativa: devolve, literalmente, os trechos recuperados que mais se
- * aproximam da pergunta.
- *
- * Devolve o TRECHO INTEIRO, e não as frases que casam com a pergunta. Uma
- * versão anterior selecionava frase a frase e falhava de um jeito instrutivo:
- * para "quando é a Prova P1", o cronograma quebra em duas frases separadas,
- * "24 de setembro de 2026, quinta-feira" e "Avaliação. Prova P1". A seleção por
- * sobreposição de termos escolhia a segunda, que casa com a pergunta, e
- * descartava a primeira, que tem a resposta. O aluno recebia a confirmação de
- * que a prova existe, sem a data.
- *
- * A lição vale além deste código: recortar abaixo da unidade em que a
- * informação foi escrita quebra a informação. O trecho já é a unidade
- * escolhida na ingestão, e é nela que a resposta está inteira.
- *
- * O prompt que chega aqui vem montado pela camada de RAG, com o contexto
- * delimitado por marcadores. Lemos o contexto desses marcadores em vez de mudar
- * a interface, para que o mesmo prompt sirva aos dois provedores.
+ * Devolve o trecho INTEIRO, e não as frases que casam com a pergunta. Selecionar
+ * frase a frase escolhia "Avaliação. Prova P1" e descartava "24 de setembro de
+ * 2026", que vinha antes: o aluno recebia a confirmação de que a prova existe,
+ * sem a data. Recortar abaixo da unidade de ingestão quebra a informação.
  */
 export function responderExtrativo(prompt: string): string {
   const contexto = prompt.match(/<contexto>([\s\S]*?)<\/contexto>/)?.[1]?.trim() ?? "";
@@ -226,9 +171,8 @@ export function responderExtrativo(prompt: string): string {
     return { bloco, acertos };
   });
 
-  // A ordem em que os blocos chegaram já é a da similaridade vetorial. A
-  // contagem de termos exatos serve de desempate, sem reordenar tudo: ela não
-  // tem visão semântica nenhuma e não deve sobrepor a busca vetorial.
+  // Os blocos já chegam ordenados por similaridade; a contagem de termos exatos
+  // só desempata.
   const escolhidos = pontuados.some((p) => p.acertos > 0)
     ? pontuados.filter((p) => p.acertos > 0).slice(0, 2)
     : pontuados.slice(0, 1);
@@ -242,8 +186,8 @@ export function responderExtrativo(prompt: string): string {
 export class ProvedorLocal implements ProvedorIA {
   readonly nome = "local" as const;
 
+  /** Piso do sistema: disponível por definição. */
   disponivel(): boolean {
-    // O provedor local é o piso do sistema: está sempre disponível, por definição.
     return true;
   }
 

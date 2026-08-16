@@ -1,9 +1,5 @@
-// Similaridade entre vetores e o limiar de recuperação.
-//
-// Em produção a busca roda no pgvector, dentro do Postgres, com o operador de
-// distância de cosseno. As funções aqui servem a três coisas: aos testes, ao
-// provedor local em execução sem banco, e à checagem do limiar, que é decisão
-// de domínio e não de infraestrutura.
+// A busca roda no pgvector; estas funções servem aos testes, ao provedor local
+// e à checagem do limiar, que é decisão de domínio e não de infraestrutura.
 
 /** Produto escalar. Para vetores normalizados, é o próprio cosseno. */
 export function produtoEscalar(a: number[], b: number[]): number {
@@ -21,10 +17,7 @@ export function norma(v: number[]): number {
   return Math.sqrt(soma);
 }
 
-/**
- * Similaridade de cosseno, de -1 a 1. Vetor nulo devolve 0: sem direção, não há
- * ângulo, e 0 é a leitura correta de "nenhuma relação" para quem consome.
- */
+/** Vetor nulo devolve 0: sem direção não há ângulo. */
 export function cosseno(a: number[], b: number[]): number {
   if (a.length !== b.length) {
     throw new Error(`Vetores de dimensões diferentes: ${a.length} e ${b.length}.`);
@@ -37,37 +30,20 @@ export function cosseno(a: number[], b: number[]): number {
   return Math.min(1, Math.max(-1, bruto));
 }
 
-/**
- * Converte a distância de cosseno do pgvector (operador `<=>`, de 0 a 2) na
- * similaridade de 0 a 1 usada no resto do sistema.
- */
+/** Converte a distância do operador `<=>` do pgvector (0 a 2) em similaridade. */
 export function distanciaParaSimilaridade(distancia: number): number {
   return Math.min(1, Math.max(-1, 1 - distancia));
 }
 
 /**
- * Similaridade mínima para um trecho ser considerado relevante.
+ * O parâmetro que decide entre responder e admitir que não sabe.
  *
- * É o parâmetro que decide entre responder e admitir que não sabe, e por isso é
- * o mais importante do sistema inteiro para o objetivo do projeto. Baixo
- * demais, o modelo recebe contexto irrelevante e passa a inventar em cima dele,
- * que é exatamente o que o RAG deveria evitar. Alto demais, o sistema diz "não
- * sei" para pergunta que o documento responde, e o aluno para de usar.
+ * É POR PROVEDOR porque os dois espaços de embedding têm geometrias diferentes:
+ * o do Gemini é treinado para recuperação e aproxima o par relevante, enquanto o
+ * local é um saco de palavras cuja similaridade é limitada pela aritmética do
+ * cosseno. Um número só desligaria o assistente em um dos modos.
  *
- * O limiar é POR PROVEDOR, e isso não é um detalhe de implementação.
- *
- * Os dois espaços de embedding têm geometrias diferentes. O text-embedding-004
- * é treinado com objetivo de recuperação: a pergunta e o trecho que a responde
- * são deliberadamente aproximados, e a similaridade de um par relevante fica
- * na casa de 0,6 a 0,8. O provedor local é um saco de palavras projetado por
- * hashing, sem treino nenhum: ali a similaridade entre uma pergunta de cinco
- * palavras e um trecho de duzentas é limitada pela própria aritmética do
- * cosseno, e um par plenamente relevante raramente passa de 0,35.
- *
- * Usar um número só para os dois significaria, na prática, desligar o
- * assistente em um dos modos. Os valores abaixo saíram da execução de
- * `scripts/avaliar-rag.ts`, que separa perguntas que o material responde das
- * que ele não responde e mede cobertura e recusa em cada limiar.
+ * Valores medidos por scripts/avaliar-rag.ts. Ver docs/AVALIACAO-RAG.md.
  */
 export const LIMIARES: Record<"gemini" | "local", number> = {
   gemini: 0.65,
@@ -95,12 +71,9 @@ export type TrechoRecuperado = {
 };
 
 /**
- * Aplica o limiar sobre os trechos já ordenados por similaridade.
- *
- * Quando nada passa do limiar, devolve lista vazia, e é isso que faz o sistema
- * responder "não encontrei no material". A decisão de admitir ignorância mora
- * aqui, e não no prompt: depender só da instrução ao modelo seria confiar a
- * garantia mais importante do sistema a algo que o modelo pode desobedecer.
+ * Lista vazia é o que faz o sistema responder "não encontrei no material". A
+ * decisão de admitir ignorância mora aqui, e não no prompt: depender só da
+ * instrução seria confiá-la a algo que o modelo pode desobedecer.
  */
 export function filtrarRelevantes(
   trechos: TrechoRecuperado[],
@@ -117,9 +90,8 @@ export function similaridadeMaxima(trechos: TrechoRecuperado[]): number {
 }
 
 /**
- * Remove trechos praticamente idênticos, que aparecem quando a sobreposição do
- * chunking faz o mesmo parágrafo cair em dois vetores vizinhos. Sem isso, o
- * contexto enviado ao modelo gasta metade do espaço repetindo a mesma frase.
+ * A sobreposição do chunking faz o mesmo parágrafo cair em dois vetores vizinhos;
+ * sem isso o contexto gasta metade do espaço repetindo a mesma frase.
  */
 export function removerRedundantes(
   trechos: TrechoRecuperado[],
