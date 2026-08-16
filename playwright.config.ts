@@ -38,8 +38,20 @@ export default defineConfig({
     env: {
       NODE_ENV: "production",
       DEMO_MODE: "on",
-      // Sem chave de API a suíte fica determinística e não consome cota.
-      IA_EXTERNA: "off",
+      // IA_EXTERNA NÃO é forçada aqui, e isso é deliberado.
+      //
+      // A busca vetorial filtra por `origem_embedding`, porque vetores do
+      // Gemini e do provedor local vivem em espaços incomparáveis. Forçar o
+      // modo local no servidor de teste, com um banco semeado usando vetores do
+      // Gemini, fazia o filtro não encontrar nada e a suíte falhava com o
+      // assistente recusando tudo. O filtro estava certo; a configuração é que
+      // era inconsistente.
+      //
+      // Quem semeia e quem consulta precisam concordar. No CI, o job inteiro
+      // roda com IA_EXTERNA=off, então o seed e os testes usam o provedor local.
+      // Aqui, a suíte herda o que estiver no .env, que é o mesmo ambiente que
+      // gerou os vetores no banco.
+      //
       // A suíte inteira entra pelo mesmo 127.0.0.1, e o limite de produção
       // barraria os próprios testes a partir da sexta autenticação. O limitador
       // em si é coberto pelos testes unitários, com o relógio controlado.

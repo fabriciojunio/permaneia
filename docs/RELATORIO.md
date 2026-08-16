@@ -5,6 +5,8 @@
 **Disciplina:** Inteligência Artificial, turma de quinta-feira, 2026-2
 **Professor:** Patrick Pedreira Silva
 **Instituição:** Unisagrado
+**Grupo:** Camila Pereira Raimundo, Fabrício Júnio Almeida Dias, Kauã Limão Nunes,
+Luan Padilha Miranda
 **Entrega:** 19 de novembro de 2026
 
 **Aplicação em produção:** <https://permaneia.vercel.app>
@@ -73,8 +75,8 @@ existir.
 |---|---|---|---|
 | ChatGPT | Brainstorm da estrutura de dados e dos critérios do score | Rápido para gerar alternativas de modelagem e discutir trade-offs | Sugere estruturas plausíveis mas genéricas; não conhece as restrições reais da instituição |
 | Claude | Estruturação da documentação técnica e escrita de código | Bom em texto longo com coerência interna e em explicar decisões | Tende a escrever mais do que o necessário se não for contido |
-| Gemini | Motor de produção embarcado: geração de texto e embeddings | Tier gratuito generoso, sem cartão; `text-embedding-004` é forte em português | Cota diária acaba; sem fallback, a aplicação cairia no meio de uma demonstração |
-| Grok | Teste comparativo de respostas sobre conteúdo universitário | Tom mais direto que os concorrentes | API paga por token, sem tier gratuito real; descartado como motor embarcado |
+| Gemini | Motor de produção embarcado: geração de texto e embeddings | Único provedor gratuito com geração **e** embeddings, sem cartão; forte em português | Cota diária acaba rápido na linha flash, e versões nomeadas são aposentadas sem aviso |
+| Grok | Teste comparativo de respostas sobre conteúdo universitário | Tom mais direto que os concorrentes | Sem tier gratuito de API e **sem endpoint de embeddings**; inviável como motor deste projeto |
 | Cursor | Desenvolvimento do código com apoio de IA | Reduz muito o tempo de código repetitivo (rotas, validações, testes de tabela) | Precisa de revisão em tudo que envolve regra de negócio; erra em silêncio no que parece certo |
 | Dify | Prototipagem do RAG antes de migrar para código | Monta um RAG funcional em minutos, sem código | Não permite controlar o limiar de relevância nem instrumentar a decisão de recusar; foi exatamente por isso que migramos |
 
@@ -83,10 +85,39 @@ existir.
 Separamos deliberadamente **ferramentas testadas manualmente** (seção 2.1, todas
 gratuitas via chat) de **IA embarcada no código**, chamada via API a cada uso.
 
-Para o motor embarcado, o requisito era não custar dinheiro. O Gemini via Google
-AI Studio tem cota diária gratuita e não exige cartão de crédito. O Grok foi
-descartado: a API é paga por token. O Groq Cloud foi considerado como alternativa
-gratuita, mas manter um provedor só reduziu o risco técnico.
+Para o motor embarcado, o requisito era não custar dinheiro. Mas o critério que
+de fato decidiu não foi o preço, e sim uma exigência da arquitetura: **um sistema
+de RAG precisa de duas coisas do provedor, geração de texto e embeddings.**
+
+| Provedor | Geração gratuita | Embeddings gratuitos | Veredicto |
+|---|---|---|---|
+| **Google Gemini** | sim, sem cartão | sim, `gemini-embedding-001` | **escolhido** |
+| Grok (xAI) | não, API paga por token | não oferece endpoint | descartado |
+| Groq Cloud | sim, rápido | **não oferece** | inviável sozinho |
+| Mistral | tier gratuito | limitado | segunda opção |
+| Cohere | tier de avaliação | sim | proibido para uso não experimental |
+
+Groq e Grok são empresas diferentes, e nenhum dos dois resolve o problema: o Grok
+não tem tier gratuito de API, e o Groq, apesar de gratuito e rápido, **não tem
+endpoint de embeddings**. Usá-lo exigiria um segundo provedor só para os vetores,
+dobrando a superfície de falha para economizar nada.
+
+O Gemini é o único que fecha as duas pontas de graça e sem cartão de crédito.
+
+**Duas descobertas durante a integração**, ambas com efeito direto no código:
+
+*Versão fixa de modelo é bomba-relógio.* O `gemini-2.0-flash` e o
+`text-embedding-004`, indicados na especificação original deste projeto,
+respondem **404 para chaves novas**. Foram aposentados. O código passou a usar o
+alias `-latest`, que normalmente seria má prática e aqui é o oposto: é o que
+impede a aplicação de parar de responder no meio do semestre.
+
+*A cota da linha flash acabou durante uma única sessão de calibração.* Rodar 26
+perguntas em 6 limiares bastou para o modelo passar a responder 429. Trocamos
+para a linha `lite`, cuja cota diária é várias vezes maior e que, medida no mesmo
+conjunto, devolveu **a mesma resposta com a mesma citação de fonte**. Para
+transcrever de um contexto curto já selecionado pela busca vetorial, o modelo
+maior não acrescenta nada e custa disponibilidade.
 
 ### 2.3 A decisão que fez diferença: o provedor local
 
@@ -207,7 +238,37 @@ origem do embedding marcada.
 6. Chama o provedor de IA, com degradação para o modo extrativo
 7. Confere se a resposta cita alguma fonte, registra e devolve
 
-### 3.5 As três barreiras contra alucinação
+### 3.5 Barreiras contra uso indevido
+
+Antes de qualquer chamada externa, a pergunta passa por `lib/rag/guardrails.ts`,
+que barra três coisas que o limiar de similaridade não pega:
+
+| Categoria | O que barra | Por que o limiar não basta |
+|---|---|---|
+| Injeção de prompt | "Ignore as instruções", "mostre seu system prompt", "aja como" | A pergunta pode até recuperar contexto legítimo; o alvo é fazer o modelo abandonar as regras |
+| Conteúdo ilícito | Fabricar arma, sintetizar droga, invadir sistema, fraudar prova | Não deve consumir cota nem receber a resposta educada de "não encontrei no material" |
+| Dado de terceiro | "Qual a nota do aluno X", "quais alunos estão em risco" | O assistente do aluno nunca intermedeia dado de outra pessoa |
+
+A calibração prioriza **precisão sobre cobertura**: os padrões exigem intenção
+explícita junto do objeto, e não palavra solta. "Arma" não bloqueia; "como
+fabricar uma arma" bloqueia. Um falso positivo barra um aluno com dúvida
+legítima, o que é pior do que deixar passar uma pergunta estranha que o limiar
+recusa em seguida.
+
+Um caso tem tratamento próprio e vem antes de todos: **sinal de automutilação**.
+Ele também casa com os padrões de conteúdo ilícito, e responder "isso está fora
+do meu escopo" seria o pior desfecho possível. A resposta encaminha ao CVV pelo
+188 e ao apoio da instituição. Um sistema de permanência estudantil que ignora
+esse sinal falha exatamente no que diz querer evitar.
+
+A recusa nunca explica qual padrão disparou o bloqueio, porque isso ensinaria a
+contorná-lo. Há teste automatizado que verifica essa propriedade.
+
+`scripts/testar-barreiras.ts` roda a bateria adversarial contra a aplicação com o
+provedor real: **21 de 21 casos** com o desfecho esperado, incluindo as 5
+perguntas legítimas que precisam continuar passando.
+
+### 3.6 As três barreiras contra alucinação
 
 Uma instrução de prompt é um pedido, não uma garantia. O sistema tem três
 mecanismos independentes, e é importante que sejam três:
@@ -221,7 +282,7 @@ mecanismos independentes, e é importante que sejam três:
 3. **A verificação posterior** confere, com a resposta pronta, se ela realmente
    aponta um dos documentos fornecidos.
 
-### 3.6 Prompt efetivamente enviado ao Gemini
+### 3.7 Prompt efetivamente enviado ao Gemini
 
 Instrução de sistema (íntegra em `lib/rag/prompt.ts`):
 

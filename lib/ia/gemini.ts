@@ -17,12 +17,32 @@ import {
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 const TEMPO_LIMITE_MS = 20_000;
 
+/**
+ * Modelo de texto.
+ *
+ * Duas escolhas embutidas neste valor, e as duas foram medidas.
+ *
+ * **Por que o alias `-latest` e não uma versão fixa.** Normalmente fixar a
+ * versão é a boa prática, porque o comportamento não muda debaixo dos pés. Aqui
+ * é o contrário: o Google aposenta versões nomeadas com frequência, e tanto
+ * `gemini-2.0-flash` quanto `gemini-2.5-flash` já respondem 404 para novas
+ * chaves. Uma versão fixa transformaria a aplicação numa bomba-relógio que
+ * pararia de responder no meio do semestre, sem aviso.
+ *
+ * **Por que a linha `lite` e não a `flash` completa.** A tarefa deste
+ * assistente é transcrever informação de um contexto curto que já foi
+ * selecionado pela busca vetorial, e não raciocinar. Na avaliação, a linha lite
+ * devolveu exatamente a mesma resposta, com a mesma citação de fonte, sem
+ * consumir tokens de raciocínio. Em compensação, a cota diária gratuita da
+ * linha lite é várias vezes maior. Numa turma inteira usando o assistente na
+ * mesma semana, isso é a diferença entre funcionar e responder 429.
+ */
 function modeloTexto(): string {
-  return process.env.GEMINI_MODELO_TEXTO || "gemini-2.0-flash";
+  return process.env.GEMINI_MODELO_TEXTO || "gemini-flash-lite-latest";
 }
 
 function modeloEmbedding(): string {
-  return process.env.GEMINI_MODELO_EMBEDDING || "text-embedding-004";
+  return process.env.GEMINI_MODELO_EMBEDDING || "gemini-embedding-001";
 }
 
 /** Executa a chamada com tempo limite. Sem isso, uma API lenta prende a rota até o timeout da plataforma. */
@@ -95,7 +115,19 @@ export class ProvedorGemini implements ProvedorIA {
         // Temperatura baixa porque o objetivo é fidelidade ao documento, não
         // variedade de redação. Este é o parâmetro que mais afeta alucinação.
         temperature: opcoes.temperatura ?? 0.15,
-        maxOutputTokens: opcoes.maxTokens ?? 800,
+        // O teto precisa ser generoso porque vários modelos atuais gastam
+        // tokens de RACIOCÍNIO dentro deste mesmo limite, e eles não aparecem
+        // na resposta. Medido: com o modelo flash completo, uma pergunta
+        // simples consome cerca de 320 tokens pensando antes de escrever 46 de
+        // resposta. Com teto apertado, a API devolve texto VAZIO e sem
+        // finishReason, que é o sintoma mais confuso possível: parece falha de
+        // rede e é falta de orçamento.
+        //
+        // Não enviamos `thinkingConfig` para desligar o raciocínio: a linha
+        // lite responde 400 "invalid argument" ao recebê-lo, e ela não raciocina
+        // de qualquer forma. Um parâmetro que não ajuda e quebra metade dos
+        // modelos disponíveis não vale a linha de código.
+        maxOutputTokens: opcoes.maxTokens ?? 1500,
         topP: 0.9,
       },
     };
