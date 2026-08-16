@@ -93,7 +93,7 @@ const PERFIS_PLANTADOS = [
 ] as const;
 
 function semAcento(texto: string): string {
-  return texto.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 async function limpar(): Promise<void> {

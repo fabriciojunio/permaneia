@@ -24,7 +24,9 @@
     "audit:prod": "npm audit --omit=dev",
     "gerar:apresentacao": "node scripts/gerar-apresentacao.mjs",
     "fuzzy:comparar": "npx tsx scripts/exportar-casos-fuzzy.ts",
-    "test:vistoria": "playwright test --config playwright.producao.config.ts"
+    "test:vistoria": "playwright test --config playwright.producao.config.ts",
+    "validar:producao": "npx tsx scripts/validar-producao.ts",
+    "testar:barreiras": "npx tsx scripts/testar-barreiras.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
