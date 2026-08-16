@@ -9,8 +9,6 @@ export const dynamic = "force-dynamic";
 
 export default async function LayoutAplicacao({ children }: { children: React.ReactNode }) {
   const sessao = await sessaoAtual();
-  // O middleware já barra quem não tem sessão. Este redirecionamento cobre a
-  // hipótese de a página ser renderizada fora daquele caminho.
   if (!sessao) redirect("/login");
 
   const itens = [
@@ -23,30 +21,31 @@ export default async function LayoutAplicacao({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-tinta-700 bg-tinta-900/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-6 py-3">
-          <Link href="/inicio" className="font-display text-lg text-tinta-50">
-            Permane<span className="text-permanencia-400">IA</span>
-          </Link>
+      <header className="nao-imprime border-b-2 border-tinta bg-papel-alto">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-regua py-2">
+            <Link href="/inicio" className="font-display text-lg text-tinta">
+              Permane<span className="text-sagrado">IA</span>
+            </Link>
+            <div className="flex items-baseline gap-4">
+              <span className="carimbo hidden sm:inline">
+                {primeiroNome(sessao.nome)} · {rotuloPapel(sessao.papel)}
+              </span>
+              <BotaoSair />
+            </div>
+          </div>
 
-          <nav aria-label="Navegação principal" className="flex flex-wrap gap-1">
+          <nav aria-label="Navegação principal" className="flex flex-wrap">
             {itens.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-md px-3 py-1.5 text-sm text-tinta-300 transition-colors hover:bg-tinta-800 hover:text-tinta-50"
+                className="border-b-2 border-transparent px-3 py-2 font-mono text-[11px] uppercase tracking-carimbo text-tinta-media transition-colors hover:border-sagrado hover:text-tinta"
               >
                 {item.rotulo}
               </Link>
             ))}
           </nav>
-
-          <div className="ml-auto flex items-center gap-3">
-            <span className="hidden text-sm text-tinta-400 sm:inline">
-              {primeiroNome(sessao.nome)} · {rotuloPapel(sessao.papel)}
-            </span>
-            <BotaoSair />
-          </div>
         </div>
       </header>
 

@@ -9,14 +9,14 @@ export const metadata = { title: "Criar conta" };
 export default function PaginaCadastro() {
   return (
     <main id="conteudo" className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-12">
-      <Link href="/" className="mb-8 text-sm text-tinta-400 hover:text-tinta-200">
-        ← Voltar
-      </Link>
+      <div className="mb-6 border-b-2 border-tinta pb-3">
+        <p className="carimbo">Ficha de cadastro · Aluno</p>
+      </div>
 
-      <h1 className="mb-2 text-3xl text-tinta-50">Criar conta</h1>
-      <p className="mb-8 text-sm leading-relaxed text-tinta-400">
-        A conta dá acesso ao assistente de estudos. O painel de risco é restrito à coordenação pedagógica e
-        não é liberado por este cadastro.
+      <h1 className="font-display text-3xl text-tinta">Criar conta</h1>
+      <p className="mb-8 mt-2 text-[15px] leading-relaxed text-tinta-media">
+        A conta dá acesso ao assistente de estudos. O painel de risco é restrito à coordenação
+        pedagógica e não é liberado por este cadastro.
         {DOMINIOS_PERMITIDOS.length > 0 && (
           <> Apenas e-mails de {DOMINIOS_PERMITIDOS.join(", ")} são aceitos.</>
         )}
@@ -24,12 +24,14 @@ export default function PaginaCadastro() {
 
       <FormularioCadastro tamanhoMinimoSenha={TAMANHO_MINIMO_SENHA} />
 
-      <p className="mt-6 text-center text-sm text-tinta-400">
-        Já tem conta?{" "}
-        <Link href="/login" className="text-permanencia-400 hover:text-permanencia-300">
-          Entrar
-        </Link>
-      </p>
+      <div className="mt-8 border-t border-regua pt-4 text-center">
+        <p className="text-sm text-tinta-media">
+          Já tem conta?{" "}
+          <Link href="/login" className="text-sagrado underline underline-offset-2 hover:text-sagrado-escuro">
+            Entrar
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }
