@@ -2,7 +2,6 @@ import { sessaoAtual } from "@/lib/auth";
 import { exigir } from "@/lib/acesso";
 import { prisma } from "@/lib/prisma";
 import { comTratamentoDeErro, respostaDeErro, respostaOk } from "@/lib/observabilidade";
-import { erro } from "@/lib/resultado";
 import { registrar } from "@/lib/auditoria";
 
 export const runtime = "nodejs";

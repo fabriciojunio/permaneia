@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { assinarSessao, NOME_COOKIE, opcoesCookie } from "@/lib/sessao";
+import { assinarSessao, NOME_COOKIE, opcoesCookie, requisicaoEhSegura } from "@/lib/sessao";
 import { MODO_DEMO, CONTAS_DEMO } from "@/lib/demo";
 import { comTratamentoDeErro, respostaDeErro } from "@/lib/observabilidade";
 import { erro } from "@/lib/resultado";
@@ -52,6 +52,6 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
   const resposta = NextResponse.json({
     usuario: { nome: usuario.nome, email: usuario.email, papel: usuario.papel },
   });
-  resposta.cookies.set(NOME_COOKIE, token, opcoesCookie());
+  resposta.cookies.set(NOME_COOKIE, token, opcoesCookie(requisicaoEhSegura(requisicao.headers, requisicao.url)));
   return resposta;
 });

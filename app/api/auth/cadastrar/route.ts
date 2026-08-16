@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { avaliarForca, gerarHash } from "@/lib/senha";
-import { assinarSessao, NOME_COOKIE, opcoesCookie } from "@/lib/sessao";
+import { assinarSessao, NOME_COOKIE, opcoesCookie, requisicaoEhSegura } from "@/lib/sessao";
 import { cadastroSchema, camposComErro } from "@/lib/validacoes";
 import { comTratamentoDeErro, respostaDeErro } from "@/lib/observabilidade";
 import { erro } from "@/lib/resultado";
@@ -118,6 +118,6 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
     autenticado: true,
     usuario: { nome: criado.nome, email: criado.email, papel: "aluno" },
   });
-  resposta.cookies.set(NOME_COOKIE, token, opcoesCookie());
+  resposta.cookies.set(NOME_COOKIE, token, opcoesCookie(requisicaoEhSegura(requisicao.headers, requisicao.url)));
   return resposta;
 });

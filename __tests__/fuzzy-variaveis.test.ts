@@ -211,8 +211,7 @@ describe("termo", () => {
   });
 
   it("lança quando o rótulo não existe, porque isso é erro de programação", () => {
-    // @ts-expect-error rótulo inválido de propósito
-    expect(() => termo(FREQUENCIA, "altíssima")).toThrow(/não existe/);
+    expect(() => termo(FREQUENCIA, "altíssima" as never)).toThrow(/não existe/);
   });
 });
 

@@ -198,19 +198,16 @@ describe("listarPainelDeRisco", () => {
 });
 
 describe("resumoPorFaixa", () => {
-  it("conta as matrículas em cada faixa", async () => {
+  it.each(["critico", "alto", "medio", "baixo"])("conta ao menos uma matrícula na faixa %s", async (faixa) => {
     await recalcularTodas();
     const resumo = await resumoPorFaixa(disciplinaId);
-    expect(resumo.critico).toBeGreaterThanOrEqual(1);
-    expect(resumo.alto).toBeGreaterThanOrEqual(1);
-    expect(resumo.medio).toBeGreaterThanOrEqual(1);
-    expect(resumo.baixo).toBeGreaterThanOrEqual(1);
+    expect(resumo[faixa] ?? 0).toBeGreaterThanOrEqual(1);
   });
 
   it("a soma do resumo bate com o total do painel", async () => {
     const resumo = await resumoPorFaixa(disciplinaId);
     const { total } = await listarPainelDeRisco({ disciplinaId });
-    const soma = resumo.baixo + resumo.medio + resumo.alto + resumo.critico + resumo.semCalculo;
+    const soma = Object.values(resumo).reduce((a, b) => a + b, 0);
     expect(soma).toBe(total);
   });
 
