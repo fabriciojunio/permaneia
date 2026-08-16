@@ -93,10 +93,11 @@ duas o aluno está lendo seria desonesto.
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Build de produção |
-| `npm test` | 1690 testes unitários |
+| `npm test` | 1692 testes unitários |
 | `npm run test:coverage` | Testes com gate de cobertura em 90% |
-| `npm run test:integration` | 60 testes contra Postgres real |
+| `npm run test:integration` | 63 testes contra Postgres real |
 | `npm run test:e2e` | 48 testes de ponta a ponta |
+| `npm run test:vistoria` | Vistoria visual da aplicação publicada, com captura de tela |
 | `npm run db:seed` | Dados sintéticos e documentos de exemplo |
 | `npx tsx scripts/avaliar-rag.ts` | Mede cobertura e recusa do assistente |
 | `npx tsx scripts/diagnostico-fuzzy.ts` | Verifica a monotonicidade da base de regras |
@@ -136,13 +137,15 @@ Decisões de arquitetura estão registradas em [docs/adr](docs/adr).
 
 | Métrica | Valor |
 |---|---|
-| Testes unitários | 1690 |
-| Testes de integração | 60 |
+| Testes unitários | 1692 |
+| Testes de integração | 63 |
 | Testes de ponta a ponta | 48 |
+| **Total** | **1803** |
 | Cobertura da lógica de domínio | 97,4% |
 | Cobertura do assistente | 83,3% das perguntas respondíveis |
 | Recusa correta | 75,0% das perguntas fora do material |
 | Inversões de faixa de risco | 0 em 26.460 comparações |
+| Vulnerabilidades de produção | 0 |
 
 A metodologia de avaliação do assistente, com a tabela de calibração e os três
 defeitos que ela revelou, está em [docs/AVALIACAO-RAG.md](docs/AVALIACAO-RAG.md).
