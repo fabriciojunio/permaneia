@@ -1,15 +1,9 @@
-// Motor de inferência fuzzy Mamdani.
+// Mamdani implementado do zero, sem biblioteca, porque as quatro etapas são o
+// conteúdo avaliado da disciplina: fuzzificação, disparo pelo mínimo, agregação
+// pelo máximo e defuzzificação por centroide.
 //
-// Implementado do zero, sem biblioteca, porque as quatro etapas do método são o
-// conteúdo avaliado da disciplina e ficam explícitas aqui:
-//
-//   1. Fuzzificação      valor nítido -> grau de pertinência em cada termo
-//   2. Inferência        força de disparo de cada regra, pelo mínimo (E lógico)
-//   3. Agregação         recorte do consequente e união pelo máximo
-//   4. Defuzzificação    centroide da área agregada -> valor nítido de saída
-//
-// O motor é uma função pura: mesmas entradas, mesma saída, sem I/O e sem
-// estado. É o que permite cobrir a base de regras inteira com teste de tabela.
+// Função pura, sem I/O e sem estado, o que permite cobrir a base inteira com
+// teste de tabela. Ver ADR 002.
 
 import { BASE_DE_REGRAS, type Regra } from "./regras";
 import {
@@ -61,10 +55,8 @@ export type ResultadoFuzzy = {
 export const PASSOS_DEFUZZIFICACAO = 1000;
 
 /**
- * Etapa 2: força de disparo da regra. O conectivo "E" da base é o mínimo, que é
- * a norma triangular padrão de Mamdani. Usar o mínimo, e não o produto, mantém
- * a força atrelada ao antecedente mais fraco: uma regra só dispara com força
- * total quando todas as suas condições valem plenamente.
+ * O conectivo "E" é o mínimo, norma T padrão de Mamdani. Mínimo e não produto:
+ * a força fica atrelada ao antecedente mais fraco.
  */
 export function forcaDeDisparo(
   regra: Regra,
@@ -79,14 +71,10 @@ export function forcaDeDisparo(
 }
 
 /**
- * Etapa 4: defuzzificação por centroide (centro de gravidade).
- *
- * Integra numericamente sobre o universo de saída discretizado. Escolhemos o
- * centroide porque ele leva em conta a área inteira do conjunto agregado: um
- * aluno com uma regra "crítico" fraca e uma "médio" forte recebe um score
- * intermediário, que é exatamente a gradação que justifica usar fuzzy. Métodos
- * como "média dos máximos" descartariam a regra mais fraca e devolveriam de
- * volta o degrau que estamos tentando evitar.
+ * Centroide sobre o universo discretizado. Ele leva em conta a área inteira do
+ * conjunto agregado, então uma regra "crítico" fraca e uma "médio" forte
+ * produzem score intermediário. A média dos máximos descartaria a regra fraca e
+ * devolveria o degrau que o fuzzy existe para evitar.
  */
 export function defuzzificarCentroide(agregado: Record<TermoRisco, number>): number {
   const inicio = RISCO.minimo;
@@ -98,8 +86,7 @@ export function defuzzificarCentroide(agregado: Record<TermoRisco, number>): num
 
   for (let i = 0; i <= PASSOS_DEFUZZIFICACAO; i += 1) {
     const x = inicio + i * passo;
-    // União dos consequentes recortados: para cada ponto do universo, a altura
-    // é o maior valor entre todos os termos já limitados por sua força.
+    // União dos consequentes recortados, ponto a ponto.
     let altura = 0;
     for (const t of RISCO.termos) {
       const corte = agregado[t.rotulo];
@@ -111,10 +98,8 @@ export function defuzzificarCentroide(agregado: Record<TermoRisco, number>): num
     denominador += altura;
   }
 
-  // Área nula significaria que nenhuma regra disparou. A base é fatorial
-  // completa, então isso não deve acontecer; se acontecer, devolver o meio do
-  // universo é mais honesto do que devolver NaN ou zero (que seria lido como
-  // "sem risco" e esconderia o defeito).
+  // Área nula só ocorre se nenhuma regra disparar, o que a base fatorial
+  // completa impede. Zero seria lido como "sem risco" e esconderia o defeito.
   if (denominador === 0) return (inicio + fim) / 2;
   return numerador / denominador;
 }
@@ -125,9 +110,8 @@ export function faixaDoScore(score: number): TermoRisco {
   let melhorGrau = -1;
   for (const t of RISCO.termos) {
     const grau = t.pertinencia(score);
-    // O ">" estrito faz o empate ficar com o termo de menor risco, que é a
-    // leitura conservadora correta para um rótulo mostrado à coordenação: não
-    // se anuncia "crítico" num ponto em que "alto" explica igualmente bem.
+    // ">" estrito deixa o empate com o termo de menor risco: não se anuncia
+    // "crítico" onde "alto" explica igualmente bem.
     if (grau > melhorGrau) {
       melhorGrau = grau;
       melhorRotulo = t.rotulo;
@@ -136,12 +120,7 @@ export function faixaDoScore(score: number): TermoRisco {
   return melhorRotulo;
 }
 
-/**
- * Executa o ciclo Mamdani completo sobre a base de regras informada.
- *
- * A base é parâmetro com valor padrão para que os testes possam exercitar o
- * motor com bases mínimas e verificar as etapas isoladamente.
- */
+/** A base é parâmetro para os testes exercitarem o motor com bases mínimas. */
 export function inferir(
   entrada: EntradaFuzzy,
   base: ReadonlyArray<Regra> = BASE_DE_REGRAS

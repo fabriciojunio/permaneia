@@ -1,14 +1,7 @@
-// Divisão de documentos em trechos indexáveis.
-//
-// O tamanho do trecho é o parâmetro que mais afeta a qualidade do RAG e quase
-// nunca é explicado. Trecho grande demais dilui o assunto e a busca por
-// similaridade deixa de discriminar; trecho pequeno demais corta a informação
-// ao meio, e a resposta "quando é a Prova P1" recupera o trecho que diz "Prova
-// P1" sem a data que estava na linha seguinte.
-//
-// A sobreposição existe justamente por causa desse segundo caso: repetir o fim
-// de um trecho no começo do próximo garante que uma informação que atravessa a
-// fronteira apareça inteira em pelo menos um dos dois.
+// O tamanho do trecho é o parâmetro que mais afeta a qualidade do RAG: grande
+// demais dilui o assunto e a busca deixa de discriminar, pequeno demais corta a
+// informação ao meio. A sobreposição existe para o segundo caso, garantindo que
+// o que atravessa a fronteira apareça inteiro em um dos dois trechos.
 
 /** Alvo de tamanho do trecho, em caracteres. Cerca de 500 tokens em português. */
 export const TAMANHO_ALVO = 2000;
@@ -22,12 +15,7 @@ export type Trecho = {
   texto: string;
 };
 
-/**
- * Normaliza o texto extraído de PDF: o parser devolve quebras de linha no meio
- * de frases, espaços duplicados e linhas em branco em excesso. Sem essa
- * limpeza, o trecho fica cheio de ruído que atrapalha tanto o embedding quanto
- * a leitura da citação na tela.
- */
+/** O parser de PDF devolve quebra no meio de frase e espaço duplicado. */
 export function limparTexto(bruto: string): string {
   return bruto
     .replace(/\r\n?/g, "\n")
@@ -43,11 +31,7 @@ export function limparTexto(bruto: string): string {
     .trim();
 }
 
-/**
- * Quebra o texto em unidades que não devem ser cortadas ao meio: primeiro por
- * parágrafo, e um parágrafo grande demais por frase. Só se uma frase sozinha
- * ultrapassar o alvo é que ela é cortada na força bruta.
- */
+/** Parágrafo, depois frase, e só então corte bruto. */
 export function unidadesAtomicas(texto: string, alvo = TAMANHO_ALVO): string[] {
   const paragrafos = texto.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   const saida: string[] = [];
@@ -86,8 +70,7 @@ export function dividirEmTrechos(
   if (alvo <= 0) throw new Error("O tamanho alvo do trecho deve ser maior que zero.");
   if (sobreposicao < 0) throw new Error("A sobreposição não pode ser negativa.");
   if (sobreposicao >= alvo) {
-    // Sem esta guarda, a sobreposição consumiria o trecho inteiro e o laço
-    // nunca avançaria.
+    // Sem esta guarda o laço nunca avançaria.
     throw new Error("A sobreposição precisa ser menor que o tamanho alvo do trecho.");
   }
 
@@ -112,8 +95,7 @@ export function dividirEmTrechos(
 
   if (atual.length > 0) trechos.push(atual);
 
-  // Um último trecho muito curto costuma ser sobra de rodapé; junta ao anterior
-  // em vez de indexar isoladamente, onde ele só produziria ruído.
+  // Último trecho curto costuma ser sobra de rodapé e só produziria ruído.
   if (trechos.length > 1) {
     const ultimo = trechos[trechos.length - 1]!;
     if (ultimo.length < TAMANHO_MINIMO) {
@@ -128,13 +110,9 @@ export function dividirEmTrechos(
 }
 
 /**
- * Últimos `n` caracteres do texto, começando numa fronteira legível.
- *
- * Prefere começar logo depois de um fim de frase; se não houver nenhum dentro
- * da janela, cai para a fronteira de palavra. A diferença aparece na tela: o
- * trecho recuperado é mostrado literalmente ao aluno como citação, e um trecho
- * que começa em "de 2026, quinta-feira. Aula normal…" parece um erro do
- * sistema, mesmo sendo um recorte correto.
+ * Prefere começar depois de um fim de frase, caindo para fronteira de palavra.
+ * O trecho é mostrado literalmente como citação, e começar em "de 2026,
+ * quinta-feira" parece erro do sistema mesmo sendo recorte correto.
  */
 export function recortarCauda(texto: string, n: number): string {
   if (n <= 0 || texto.length === 0) return "";
@@ -145,7 +123,7 @@ export function recortarCauda(texto: string, n: number): string {
   const fimDeFrase = bruto.search(/[.!?]\s+\S/);
   if (fimDeFrase !== -1) {
     const depois = bruto.slice(fimDeFrase + 1).replace(/^\s+/, "");
-    // Só vale a pena se ainda sobrar conteúdo suficiente para dar contexto.
+    // Só vale se sobrar conteúdo suficiente para dar contexto.
     if (depois.length >= n * 0.4) return depois;
   }
 

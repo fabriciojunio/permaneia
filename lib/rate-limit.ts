@@ -1,13 +1,6 @@
-// Limitação de taxa por janela deslizante, em memória.
-//
-// Limite honesto sobre o alcance: em ambiente serverless cada instância tem a
-// própria memória, então isto não é um limite global exato. Ele resolve o que
-// precisa resolver neste projeto, que é conter o custo e a cota do tier
-// gratuito do Gemini contra um laço acidental ou um abuso ingênuo, e frear
-// tentativa de força bruta no login. Um limite global exigiria Redis, que
-// custaria dinheiro e sairia do escopo de um projeto sem orçamento.
-//
-// Ver ADR 006.
+// Janela deslizante em memória. Em ambiente serverless cada instância tem a
+// própria memória, então NÃO é um limite global exato: contém laço acidental e
+// força bruta ingênua, e protege a cota do tier gratuito. Ver ADR 006.
 
 export type Regra = {
   /** Requisições permitidas na janela. */
@@ -17,13 +10,8 @@ export type Regra = {
 };
 
 /**
- * Lê um limite do ambiente, caindo no padrão quando ausente ou inválido.
- *
- * O limite de login precisa ser configurável por um motivo concreto: numa
- * instituição, uma sala inteira sai pelo mesmo endereço IP. Cinco tentativas
- * por minuto protegem contra adivinhação de senha vinda de uma máquina, e
- * derrubam uma turma de trinta alunos entrando ao mesmo tempo no laboratório.
- * Quem opera a instalação conhece a topologia da rede; o código, não.
+ * Configurável porque numa instituição uma sala inteira sai pelo mesmo IP: cinco
+ * por minuto protegem contra adivinhação e derrubam uma turma no laboratório.
  */
 function doAmbiente(variavel: string, padrao: number): number {
   const bruto = Number(process.env[variavel]);
@@ -47,7 +35,7 @@ type Registro = { marcas: number[] };
 
 const memoria = new Map<string, Registro>();
 
-/** Teto de chaves distintas guardadas, para que a memória não cresça sem limite sob ataque com IPs variados. */
+/** Teto de chaves, para a memória não crescer sob ataque com IPs variados. */
 const MAXIMO_CHAVES = 10_000;
 
 export type VeredictoLimite = {
@@ -57,12 +45,7 @@ export type VeredictoLimite = {
   esperarSegundos: number;
 };
 
-/**
- * Registra uma tentativa e decide se ela passa.
- *
- * `agora` é parâmetro para que o teste controle o tempo sem relógio falso
- * global, que interferiria em outras suítes rodando em paralelo.
- */
+/** `agora` é parâmetro para o teste controlar o tempo sem relógio falso global. */
 export function consumir(chave: string, regra: Regra, agora = Date.now()): VeredictoLimite {
   const inicioJanela = agora - regra.janelaMs;
   const registro = memoria.get(chave) ?? { marcas: [] };
@@ -104,12 +87,9 @@ export function zerarLimites(): void {
 }
 
 /**
- * Identifica o cliente para fins de limite.
- *
- * Atrás da Vercel, x-forwarded-for é confiável porque a plataforma o reescreve.
- * Em self-host sem proxy, o cabeçalho é controlado pelo cliente e confiar nele
- * daria a qualquer um um limite infinito, bastando variar o valor. Por isso a
- * confiança é configurável e o primeiro endereço da lista é o que vale.
+ * Atrás da Vercel o x-forwarded-for é confiável porque a plataforma o reescreve.
+ * Sem proxy, o cabeçalho é do cliente e confiar nele daria limite infinito a
+ * quem variasse o valor. Por isso a confiança é configurável.
  */
 export function identificarCliente(cabecalhos: Headers, sufixo = ""): string {
   const confia = process.env.RATE_LIMIT_CONFIA_PROXY !== "false";

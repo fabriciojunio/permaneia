@@ -1,13 +1,6 @@
-// Sessão em JWT assinado (HS256), guardado em cookie HttpOnly.
-//
-// Por que JWT e não sessão em banco: a aplicação roda em funções serverless na
-// Vercel, sem memória compartilhada entre invocações. Uma sessão em banco
-// custaria uma consulta a cada requisição, inclusive nas de leitura.
-//
-// O preço do JWT é a revogação: um token válido continua válido até expirar.
-// O campo `vs` (versão da sessão) resolve isso, e o middleware o compara com a
-// versão gravada no usuário. Trocar a senha ou desativar a conta incrementa a
-// versão e derruba todos os tokens emitidos antes, na hora.
+// JWT em cookie HttpOnly. Sessão em banco custaria uma consulta por requisição
+// em ambiente serverless. O preço do JWT é a revogação, resolvida pelo campo
+// `vs`: trocar a senha incrementa a versão e derruba os tokens anteriores.
 
 import { SignJWT, jwtVerify } from "jose";
 
@@ -32,8 +25,7 @@ export type Sessao = {
 function segredo(): Uint8Array {
   const bruto = process.env.SESSION_SECRET;
   if (!bruto || bruto.length < 32) {
-    // Falhar aqui é melhor do que assinar com um segredo fraco: um segredo
-    // curto torna a falsificação do cookie viável por força bruta.
+    // Segredo curto torna a falsificação do cookie viável por força bruta.
     throw new Error("SESSION_SECRET ausente ou com menos de 32 caracteres.");
   }
   return new TextEncoder().encode(bruto);
@@ -74,17 +66,14 @@ export async function verificarSessao(token: string | undefined): Promise<Sessao
       exp: typeof payload.exp === "number" ? payload.exp : undefined,
     };
   } catch {
-    // Token expirado, assinatura inválida, formato quebrado: tudo é "sem sessão".
+    // Expirado, assinatura inválida ou formato quebrado: tudo é "sem sessão".
     return null;
   }
 }
 
 /**
- * A conexão que originou a requisição é HTTPS?
- *
- * Atrás de um proxy, como na Vercel, quem carrega essa informação é o
- * x-forwarded-proto: a conexão entre o proxy e a função é interna e aparece
- * como http, mesmo com o usuário navegando em https.
+ * Atrás de proxy quem carrega essa informação é o x-forwarded-proto: a conexão
+ * entre o proxy e a função é interna e aparece como http.
  */
 export function requisicaoEhSegura(cabecalhos: Headers, url?: string): boolean {
   const encaminhado = cabecalhos.get("x-forwarded-proto");
@@ -100,17 +89,10 @@ export function requisicaoEhSegura(cabecalhos: Headers, url?: string): boolean {
 }
 
 /**
- * Opções do cookie de sessão.
- *
- * O atributo `secure` acompanha o PROTOCOLO DA REQUISIÇÃO, e não o NODE_ENV.
- * A diferença não é cosmética: um cookie marcado como Secure é simplesmente
- * descartado pelo navegador em conexão http, sem erro nenhum. Amarrar isso ao
- * NODE_ENV fazia o build de produção servido em http, que é exatamente o caso
- * dos testes E2E e de qualquer instalação local, aceitar o login e perder a
- * sessão em seguida, sem nada nos logs indicando o motivo.
- *
- * Em produção de verdade a requisição chega por https e o cookie continua
- * Secure, que é o comportamento desejado.
+ * `secure` acompanha o protocolo da requisição, e não o NODE_ENV: um cookie
+ * Secure é descartado em silêncio pelo navegador em http, e amarrá-lo ao
+ * NODE_ENV fazia o build de produção servido em http aceitar o login e perder a
+ * sessão logo depois, sem nada nos logs.
  */
 export function opcoesCookie(conexaoSegura: boolean): {
   httpOnly: true;
@@ -121,8 +103,8 @@ export function opcoesCookie(conexaoSegura: boolean): {
 } {
   return {
     httpOnly: true,
-    // "lax" e não "strict": com "strict" o cookie não acompanha a navegação
-    // vinda de um link externo e o usuário cairia no login logo após entrar.
+    // "strict" faria o cookie não acompanhar link externo, jogando o usuário
+    // de volta no login.
     sameSite: "lax",
     secure: conexaoSegura,
     path: "/",
