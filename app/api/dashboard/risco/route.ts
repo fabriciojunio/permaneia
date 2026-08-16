@@ -12,20 +12,20 @@ export const dynamic = "force-dynamic";
 const FAIXAS: FaixaRisco[] = ["baixo", "medio", "alto", "critico"];
 
 export const GET = comTratamentoDeErro(async (requisicao: NextRequest) => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "dashboard.ver");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const parametros = requisicao.nextUrl.searchParams;
 
   const disciplinaId = parametros.get("disciplinaId") ?? undefined;
   if (disciplinaId && !/^[0-9a-f-]{36}$/i.test(disciplinaId)) {
-    return respostaDeErro(erro("VALIDACAO", "Identificador de disciplina inválido."));
+    return await respostaDeErro(erro("VALIDACAO", "Identificador de disciplina inválido."));
   }
 
   const faixaBruta = parametros.get("faixaMinima");
   if (faixaBruta && !FAIXAS.includes(faixaBruta as FaixaRisco)) {
-    return respostaDeErro(erro("VALIDACAO", `A faixa mínima precisa ser uma de: ${FAIXAS.join(", ")}.`));
+    return await respostaDeErro(erro("VALIDACAO", `A faixa mínima precisa ser uma de: ${FAIXAS.join(", ")}.`));
   }
 
   const limite = Number(parametros.get("limite") ?? 100);
@@ -41,5 +41,5 @@ export const GET = comTratamentoDeErro(async (requisicao: NextRequest) => {
     resumoPorFaixa(disciplinaId),
   ]);
 
-  return respostaOk({ ...painel, resumo });
+  return await respostaOk({ ...painel, resumo });
 });

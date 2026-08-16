@@ -13,9 +13,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const GET = comTratamentoDeErro(async () => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "disciplina.ler");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const disciplinas = await prisma.disciplina.findMany({
     select: {
@@ -29,7 +29,7 @@ export const GET = comTratamentoDeErro(async () => {
     orderBy: [{ periodo: "desc" }, { nome: "asc" }],
   });
 
-  return respostaOk({
+  return await respostaOk({
     disciplinas: disciplinas.map((d) => ({
       id: d.id,
       nome: d.nome,
@@ -43,19 +43,19 @@ export const GET = comTratamentoDeErro(async () => {
 });
 
 export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "disciplina.escrever");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const limite = consumir(identificarCliente(requisicao.headers, "escrita"), REGRA_ESCRITA);
   if (!limite.permitido) {
-    return respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitas requisições seguidas. Aguarde um instante."));
+    return await respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitas requisições seguidas. Aguarde um instante."));
   }
 
   const corpo = await requisicao.json().catch(() => null);
   const analisado = disciplinaSchema.safeParse(corpo);
   if (!analisado.success) {
-    return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+    return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
   }
 
   try {
@@ -77,12 +77,12 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
       detalhes: { nome: disciplina.nome, periodo: disciplina.periodo },
     });
 
-    return respostaOk({ disciplina }, 201);
+    return await respostaOk({ disciplina }, 201);
   } catch (e) {
     // A chave única é (nome, periodo): a mesma disciplina pode existir em
     // semestres diferentes, mas não duas vezes no mesmo.
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return respostaDeErro(erro("CONFLITO", "Já existe uma disciplina com esse nome neste período."));
+      return await respostaDeErro(erro("CONFLITO", "Já existe uma disciplina com esse nome neste período."));
     }
     throw e;
   }

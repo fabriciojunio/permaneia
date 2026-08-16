@@ -34,7 +34,7 @@ const REGRA_CADASTRO = { limite: 3, janelaMs: 60 * 60 * 1000 };
 export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
   const limite = consumir(identificarCliente(requisicao.headers, "cadastro"), REGRA_CADASTRO);
   if (!limite.permitido) {
-    const resposta = respostaDeErro(
+    const resposta = await respostaDeErro(
       erro("LIMITE_EXCEDIDO", "Muitos cadastros a partir desta conexão. Tente novamente mais tarde.")
     );
     resposta.headers.set("Retry-After", String(limite.esperarSegundos));
@@ -44,13 +44,13 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
   const corpo = await requisicao.json().catch(() => null);
   const analisado = cadastroSchema.safeParse(corpo);
   if (!analisado.success) {
-    return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+    return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
   }
 
   const { nome, email, curso, senha } = analisado.data;
 
   if (!dominioPermitido(email)) {
-    return respostaDeErro(
+    return await respostaDeErro(
       erro("VALIDACAO", "Este cadastro aceita apenas e-mails institucionais.", {
         email: `Use um e-mail de um destes domínios: ${DOMINIOS_PERMITIDOS.join(", ")}.`,
       })
@@ -59,7 +59,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
 
   const forca = avaliarForca(senha);
   if (!forca.valida) {
-    return respostaDeErro(
+    return await respostaDeErro(
       erro("VALIDACAO", "A senha não atende à política.", { senha: forca.problemas.join(" ") })
     );
   }

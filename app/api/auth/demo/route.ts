@@ -22,7 +22,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
 
   const limite = consumir(identificarCliente(requisicao.headers, "demo"), REGRA_LOGIN);
   if (!limite.permitido) {
-    return respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitas tentativas seguidas. Aguarde um instante."));
+    return await respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitas tentativas seguidas. Aguarde um instante."));
   }
 
   const corpo = (await requisicao.json().catch(() => null)) as { papel?: string } | null;
@@ -34,7 +34,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
   });
 
   if (!usuario || !usuario.ativo) {
-    return respostaDeErro(
+    return await respostaDeErro(
       erro("INDISPONIVEL", "A base de demonstração ainda não foi carregada. Rode o seed de dados sintéticos.")
     );
   }

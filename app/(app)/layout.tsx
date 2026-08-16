@@ -7,8 +7,8 @@ import { BotaoSair } from "@/components/BotaoSair";
 
 export const dynamic = "force-dynamic";
 
-export default function LayoutAplicacao({ children }: { children: React.ReactNode }) {
-  const sessao = sessaoAtual();
+export default async function LayoutAplicacao({ children }: { children: React.ReactNode }) {
+  const sessao = await sessaoAtual();
   // O middleware já barra quem não tem sessão. Este redirecionamento cobre a
   // hipótese de a página ser renderizada fora daquele caminho.
   if (!sessao) redirect("/login");

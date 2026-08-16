@@ -10,9 +10,9 @@ import { NextResponse } from "next/server";
 import { logger } from "./logger";
 import { statusHttp, type ErroApp } from "./resultado";
 
-export function idDaRequisicao(): string {
+export async function idDaRequisicao(): Promise<string> {
   try {
-    return headers().get("x-request-id") ?? "-";
+    return (await headers()).get("x-request-id") ?? "-";
   } catch {
     // Fora de contexto de requisição, como nos testes.
     return "-";
@@ -24,8 +24,8 @@ export function idDaRequisicao(): string {
  * O detalhe técnico fica só no log: mensagem de exceção em corpo de resposta é
  * como estrutura interna e caminho de arquivo vazam para fora.
  */
-export function respostaDeErro(erroApp: ErroApp, detalhe?: unknown): NextResponse {
-  const idRequisicao = idDaRequisicao();
+export async function respostaDeErro(erroApp: ErroApp, detalhe?: unknown): Promise<NextResponse> {
+  const idRequisicao = await idDaRequisicao();
   const status = statusHttp(erroApp.codigo);
 
   const registrar = status >= 500 ? logger.error : logger.warn;
@@ -50,10 +50,10 @@ export function respostaDeErro(erroApp: ErroApp, detalhe?: unknown): NextRespons
 }
 
 /** Resposta de sucesso, com o mesmo identificador de correlação no cabeçalho. */
-export function respostaOk<T>(dados: T, status = 200): NextResponse {
+export async function respostaOk<T>(dados: T, status = 200): Promise<NextResponse> {
   return NextResponse.json(dados, {
     status,
-    headers: { "X-Request-ID": idDaRequisicao() },
+    headers: { "X-Request-ID": await idDaRequisicao() },
   });
 }
 

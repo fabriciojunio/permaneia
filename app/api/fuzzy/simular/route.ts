@@ -19,9 +19,9 @@ export const dynamic = "force-dynamic";
  * estão no relatório, sem depender de um slide que pode estar desatualizado.
  */
 export const GET = comTratamentoDeErro(async () => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "disciplina.ler");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const descrever = (v: typeof FREQUENCIA | typeof NOTAS | typeof ENGAJAMENTO | typeof RISCO) => ({
     nome: v.nome,
@@ -30,7 +30,7 @@ export const GET = comTratamentoDeErro(async () => {
     termos: v.termos.map((t) => ({ rotulo: t.rotulo, forma: t.forma })),
   });
 
-  return respostaOk({
+  return await respostaOk({
     entradas: [descrever(FREQUENCIA), descrever(NOTAS), descrever(ENGAJAMENTO)],
     saida: descrever(RISCO),
     regras: BASE_DE_REGRAS.map((r) => ({
@@ -51,17 +51,17 @@ export const GET = comTratamentoDeErro(async () => {
 
 /** Simula o risco para valores arbitrários, sem tocar em nenhuma matrícula. */
 export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "risco.calcular");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const corpo = await requisicao.json().catch(() => null);
   const analisado = sinaisSchema.safeParse(corpo);
   if (!analisado.success) {
-    return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+    return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
   }
 
-  return respostaOk({
+  return await respostaOk({
     risco: calcularRiscoEvasao(analisado.data),
     comparacao: compararComCriterioPorNota(analisado.data),
   });

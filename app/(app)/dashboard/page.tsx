@@ -8,9 +8,10 @@ export const metadata = { title: "Painel de risco" };
 export default async function PaginaDashboard({
   searchParams,
 }: {
-  searchParams: { disciplinaId?: string };
+  // Next 15: os parâmetros de busca chegam como Promise.
+  searchParams: Promise<{ disciplinaId?: string }>;
 }) {
-  const disciplinaId = searchParams.disciplinaId;
+  const { disciplinaId } = await searchParams;
 
   const [disciplinas, painel, resumo] = await Promise.all([
     prisma.disciplina.findMany({

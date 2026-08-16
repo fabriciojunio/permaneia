@@ -13,9 +13,9 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export const GET = comTratamentoDeErro(async (requisicao: NextRequest) => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "aluno.ler");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const busca = (requisicao.nextUrl.searchParams.get("busca") ?? "").trim().slice(0, 100);
 
@@ -43,7 +43,7 @@ export const GET = comTratamentoDeErro(async (requisicao: NextRequest) => {
     take: 200,
   });
 
-  return respostaOk({
+  return await respostaOk({
     alunos: alunos.map((a) => ({
       id: a.id,
       nome: a.nome,
@@ -56,19 +56,19 @@ export const GET = comTratamentoDeErro(async (requisicao: NextRequest) => {
 });
 
 export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "aluno.escrever");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const limite = consumir(identificarCliente(requisicao.headers, "escrita"), REGRA_ESCRITA);
   if (!limite.permitido) {
-    return respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitas requisições seguidas. Aguarde um instante."));
+    return await respostaDeErro(erro("LIMITE_EXCEDIDO", "Muitas requisições seguidas. Aguarde um instante."));
   }
 
   const corpo = await requisicao.json().catch(() => null);
   const analisado = alunoSchema.safeParse(corpo);
   if (!analisado.success) {
-    return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+    return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
   }
 
   try {
@@ -89,10 +89,10 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
       atorEmail: permissao.valor.email,
     });
 
-    return respostaOk({ aluno }, 201);
+    return await respostaOk({ aluno }, 201);
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return respostaDeErro(erro("CONFLITO", "Já existe um aluno com esse e-mail."));
+      return await respostaDeErro(erro("CONFLITO", "Já existe um aluno com esse e-mail."));
     }
     throw e;
   }

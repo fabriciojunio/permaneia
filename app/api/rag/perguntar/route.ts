@@ -14,15 +14,15 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "chat.perguntar");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   // Limite por usuário, e não por IP: numa sala de aula a turma inteira sai do
   // mesmo IP, e um limite por endereço derrubaria a demonstração ao vivo.
   const limite = consumir(`rag:${permissao.valor.usuarioId}`, REGRA_RAG);
   if (!limite.permitido) {
-    const resposta = respostaDeErro(
+    const resposta = await respostaDeErro(
       erro("LIMITE_EXCEDIDO", "Você fez muitas perguntas seguidas. Aguarde alguns segundos.")
     );
     resposta.headers.set("Retry-After", String(limite.esperarSegundos));
@@ -32,7 +32,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
   const corpo = await requisicao.json().catch(() => null);
   const analisado = perguntaSchema.safeParse(corpo);
   if (!analisado.success) {
-    return respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
+    return await respostaDeErro(erro("VALIDACAO", "Confira os campos.", camposComErro(analisado.error)));
   }
 
   const { disciplinaId, pergunta } = analisado.data;
@@ -42,12 +42,12 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
     select: { id: true, nome: true, _count: { select: { documentos: true } } },
   });
   if (!disciplina) {
-    return respostaDeErro(erro("NAO_ENCONTRADO", "Disciplina não encontrada."));
+    return await respostaDeErro(erro("NAO_ENCONTRADO", "Disciplina não encontrada."));
   }
   if (disciplina._count.documentos === 0) {
     // Dizer isso explicitamente evita que o aluno interprete a recusa por falta
     // de contexto como uma falha do assistente.
-    return respostaDeErro(
+    return await respostaDeErro(
       erro(
         "VALIDACAO",
         "Esta disciplina ainda não tem nenhum documento indexado. Peça à coordenação para enviar a ementa ou o cronograma."
@@ -61,7 +61,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
     alunoId: permissao.valor.alunoId,
   });
 
-  return respostaOk({
+  return await respostaOk({
     resposta: resultado.resposta,
     fontes: resultado.fontes,
     disciplina: { id: disciplina.id, nome: disciplina.nome },

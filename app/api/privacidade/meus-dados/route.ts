@@ -15,9 +15,9 @@ export const dynamic = "force-dynamic";
  * verdade para que o sistema possa um dia receber dados reais.
  */
 export const GET = comTratamentoDeErro(async () => {
-  const sessao = sessaoAtual();
+  const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "privacidade.propriosDados");
-  if (!permissao.ok) return respostaDeErro(permissao.erro);
+  if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
   const { usuarioId, alunoId, email } = permissao.valor;
 
@@ -66,7 +66,7 @@ export const GET = comTratamentoDeErro(async () => {
     atorEmail: email,
   });
 
-  return respostaOk({
+  return await respostaOk({
     geradoEm: new Date().toISOString(),
     aviso:
       "Esta instalação usa exclusivamente dados sintéticos, gerados para fins acadêmicos. Nenhum dado corresponde a uma pessoa real.",
