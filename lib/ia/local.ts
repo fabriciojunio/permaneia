@@ -102,12 +102,25 @@ export function tokenizar(texto: string): string[] {
  * inundar o vetor.
  */
 export function radical(palavra: string): string {
-  if (palavra.length <= 4) return palavra;
-  for (const fim of ["acoes", "coes", "mente", "ncia", "agem", "ados", "idos", "adas", "idas", "ar", "er", "ir", "os", "as", "es", "s"]) {
-    if (palavra.length - fim.length >= 4 && palavra.endsWith(fim)) {
-      return palavra.slice(0, palavra.length - fim.length);
-    }
+  if (palavra.length <= 3) return palavra;
+
+  // Advérbio em "-mente" antes de tudo: "oralmente" vira "oral".
+  if (palavra.length > 6 && palavra.endsWith("mente")) return palavra.slice(0, -5);
+
+  // Plurais irregulares do português, na ordem em que precisam ser testados:
+  // "avaliacoes" tem que virar "avaliacao" antes de a regra genérica do "s"
+  // pegá-lo e devolver "avaliacoe".
+  if (palavra.length > 4) {
+    if (palavra.endsWith("oes") || palavra.endsWith("aes")) return `${palavra.slice(0, -3)}ao`;
+    if (palavra.endsWith("ais")) return `${palavra.slice(0, -3)}al`;
+    if (palavra.endsWith("eis")) return `${palavra.slice(0, -3)}el`;
+    if (palavra.endsWith("ois")) return `${palavra.slice(0, -3)}ol`;
   }
+  if (palavra.length > 3 && palavra.endsWith("ns")) return `${palavra.slice(0, -2)}m`;
+
+  // Plural regular.
+  if (palavra.length > 4 && palavra.endsWith("s")) return palavra.slice(0, -1);
+
   return palavra;
 }
 
@@ -123,8 +136,12 @@ export function unidades(texto: string): string[] {
     const atual = tokens[i]!;
     saida.push(`p:${atual}`);
 
-    const raiz = radical(atual);
-    if (raiz !== atual) saida.push(`r:${raiz}`);
+    // O radical é emitido SEMPRE, inclusive quando é igual à palavra. Emitir só
+    // quando difere parecia economia, e quebrava justamente o caso que o
+    // radical existe para resolver: "prova" produziria apenas `p:prova` e
+    // "provas" apenas `p:provas` mais `r:prova`, sem nenhuma unidade em comum
+    // entre as duas formas.
+    saida.push(`r:${radical(atual)}`);
 
     const proximo = tokens[i + 1];
     if (proximo) saida.push(`b:${radical(atual)}_${radical(proximo)}`);

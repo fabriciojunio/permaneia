@@ -16,13 +16,20 @@ export default defineConfig({
       // de PDF) são exercitados por integração e E2E e ficam fora do número
       // para que ele reflita exatamente o que mede.
       include: ["lib/**/*.ts"],
+      // Ficam de fora os módulos que só existem acoplados ao Prisma ou ao
+      // runtime do Next, e que por isso são exercitados pelos testes de
+      // integração e E2E, com banco real. Mantê-los no gate faria o número
+      // medir a presença de mocks em vez da qualidade da lógica.
       exclude: [
         "lib/prisma.ts",
         "lib/env.ts",
-        "lib/tipos.ts",
-        "lib/ia/gemini.ts",
-        "lib/repositorios/**",
-        "lib/rag/pdf.ts",
+        "lib/auth.ts", // lê next/headers
+        "lib/auditoria.ts", // escreve no banco
+        "lib/observabilidade.ts", // NextResponse e next/headers
+        "lib/repositorios/**", // SQL e Prisma
+        "lib/rag/consulta.ts", // orquestra banco e provedor de IA
+        "lib/rag/ingestao.ts", // grava no banco
+        "lib/rag/pdf.ts", // depende de biblioteca externa de parsing
       ],
       thresholds: {
         statements: 90,

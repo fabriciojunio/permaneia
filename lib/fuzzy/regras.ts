@@ -109,7 +109,7 @@ export const BASE_DE_REGRAS: ReadonlyArray<Regra> = [
   r(26, "alta", "alta", "medio", "baixo",
     "Trajetória sólida, com uso moderado da plataforma."),
   r(27, "alta", "alta", "alto", "baixo",
-    "Os três sinais no melhor patamar. Nenhuma ação necessária.", true),
+    "Os três sinais no melhor patamar ao mesmo tempo: o aluno vem às aulas, vai bem nas avaliações e usa a plataforma. Nenhuma ação necessária além do acompanhamento regular da turma.", true),
 ];
 
 /** As quatro regras citadas nominalmente na especificação do trabalho. */
