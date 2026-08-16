@@ -17,7 +17,11 @@ export type VeredictoCsrf = {
 export function hostDe(url: string | null): string | null {
   if (!url) return null;
   try {
-    return new URL(url).host;
+    const host = new URL(url).host;
+    // Esquemas sem autoridade, como "javascript:" e "data:", são URLs válidas
+    // para o construtor e têm host vazio. Devolver "" faria a comparação
+    // adiante tratar isso como um host de verdade; null diz o que de fato é.
+    return host.length > 0 ? host : null;
   } catch {
     return null;
   }

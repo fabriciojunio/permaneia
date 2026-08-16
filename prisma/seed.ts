@@ -87,7 +87,7 @@ const PERFIS_PLANTADOS = [
   { nome: "Abandono já em curso", frequencia: 18, media: 2.1, acessos: 1 },
   { nome: "Reprovação por nota se aproximando", frequencia: 88, media: 3.2, acessos: 26 },
   { nome: "Notas boas, mas desengajando", frequencia: 34, media: 8.6, acessos: 2 },
-  { nome: "Notas boas, presença no limite", frequencia: 62, media: 8.9, acessos: 3 },
+  { nome: "Notas boas, presença apertada", frequencia: 62, media: 8.9, acessos: 3 },
   { nome: "Mediano em tudo", frequencia: 68, media: 5.6, acessos: 11 },
   { nome: "Trajetória saudável", frequencia: 96, media: 9.1, acessos: 34 },
 ] as const;
