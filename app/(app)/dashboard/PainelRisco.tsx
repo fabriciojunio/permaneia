@@ -116,27 +116,32 @@ export function PainelRisco({
 
       <div className="mt-6 folha overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[52rem] table-fixed text-sm">
+          <table className="w-full table-fixed text-sm md:min-w-[52rem]">
             <caption className="sr-only">
               Alunos ordenados por score de risco de evasão, do maior para o menor
             </caption>
             {/* Larguras fixas: com layout automático a tabela mudava de forma a
-                cada filtro aplicado. */}
+                cada filtro aplicado.
+
+                No celular sobram duas colunas, aluno e risco. As outras quatro
+                somem porque a alternativa era rolagem lateral com a etiqueta de
+                risco fora da tela, ou seja, o painel de risco sem o risco. Os
+                números continuam a um toque de distância, no detalhamento. */}
             <colgroup>
-              <col className="w-[26%]" />
-              <col className="w-[24%]" />
-              <col className="w-[13%]" />
-              <col className="w-[10%]" />
-              <col className="w-[11%]" />
-              <col className="w-[16%]" />
+              <col className="w-[58%] md:w-[26%]" />
+              <col className="hidden md:table-column md:w-[24%]" />
+              <col className="hidden md:table-column md:w-[13%]" />
+              <col className="hidden md:table-column md:w-[10%]" />
+              <col className="hidden md:table-column md:w-[11%]" />
+              <col className="w-[42%] md:w-[16%]" />
             </colgroup>
             <thead>
               <tr className="border-b-2 border-tinta text-left">
                 <th scope="col" className="carimbo px-4 py-2">Aluno</th>
-                <th scope="col" className="carimbo px-4 py-2">Disciplina</th>
-                <th scope="col" className="carimbo px-4 py-2 text-right">Frequência</th>
-                <th scope="col" className="carimbo px-4 py-2 text-right">Média</th>
-                <th scope="col" className="carimbo px-4 py-2 text-right">Acessos</th>
+                <th scope="col" className="carimbo hidden px-4 py-2 md:table-cell">Disciplina</th>
+                <th scope="col" className="carimbo hidden px-4 py-2 text-right md:table-cell">Frequência</th>
+                <th scope="col" className="carimbo hidden px-4 py-2 text-right md:table-cell">Média</th>
+                <th scope="col" className="carimbo hidden px-4 py-2 text-right md:table-cell">Acessos</th>
                 <th scope="col" className="carimbo px-4 py-2">Risco</th>
               </tr>
             </thead>
@@ -169,15 +174,23 @@ export function PainelRisco({
                       <span className="block truncate text-xs text-tinta-fraca">
                         {l.curso ?? l.alunoEmail}
                       </span>
+                      {/* A coluna de disciplina some no celular, então ela
+                          reaparece aqui: sem isso a linha não diz de qual
+                          matrícula o risco está falando. */}
+                      <span className="block truncate text-xs text-tinta-fraca md:hidden">
+                        {l.disciplinaNome}
+                      </span>
                     </td>
-                    <td className="truncate px-4 py-2.5 text-tinta-media">{l.disciplinaNome}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right font-mono text-tinta">
+                    <td className="hidden truncate px-4 py-2.5 text-tinta-media md:table-cell">
+                      {l.disciplinaNome}
+                    </td>
+                    <td className="hidden whitespace-nowrap px-4 py-2.5 text-right font-mono text-tinta md:table-cell">
                       {formatarPercentual(l.frequenciaPercentual, 0)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right font-mono text-tinta">
+                    <td className="hidden whitespace-nowrap px-4 py-2.5 text-right font-mono text-tinta md:table-cell">
                       {formatarNota(l.mediaNotas)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right font-mono text-tinta">
+                    <td className="hidden whitespace-nowrap px-4 py-2.5 text-right font-mono text-tinta md:table-cell">
                       {formatarNumero(l.acessosPlataforma)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-2.5">
