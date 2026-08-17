@@ -100,7 +100,7 @@ duas o aluno está lendo seria desonesto.
 | `npm test` | 1824 testes unitários |
 | `npm run test:coverage` | Testes com gate de cobertura em 90% |
 | `npm run test:integration` | 72 testes contra Postgres real |
-| `npm run test:e2e` | 54 testes de ponta a ponta |
+| `npm run test:e2e` | 77 testes de ponta a ponta, incluindo a verificação de celular |
 | `npm run test:vistoria` | Vistoria visual da aplicação publicada, com captura de tela |
 | `npm run db:seed` | Dados sintéticos e documentos de exemplo |
 | `npx tsx scripts/avaliar-rag.ts` | Mede cobertura e recusa do assistente |
