@@ -1,4 +1,4 @@
-# Relatório — Projeto Prático de IA Generativa
+# Relatório do Projeto Prático de IA Generativa
 
 ## PermaneIA: assistente de estudo e alerta de risco de evasão
 
@@ -66,7 +66,7 @@ frequência 34% e 2 acessos à plataforma**, devolve:
 ```
 score fuzzy: 0.675  |  faixa: alto
 critério por nota: sem risco  |  divergem: true
-regra dominante: 8 — "Bom desempenho não anula a ausência sistemática das
+regra dominante: 8, "Bom desempenho não anula a ausência sistemática das
 aulas; o histórico apenas atrasa o efeito na média."
 ```
 
@@ -194,7 +194,7 @@ escrita passam por SQL parametrizado nos repositórios (ADR 005).
 
 **Saída:** `risco_evasao` de 0 a 1, com quatro conjuntos: baixo, médio, alto e
 crítico. Quatro, e não três, porque a coordenação precisa separar "acompanhar" de
-"procurar hoje" — a diferença muda a ação, não só o rótulo.
+"procurar hoje": a diferença muda a ação, não só o rótulo.
 
 **Normalização do engajamento.** O banco guarda acessos brutos. A conversão para
 a escala de 0 a 10 é logarítmica, porque a diferença entre 0 e 5 acessos diz
