@@ -2,7 +2,7 @@
 //
 // Não é um teste de asserção: é uma passagem pelas telas principais, com
 // captura de imagem, para inspeção humana. Serve para pegar o que asserção não
-// pega — texto cortado, contraste ruim, alinhamento quebrado, número mal
+// pega: texto cortado, contraste ruim, alinhamento quebrado, número mal
 // formatado.
 //
 // Uso: npx playwright test vistoria --config playwright.producao.config.ts

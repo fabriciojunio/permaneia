@@ -96,7 +96,7 @@ export const ENGAJAMENTO = montar<TermoEngajamento>(
 /**
  * Saída: risco de evasão de 0 a 1. Quatro termos, e não três, porque a
  * coordenação precisa separar "acompanhar" (alto) de "procurar hoje"
- * (crítico) — a diferença entre os dois muda a ação, não só o rótulo.
+ * (crítico): a diferença entre os dois muda a ação, não só o rótulo.
  */
 export const RISCO = montar<TermoRisco>(
   "risco_evasao",

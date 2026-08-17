@@ -8,7 +8,7 @@ documentos"
 
 ---
 
-## Bloco 1 — Gancho (0:00 a 1:00)
+## Bloco 1, gancho (0:00 a 1:00)
 
 Abrir pelo problema, e não pela ferramenta.
 
@@ -28,7 +28,7 @@ gancho perde a força.
 
 ---
 
-## Bloco 2 — Explicação conceitual (1:00 a 3:00)
+## Bloco 2, explicação conceitual (1:00 a 3:00)
 
 **O que é RAG.** Buscar informação relevante *antes* de perguntar ao modelo, e
 obrigá-lo a responder só com base nela.
@@ -52,7 +52,7 @@ que não sabe quando a resposta não está no material fornecido.
 
 ---
 
-## Bloco 3 — Demonstração prática (3:00 a 8:00)
+## Bloco 3, demonstração prática (3:00 a 8:00)
 
 Tela do Dify, ao vivo.
 
@@ -74,9 +74,16 @@ achado mais interessante do nosso projeto e quase nunca aparece em tutorial de
 RAG: com o cronograma inteiro em quatro pedaços, cada vetor passa a representar
 quatro aulas ao mesmo tempo, e a busca deixa de discriminar.
 
+**Segundo diferencial, também barato de mostrar:** perguntar "qual é o conteúdo
+das aulas?" e reparar que o assistente responde com UMA aula, a que ficou em
+primeiro na busca. A resposta sai correta e citada, e é metade da verdade. É o
+defeito mais perigoso de um RAG, porque nada na tela avisa que ele aconteceu.
+No nosso sistema a correção foi trocar a estratégia de contexto quando a
+pergunta pede uma relação.
+
 ---
 
-## Bloco 4 — Casos de uso (8:00 a 9:30)
+## Bloco 4, casos de uso (8:00 a 9:30)
 
 - Atendimento ao cliente sobre a base de conhecimento real da empresa
 - Assistente jurídico restrito à legislação vigente
@@ -89,7 +96,7 @@ fonte, e está errado. Por isso todo documento precisa de data visível.
 
 ---
 
-## Bloco 5 — Fechamento (9:30 a 10:00)
+## Bloco 5, fechamento (9:30 a 10:00)
 
 Retomar a frase plantada no bloco 2:
 
