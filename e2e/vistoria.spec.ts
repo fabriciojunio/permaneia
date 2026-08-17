@@ -113,14 +113,39 @@ test("celular", async ({ browser }) => {
   const contexto = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const page = await contexto.newPage();
 
-  await page.goto("/");
-  await page.waitForLoadState("networkidle");
-  await page.screenshot({ path: `${PASTA}/14-celular-abertura.png`, fullPage: true });
+  // fullPage: false nas telas do sistema, de propósito: o enquadramento da
+  // janela é o que mostra se o rodapé encosta embaixo e se sobrou vazio.
+  for (const [nome, rota] of [
+    ["14-celular-abertura", "/"],
+    ["15-celular-login", "/login"],
+    ["16-celular-cadastro", "/cadastro"],
+  ] as const) {
+    await page.goto(rota);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: `${PASTA}/${nome}.png`, fullPage: false });
+  }
+
+  await entrar(page, CONTAS.aluno);
+  for (const [nome, rota] of [
+    ["17-celular-inicio-aluno", "/inicio"],
+    ["18-celular-assistente", "/chat"],
+    ["19-celular-privacidade", "/privacidade"],
+  ] as const) {
+    await page.goto(rota);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: `${PASTA}/${nome}.png`, fullPage: false });
+  }
 
   await entrar(page, CONTAS.coordenacao);
-  await page.goto("/dashboard");
-  await page.waitForLoadState("networkidle");
-  await page.screenshot({ path: `${PASTA}/15-celular-painel.png`, fullPage: false });
+  for (const [nome, rota] of [
+    ["20-celular-inicio-coordenacao", "/inicio"],
+    ["21-celular-painel", "/dashboard"],
+    ["22-celular-disciplinas", "/disciplinas"],
+  ] as const) {
+    await page.goto(rota);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: `${PASTA}/${nome}.png`, fullPage: false });
+  }
 
   await contexto.close();
 });
