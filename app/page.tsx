@@ -19,9 +19,12 @@ const NOTAS: Record<number, string> = {
 export default function Inicio() {
   return (
     <div className="folha-tela max-w-5xl py-8 sm:py-12">
-      <header className="flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-tinta pb-2">
-        <p className="carimbo">Unisagrado · Inteligência Artificial · Quinta-feira</p>
-        <p className="carimbo">2026-2</p>
+      <header className="flex items-baseline justify-between gap-x-4 border-b-2 border-tinta pb-2">
+        <p className="carimbo">
+          Unisagrado · Inteligência Artificial
+          <span className="hidden sm:inline"> · Quinta-feira</span>
+        </p>
+        <p className="carimbo hidden sm:block">2026-2</p>
       </header>
 
       <main id="conteudo" className="flex flex-1 flex-col">

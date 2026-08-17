@@ -19,9 +19,12 @@ const PERFIS = [
 export default function PaginaLogin() {
   return (
     <main id="conteudo" className="folha-tela max-w-6xl">
-      <div className="carimbo flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b-2 border-tinta pb-2 pt-5">
-        <span>Unisagrado · Inteligência Artificial · Quinta-feira</span>
-        <span>2026-2</span>
+      <div className="carimbo flex items-baseline justify-between gap-x-6 border-b-2 border-tinta pb-2 pt-5">
+        <span>
+          Unisagrado · Inteligência Artificial
+          <span className="hidden sm:inline"> · Quinta-feira</span>
+        </span>
+        <span className="hidden sm:inline">2026-2</span>
       </div>
 
       <div className="grid flex-1 content-center items-start gap-x-16 gap-y-10 py-12 lg:grid-cols-[minmax(0,1fr)_24rem]">
@@ -55,7 +58,7 @@ export default function PaginaLogin() {
           </p>
         </div>
 
-        <div className="lg:sticky lg:top-8">
+        <div className="order-first lg:order-none lg:sticky lg:top-8">
           <FormularioLogin modoDemo={MODO_DEMO} contasDemo={MODO_DEMO ? CONTAS_DEMO : []} />
 
           <div className="mt-6 border-t border-regua pt-4">

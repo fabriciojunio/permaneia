@@ -55,8 +55,11 @@ export default async function LayoutAplicacao({ children }: { children: React.Re
       </main>
 
       <footer className="rodape-folha nao-imprime">
-        <p className="carimbo">Unisagrado · Inteligência Artificial · Quinta-feira</p>
-        <p className="carimbo">2026-2</p>
+        <p className="carimbo">
+          Unisagrado · Inteligência Artificial
+          <span className="hidden sm:inline"> · Quinta-feira</span>
+        </p>
+        <p className="carimbo hidden sm:block">2026-2</p>
       </footer>
     </div>
   );
