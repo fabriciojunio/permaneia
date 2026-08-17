@@ -256,9 +256,32 @@ rodape(s);
 
 // ---------------------------------------------------------------- SLIDE 8
 s = slide();
+titulo(s, "Visão crítica", "Mais dois, e os piores: os que pareciam funcionar");
+
+const defeitosTardios = [
+  ["Enumeração com um item só", "Cobertura 78% → 91%", "\"Qual é o conteúdo das aulas?\" devolvia a primeira aula do semestre, citada e correta. Similaridade alta, fonte apontada, metade da resposta faltando, e nada sinalizando isso."],
+  ["A régua medindo errado", "Recusa 0/8 → 6/8", "A bateria de avaliação aplicava o limiar do modo local (0,15) também ao modo generativo, cujo limiar é 0,65. A métrica media o que a ferramenta fazia, não o que o sistema fazia."],
+];
+
+y = 2.2;
+for (const [nome, impacto, texto] of defeitosTardios) {
+  cartao(s, 0.7, y, 11.9, 1.8);
+  s.addText(nome, { x: 1.0, y: y + 0.2, w: 4.6, h: 0.35, fontSize: 15, color: BRANCO, bold: true, fontFace: FONTE });
+  s.addText(impacto, { x: 1.0, y: y + 0.68, w: 4.6, h: 0.35, fontSize: 12.5, color: LARANJA, bold: true, fontFace: FONTE });
+  s.addText(texto, { x: 5.8, y: y + 0.22, w: 6.6, h: 1.35, fontSize: 12, color: SUAVE, fontFace: FONTE, lineSpacingMultiple: 1.15 });
+  y += 2.0;
+}
+
+s.addText("Uma métrica que ninguém audita mede o que a ferramenta faz, e não o que o sistema faz.", {
+  x: 0.7, y: 6.5, w: 12, h: 0.35, fontSize: 13, color: TEXTO, bold: true, fontFace: FONTE,
+});
+rodape(s);
+
+// ---------------------------------------------------------------- SLIDE 9
+s = slide();
 titulo(s, "Visão crítica", "O que medimos, e o que não conseguimos resolver");
 
-metrica(s, 0.7, 1.95, 2.8, "83,3%", "das perguntas respondíveis foram respondidas", VERDE_CLARO);
+metrica(s, 0.7, 1.95, 2.8, "91,3%", "das perguntas respondíveis foram respondidas", VERDE_CLARO);
 metrica(s, 3.75, 1.95, 2.8, "75,0%", "das perguntas fora do material foram recusadas", VERDE_CLARO);
 metrica(s, 6.8, 1.95, 2.8, "0", "inversões de faixa em 26.460 comparações", VERDE_CLARO);
 metrica(s, 9.85, 1.95, 2.8, "21/21", "casos da bateria adversarial de barreiras", VERDE_CLARO);
@@ -331,27 +354,24 @@ rodape(s);
 
 // ---------------------------------------------------------------- SLIDE 11
 s = slide();
-titulo(s, "Demonstração", "O que vamos mostrar agora, ao vivo");
+titulo(s, "Demonstração", "Ao vivo, em permaneia.vercel.app");
 
 const demo = [
-  ["1", "Painel de risco", "A turma ordenada por score. Abrir o aluno do topo e mostrar as regras que produziram o número e a ação sugerida."],
-  ["2", "O caso central", "Simular frequência 34% com média 8,6. Risco alto pelo fuzzy, sem risco pelo critério de nota."],
-  ["3", "Assistente respondendo", "\"Quando é a Prova P1?\" Resposta com a data e a fonte citada, conferível contra o cronograma real."],
-  ["4", "Assistente recusando", "\"Qual o valor da mensalidade?\" O sistema admite que não sabe."],
+  ["1", "Painel de risco", "Entrar como coordenação. A turma ordenada por score, abrir o aluno do topo e mostrar as regras que produziram o número."],
+  ["2", "O caso central", "Frequência 34% com média 8,6. Risco alto pelo fuzzy, sem risco pelo critério de nota."],
+  ["3", "Assistente respondendo", "Trocar para a conta de aluno: os dois papéis não se sobrepõem. \"Quando é a Prova P1?\" devolve a data com a fonte citada."],
+  ["4", "Assistente enumerando", "\"Quais são os temas de todas as aulas?\" devolve o semestre inteiro, e não a aula que ficou em primeiro na busca."],
+  ["5", "Assistente recusando", "\"Qual o valor da mensalidade?\" O sistema admite que não sabe."],
 ];
 
-y = 2.05;
+y = 1.9;
 for (const [n, nome, texto] of demo) {
-  cartao(s, 0.7, y, 11.9, 1.05);
-  s.addText(n, { x: 1.0, y: y + 0.2, w: 0.5, h: 0.6, fontSize: 22, color: VERDE_CLARO, bold: true, fontFace: FONTE });
-  s.addText(nome, { x: 1.7, y: y + 0.14, w: 3.2, h: 0.35, fontSize: 14, color: BRANCO, bold: true, fontFace: FONTE });
-  s.addText(texto, { x: 4.9, y: y + 0.16, w: 7.5, h: 0.75, fontSize: 11.5, color: SUAVE, fontFace: FONTE, lineSpacingMultiple: 1.1 });
-  y += 1.2;
+  cartao(s, 0.7, y, 11.9, 0.9);
+  s.addText(n, { x: 1.0, y: y + 0.15, w: 0.5, h: 0.6, fontSize: 20, color: VERDE_CLARO, bold: true, fontFace: FONTE });
+  s.addText(nome, { x: 1.7, y: y + 0.1, w: 3.2, h: 0.35, fontSize: 13.5, color: BRANCO, bold: true, fontFace: FONTE });
+  s.addText(texto, { x: 4.9, y: y + 0.12, w: 7.5, h: 0.68, fontSize: 11, color: SUAVE, fontFace: FONTE, lineSpacingMultiple: 1.1 });
+  y += 1.0;
 }
-
-s.addText("permaneia.vercel.app", {
-  x: 0.7, y: 6.85, w: 12, h: 0.4, fontSize: 15, color: VERDE_CLARO, bold: true, fontFace: FONTE,
-});
 rodape(s);
 
 // ---------------------------------------------------------------- SLIDE 12
