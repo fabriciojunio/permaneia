@@ -63,8 +63,25 @@ body {
     Abaixo de md a margem vira uma faixa acima do conteúdo, porque em tela
     estreita não há margem para ocupar.
   */
+  /* Toda página ocupa a altura da janela: cabeçalho no topo, conteúdo no meio
+     e rodapé encostado embaixo, como folha impressa. Sem isso, tela curta
+     deixava o rodapé flutuando no meio e um vazio embaixo dele. */
+  .folha-tela {
+    @apply mx-auto flex min-h-screen w-full flex-col px-6;
+  }
+
+  .rodape-folha {
+    @apply flex flex-wrap items-baseline justify-between gap-2 border-t-2 border-tinta py-3;
+  }
+
+  /* Corpo da página dentro da folha. As seções levam `grow`, então a sobra de
+     altura vira espaço entre as réguas em vez de um vazio no fim. */
+  .pagina {
+    @apply flex flex-1 flex-col;
+  }
+
   .grade {
-    @apply grid gap-x-8 gap-y-2 md:grid-cols-[11rem_minmax(0,1fr)];
+    @apply grid content-start gap-x-8 gap-y-2 md:grid-cols-[11rem_minmax(0,1fr)];
   }
 
   .margem {

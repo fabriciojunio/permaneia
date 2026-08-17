@@ -82,7 +82,7 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
   const disciplinaAtual = disciplinas.find((d) => d.id === disciplinaId);
 
   return (
-    <div className="grade mt-8">
+    <div className="grade mt-8 grow">
       <div className="margem">
         <p className="carimbo">Conversa</p>
         <p className="mt-1 text-[13px] leading-snug text-tinta-fraca md:ml-auto md:max-w-[10rem]">

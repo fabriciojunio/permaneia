@@ -12,7 +12,7 @@ const GUARDADO = [
 
 export default function PaginaPrivacidade() {
   return (
-    <div>
+    <div className="pagina">
       <div className="grade border-b border-regua pb-6">
         <div className="margem">
           <p className="carimbo">Tratamento de dados</p>
@@ -27,7 +27,7 @@ export default function PaginaPrivacidade() {
         </div>
       </div>
 
-      <section className="grade border-b border-regua py-8" aria-labelledby="guardado">
+      <section className="grade grow border-b border-regua py-8" aria-labelledby="guardado">
         <div className="margem">
           <p className="margem-numero">1</p>
           <p className="carimbo mt-1">O que é guardado</p>
@@ -49,7 +49,7 @@ export default function PaginaPrivacidade() {
         </table>
       </section>
 
-      <section className="grade border-b border-regua py-8" aria-labelledby="score">
+      <section className="grade grow border-b border-regua py-8" aria-labelledby="score">
         <div className="margem">
           <p className="margem-numero">2</p>
           <p className="carimbo mt-1">Quem vê o score</p>
@@ -63,7 +63,7 @@ export default function PaginaPrivacidade() {
         </p>
       </section>
 
-      <section className="grade py-8" aria-labelledby="acesso">
+      <section className="grade grow py-8" aria-labelledby="acesso">
         <div className="margem">
           <p className="margem-numero">3</p>
           <p className="carimbo mt-1" id="acesso">Acesso e portabilidade</p>

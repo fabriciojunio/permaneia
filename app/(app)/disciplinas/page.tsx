@@ -21,7 +21,7 @@ export default async function PaginaDisciplinas() {
   });
 
   return (
-    <div>
+    <div className="pagina">
       <div className="grade border-b border-regua pb-6">
         <div className="margem">
           <p className="carimbo">Coordenação</p>

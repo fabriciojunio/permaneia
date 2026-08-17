@@ -27,7 +27,7 @@ export function GestaoDisciplinas({ disciplinas }: { disciplinas: Disciplina[] }
   const [mensagem, setMensagem] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
 
   return (
-    <div className="grade mt-8">
+    <div className="grade mt-8 grow">
       <div className="margem">
         <p className="carimbo">Acervo</p>
         <p className="mt-1 text-[13px] leading-snug text-tinta-fraca md:ml-auto md:max-w-[10rem]">

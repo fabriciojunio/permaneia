@@ -20,7 +20,7 @@ export default async function PaginaChat() {
   });
 
   return (
-    <div>
+    <div className="pagina">
       <div className="grade border-b border-regua pb-6">
         <div className="margem">
           <p className="carimbo">Aluno</p>
@@ -35,7 +35,7 @@ export default async function PaginaChat() {
       </div>
 
       {disciplinas.length === 0 ? (
-        <div className="folha mt-8 p-6">
+        <div className="folha mt-8 grow p-6">
           <h2 className="mb-2 text-lg text-tinta">Nenhum documento indexado ainda</h2>
           <p className="text-[15px] leading-relaxed text-tinta-media">
             O assistente só responde com base em documento enviado pela coordenação. Assim que uma

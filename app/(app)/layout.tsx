@@ -20,7 +20,7 @@ export default async function LayoutAplicacao({ children }: { children: React.Re
   ].filter((i) => i.visivel);
 
   return (
-    <div className="mx-auto min-h-screen max-w-6xl px-6">
+    <div className="folha-tela max-w-6xl">
       <header className="nao-imprime">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b-2 border-tinta pb-2 pt-5">
           <Link href="/inicio" className="font-display text-xl text-tinta">
@@ -50,9 +50,14 @@ export default async function LayoutAplicacao({ children }: { children: React.Re
         </nav>
       </header>
 
-      <main id="conteudo" className="py-8">
+      <main id="conteudo" className="flex flex-1 flex-col py-8">
         {children}
       </main>
+
+      <footer className="rodape-folha nao-imprime">
+        <p className="carimbo">Unisagrado · Inteligência Artificial · Quinta-feira</p>
+        <p className="carimbo">2026-2</p>
+      </footer>
     </div>
   );
 }

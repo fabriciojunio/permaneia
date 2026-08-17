@@ -18,13 +18,13 @@ const NOTAS: Record<number, string> = {
 
 export default function Inicio() {
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8 sm:py-12">
+    <div className="folha-tela max-w-5xl py-8 sm:py-12">
       <header className="flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-tinta pb-2">
         <p className="carimbo">Unisagrado · Inteligência Artificial · Quinta-feira</p>
         <p className="carimbo">2026-2</p>
       </header>
 
-      <main id="conteudo">
+      <main id="conteudo" className="flex flex-1 flex-col">
         <div className="grade border-b border-regua py-10">
           <div className="margem">
             <p className="carimbo">Projeto prático</p>
@@ -155,7 +155,7 @@ export default function Inicio() {
         </section>
       </main>
 
-      <footer className="flex flex-wrap items-baseline justify-between gap-2 border-t-2 border-tinta pt-2">
+      <footer className="rodape-folha">
         <p className="carimbo">Entrega em 19 de novembro de 2026</p>
         <p className="carimbo">Prof. Patrick Pedreira Silva</p>
       </footer>
