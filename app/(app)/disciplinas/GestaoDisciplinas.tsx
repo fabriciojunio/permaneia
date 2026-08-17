@@ -80,19 +80,24 @@ export function GestaoDisciplinas({ disciplinas }: { disciplinas: Disciplina[] }
                     que a ementa ou o cronograma seja enviado.
                   </p>
                 ) : (
-                  <table className="mb-4 w-full text-left text-[13px]">
+                  // Duas colunas que quebram linha, e não quatro fixas: a
+                  // referência do documento é uma frase inteira, e em quatro
+                  // colunas ela empurrava a página para os lados no celular.
+                  <table className="mb-4 w-full table-fixed text-left text-[13px]">
                     <tbody>
                       {d.documentos.map((doc) => (
                         <tr key={doc.id} className="border-b border-regua-fraca last:border-0">
-                          <td className="py-1.5 pr-4 text-tinta">{doc.titulo}</td>
-                          <td className="py-1.5 pr-4 font-mono text-[11px] text-sagrado">
-                            {doc.referencia ?? ""}
+                          <td className="py-1.5 pr-4 align-top">
+                            <span className="block break-words text-tinta">{doc.titulo}</span>
+                            {doc.referencia && (
+                              <span className="block break-words font-mono text-[11px] text-sagrado">
+                                {doc.referencia}
+                              </span>
+                            )}
                           </td>
-                          <td className="py-1.5 pr-4 text-right font-mono text-[11px] text-tinta-fraca">
-                            {doc.totalChunks} trecho(s)
-                          </td>
-                          <td className="py-1.5 text-right font-mono text-[11px] text-tinta-fraca">
-                            {formatarData(doc.criadoEm)}
+                          <td className="w-28 py-1.5 text-right align-top font-mono text-[11px] text-tinta-fraca">
+                            <span className="block">{doc.totalChunks} trecho(s)</span>
+                            <span className="block">{formatarData(doc.criadoEm)}</span>
                           </td>
                         </tr>
                       ))}
