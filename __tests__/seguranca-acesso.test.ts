@@ -89,6 +89,21 @@ describe("matriz de permissões", () => {
     }
   );
 
+  it("a coordenação NÃO usa o assistente, que é ferramenta de aluno", () => {
+    expect(podeFazer("coordenacao", "chat.perguntar")).toBe(false);
+  });
+
+  it("os dois papéis operacionais não compartilham nenhuma atribuição de trabalho", () => {
+    // "privacidade.propriosDados" e "disciplina.ler" ficam de fora porque não
+    // são atribuição de ninguém: a primeira é exigência da LGPD para qualquer
+    // titular, e a segunda é o que permite ao aluno escolher a disciplina no
+    // seletor do assistente.
+    const comuns = ["privacidade.propriosDados", "disciplina.ler"];
+    const aluno = permissoesDe("aluno").filter((p) => !comuns.includes(p));
+    const coordenacao = permissoesDe("coordenacao").filter((p) => !comuns.includes(p));
+    expect(aluno.filter((p) => coordenacao.includes(p))).toEqual([]);
+  });
+
   it.each(PERMISSOES)("a administração pode %s", (permissao) => {
     expect(podeFazer("admin", permissao)).toBe(true);
   });
@@ -109,10 +124,11 @@ describe("matriz de permissões", () => {
     }
   });
 
-  it("as permissões do aluno são subconjunto das da coordenação", () => {
-    for (const perm of permissoesDe("aluno")) {
-      expect(permissoesDe("coordenacao")).toContain(perm);
-    }
+  it("as permissões do aluno NÃO são subconjunto das da coordenação", () => {
+    // Hierarquia deliberadamente quebrada entre os dois papéis operacionais.
+    // Coordenação não é "aluno com mais poder": é outra função, com outra tela.
+    expect(permissoesDe("coordenacao")).not.toContain("chat.perguntar");
+    expect(permissoesDe("aluno")).toContain("chat.perguntar");
   });
 
   it.each(PAPEIS)("permissoesDe(%s) devolve lista ordenada e sem repetição", (papel) => {
@@ -170,7 +186,8 @@ describe("podeVerPagina", () => {
     ["/admin", "coordenacao", false],
     ["/admin", "admin", true],
     ["/chat", "aluno", true],
-    ["/chat", "coordenacao", true],
+    ["/chat", "coordenacao", false],
+    ["/chat", "admin", true],
     ["/inicio", "aluno", true],
     ["/privacidade", "aluno", true],
   ] as const)("%s para %s devolve %s", (caminho, papel, esperado) => {

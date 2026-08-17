@@ -16,7 +16,7 @@
 
 import { gerarEmbeddingComFallback, gerarTextoComFallback } from "@/lib/ia";
 import type { OrigemResposta } from "@/lib/ia/provedor";
-import { buscarTrechosSimilares } from "@/lib/repositorios/documento";
+import { buscarTrechosDoDocumento, buscarTrechosSimilares } from "@/lib/repositorios/documento";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import {
@@ -27,6 +27,7 @@ import {
   montarPrompt,
 } from "./prompt";
 import { avaliarPergunta, type CategoriaBloqueio } from "./guardrails";
+import { perguntaAbrangente } from "./abrangencia";
 import {
   filtrarRelevantes,
   limiarDoProvedor,
@@ -39,6 +40,8 @@ import {
 export const K_RECUPERACAO = 8;
 /** Quantos trechos, no máximo, entram no contexto enviado ao modelo. */
 export const K_CONTEXTO = 4;
+/** Teto de trechos quando a pergunta abre o documento inteiro. */
+export const K_DOCUMENTO_INTEIRO = 30;
 
 export type FonteCitada = {
   titulo: string;
@@ -78,6 +81,44 @@ function paraFonte(t: TrechoRecuperado): FonteCitada {
     // Prévia curta: a tela mostra de onde veio a informação, não o documento inteiro.
     trecho: t.texto.length > 400 ? `${t.texto.slice(0, 400).trimEnd()}…` : t.texto,
   };
+}
+
+/**
+ * Abre inteiros, e em ordem, todos os documentos que contribuíram algum trecho
+ * relevante.
+ *
+ * Abrir só o documento do trecho campeão seria mais barato e é o que a primeira
+ * versão fazia, mas amarra a resposta a uma decisão que a busca não é confiável
+ * o bastante para tomar: numa pergunta de enumeração o campeão frequentemente é
+ * um quase-acerto de outro documento, e o cronograma inteiro ficava de fora por
+ * centésimos de similaridade. Os documentos entram na ordem do melhor trecho de
+ * cada um, e a similaridade medida é preservada nos trechos que a busca de fato
+ * pontuou, porque é ela que a tela mostra e o registro guarda.
+ */
+async function documentosRelevantesInteiros(
+  relevantes: TrechoRecuperado[]
+): Promise<TrechoRecuperado[]> {
+  const medidas = new Map(relevantes.map((t) => [t.chunkId, t.similaridade]));
+
+  const ordemDosDocumentos: string[] = [];
+  for (const t of relevantes) {
+    if (!ordemDosDocumentos.includes(t.documentoId)) ordemDosDocumentos.push(t.documentoId);
+  }
+
+  const saida: TrechoRecuperado[] = [];
+  for (const documentoId of ordemDosDocumentos) {
+    if (saida.length >= K_DOCUMENTO_INTEIRO) break;
+
+    const trechos = await buscarTrechosDoDocumento(
+      documentoId,
+      K_DOCUMENTO_INTEIRO - saida.length
+    );
+    for (const t of trechos) {
+      saida.push({ ...t, similaridade: medidas.get(t.chunkId) ?? t.similaridade });
+    }
+  }
+
+  return saida.length > 0 ? saida : relevantes.slice(0, K_CONTEXTO);
 }
 
 export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
@@ -142,16 +183,27 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
     return resultado;
   }
 
-  // 5. Contexto enxuto.
-  const contexto = removerRedundantes(relevantes).slice(0, K_CONTEXTO);
+  // 5. Contexto.
+  //
+  // Pergunta pontual leva os trechos mais próximos. Pergunta de enumeração leva
+  // o documento que melhor casou, inteiro e em ordem, porque a resposta certa
+  // para "qual é o conteúdo das aulas" é a lista toda e não a aula que ficou em
+  // primeiro no ranking.
+  const abrangente = perguntaAbrangente(opcoes.pergunta);
+  const contexto = abrangente
+    ? await documentosRelevantesInteiros(relevantes)
+    : removerRedundantes(relevantes).slice(0, K_CONTEXTO);
+
   const prompt = montarPrompt(opcoes.pergunta, contexto);
 
   // 6. Geração, com degradação para o modo extrativo.
   const geracao = await gerarTextoComFallback(prompt, {
     sistema: INSTRUCAO_SISTEMA,
     // Teto largo porque os modelos atuais gastam tokens de raciocínio dentro
-    // deste mesmo limite. Ver o comentário em lib/ia/gemini.ts.
-    maxTokens: 1500,
+    // deste mesmo limite. Ver o comentário em lib/ia/gemini.ts. A pergunta
+    // abrangente pede mais espaço porque a resposta certa é uma lista com uma
+    // linha por aula, e cortar no meio devolveria um cronograma incompleto.
+    maxTokens: abrangente ? 3000 : 1500,
     temperatura: 0.15,
   });
 
@@ -178,7 +230,9 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
 
   const resultado: RespostaRag = {
     resposta: textoFinal,
-    fontes: contexto.map(paraFonte),
+    // A lista de fontes é da tela, não do modelo: trinta trechos do mesmo
+    // documento não ajudam o aluno a conferir nada.
+    fontes: contexto.slice(0, K_CONTEXTO).map(paraFonte),
     origemIa: geracao.origem,
     similaridadeMaxima: maxSimilaridade,
     // Reflete o texto EFETIVAMENTE devolvido, e não o que o modelo produziu:

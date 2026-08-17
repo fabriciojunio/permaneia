@@ -129,6 +129,51 @@ export async function buscarTrechosSimilares(
   }));
 }
 
+type LinhaTrecho = Omit<LinhaBusca, "distancia">;
+
+/**
+ * Todos os trechos de um documento, na ordem original.
+ *
+ * Existe para a pergunta abrangente: "qual é o conteúdo das aulas" não se
+ * responde com os quatro trechos mais parecidos, porque cada trecho do
+ * cronograma é uma aula e a resposta sairia falando de uma só. Aqui o
+ * documento inteiro volta em ordem, e a numeração das aulas continua fazendo
+ * sentido no contexto entregue ao modelo.
+ */
+export async function buscarTrechosDoDocumento(
+  documentoId: string,
+  limite = 40
+): Promise<TrechoRecuperado[]> {
+  const k = Math.min(60, Math.max(1, Math.trunc(limite)));
+
+  const linhas = await prisma.$queryRaw<LinhaTrecho[]>`
+    SELECT
+      c.id            AS chunk_id,
+      c.documento_id  AS documento_id,
+      d.titulo        AS titulo,
+      d.referencia    AS referencia,
+      c.indice        AS indice,
+      c.texto         AS texto
+    FROM documento_chunks c
+    JOIN documentos d ON d.id = c.documento_id
+    WHERE c.documento_id = ${documentoId}::uuid
+    ORDER BY c.indice ASC
+    LIMIT ${k}
+  `;
+
+  return linhas.map((l) => ({
+    chunkId: l.chunk_id,
+    documentoId: l.documento_id,
+    titulo: l.titulo,
+    referencia: l.referencia,
+    indice: l.indice,
+    texto: l.texto,
+    // Sem similaridade própria: estes trechos não vieram de uma comparação
+    // vetorial, vieram por pertencerem ao documento que a comparação escolheu.
+    similaridade: 0,
+  }));
+}
+
 export async function listarDocumentosDaDisciplina(disciplinaId: string) {
   return prisma.documento.findMany({
     where: { disciplinaId },

@@ -8,15 +8,38 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { ingerir } from "@/lib/rag/ingestao";
-import { responder } from "@/lib/rag/consulta";
-import { buscarTrechosSimilares, contarTrechosPorOrigem, listarDocumentosDaDisciplina, literalVetor, removerDocumento } from "@/lib/repositorios/documento";
+import { K_CONTEXTO, responder } from "@/lib/rag/consulta";
+import { buscarTrechosDoDocumento, buscarTrechosSimilares, contarTrechosPorOrigem, listarDocumentosDaDisciplina, literalVetor, removerDocumento } from "@/lib/repositorios/documento";
 import { gerarEmbeddingComFallback } from "@/lib/ia";
 import { DIMENSAO_EMBEDDING } from "@/lib/ia/provedor";
 
+// Cronograma longo de propósito: com quatro linhas ele caberia num trecho só, e
+// o teste de pergunta abrangente passaria sem exercitar a expansão para o
+// documento inteiro. Aqui ele se parte em vários trechos, como o real.
 const CRONOGRAMA = `
+06 de agosto de 2026, quinta-feira. Aula normal. Apresentação da disciplina e Introdução à IA.
+
+13 de agosto de 2026, quinta-feira. Aula normal. Histórico da Inteligência Artificial e áreas de aplicação.
+
+20 de agosto de 2026, quinta-feira. Aula normal. Agentes inteligentes e ambientes de tarefa.
+
+27 de agosto de 2026, quinta-feira. Aula normal. Busca cega em espaço de estados.
+
+03 de setembro de 2026, quinta-feira. Aula normal. Busca heurística e função de avaliação.
+
+10 de setembro de 2026, quinta-feira. Aula normal. Revisão para a primeira avaliação.
+
 24 de setembro de 2026, quinta-feira. Avaliação. Prova P1 da disciplina.
 
+01 de outubro de 2026, quinta-feira. Aula normal. Representação do conhecimento e sistemas especialistas.
+
+08 de outubro de 2026, quinta-feira. Aula normal. Aprendizado de máquina supervisionado.
+
 29 de outubro de 2026, quinta-feira. Aula normal. Lógica Fuzzy.
+
+05 de novembro de 2026, quinta-feira. Aula normal. Processamento de linguagem natural e modelos de linguagem.
+
+12 de novembro de 2026, quinta-feira. Avaliação. Prova P2 da disciplina.
 
 19 de novembro de 2026, quinta-feira. Entrega de trabalho. Entrega do Trabalho da Disciplina, com apresentação.
 
@@ -336,6 +359,111 @@ describe("consulta completa", () => {
     });
     expect(r.resposta).not.toContain("árvore geradora");
     expect(r.resposta).not.toContain("12 de março");
+  });
+});
+
+describe("pergunta abrangente", () => {
+  // O defeito que motivou este bloco: "qual é o conteúdo das aulas" devolvia
+  // uma aula só, a que ficou em primeiro no ranking de similaridade. Estava
+  // correta, citada e completamente parcial.
+  const LIMIAR = 0.1;
+
+  it("a enumeração cobre todas as datas do cronograma, e não só a mais parecida", async () => {
+    const r = await responder({
+      disciplinaId,
+      pergunta: "Quais são os temas das aulas da disciplina?",
+      registrar: false,
+      limiar: LIMIAR,
+    });
+
+    for (const data of ["24 de setembro", "29 de outubro", "19 de novembro", "17 de dezembro"]) {
+      expect(r.resposta).toContain(data);
+    }
+  });
+
+  it("a pergunta pontual continua enxuta, sem arrastar o documento inteiro", async () => {
+    const pontual = await responder({
+      disciplinaId,
+      pergunta: "Quando é a Prova P1?",
+      registrar: false,
+      limiar: LIMIAR,
+    });
+    const abrangente = await responder({
+      disciplinaId,
+      pergunta: "Quais são os temas das aulas da disciplina?",
+      registrar: false,
+      limiar: LIMIAR,
+    });
+
+    expect(pontual.resposta).toContain("24 de setembro");
+    expect(pontual.resposta.length).toBeLessThan(abrangente.resposta.length);
+  });
+
+  it("a lista de fontes mostrada continua curta, mesmo abrindo o documento", async () => {
+    const r = await responder({
+      disciplinaId,
+      pergunta: "Liste o conteúdo das aulas",
+      registrar: false,
+      limiar: LIMIAR,
+    });
+
+    expect(r.fontes.length).toBeGreaterThan(0);
+    expect(r.fontes.length).toBeLessThanOrEqual(K_CONTEXTO);
+  });
+
+  it("a expansão respeita a fronteira da disciplina", async () => {
+    const r = await responder({
+      disciplinaId,
+      pergunta: "Quais são todos os temas do semestre?",
+      registrar: false,
+      limiar: LIMIAR,
+    });
+
+    expect(r.resposta).not.toContain("árvore geradora");
+    expect(r.resposta).not.toContain("12 de março");
+  });
+
+  it("a enumeração preserva a similaridade medida do trecho campeão", async () => {
+    const r = await responder({
+      disciplinaId,
+      pergunta: "Quais são os temas das aulas?",
+      registrar: false,
+      limiar: LIMIAR,
+    });
+
+    expect(r.similaridadeMaxima).toBeGreaterThan(LIMIAR);
+    expect(Math.max(...r.fontes.map((f) => f.similaridade))).toBeGreaterThan(0);
+  });
+
+  it("sem nada relevante, a enumeração admite não saber em vez de despejar documento", async () => {
+    const r = await responder({
+      disciplinaId,
+      pergunta: "Quais são os temas das aulas de anatomia humana?",
+      registrar: false,
+      limiar: 0.99,
+    });
+
+    expect(r.admitiuNaoSaber).toBe(true);
+    expect(r.fontes).toHaveLength(0);
+  });
+
+  it("buscarTrechosDoDocumento devolve o documento em ordem de índice", async () => {
+    const [documento] = await listarDocumentosDaDisciplina(disciplinaId);
+    const trechos = await buscarTrechosDoDocumento(documento!.id);
+
+    expect(trechos.length).toBe(documento!.totalChunks);
+    expect(trechos.map((t) => t.indice)).toEqual([...trechos.map((t) => t.indice)].sort((a, b) => a - b));
+    expect(trechos.every((t) => t.documentoId === documento!.id)).toBe(true);
+  });
+
+  it("buscarTrechosDoDocumento prende o limite numa faixa sã", async () => {
+    const [documento] = await listarDocumentosDaDisciplina(disciplinaId);
+    expect(await buscarTrechosDoDocumento(documento!.id, 0)).toHaveLength(1);
+    expect((await buscarTrechosDoDocumento(documento!.id, 999)).length).toBeLessThanOrEqual(60);
+  });
+
+  it("documento inexistente devolve lista vazia, sem erro", async () => {
+    expect(await buscarTrechosDoDocumento("00000000-0000-0000-0000-000000000000")).toEqual([]);
   });
 });
 

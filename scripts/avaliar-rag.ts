@@ -40,6 +40,15 @@ const CASOS: Caso[] = [
   { pergunta: "Quando começam os conteúdos de aprendizado de máquina?", respondivel: true, esperado: "outubro" },
   { pergunta: "Quantos encontros tem o cronograma da disciplina?", respondivel: true, esperado: "20" },
 
+  // Enumeração. O trecho esperado é sempre o ÚLTIMO item do documento: uma
+  // resposta que para na metade acerta o começo e falha aqui, que é exatamente
+  // o defeito que a expansão para o documento inteiro corrige.
+  { pergunta: "Quais são os temas de todas as aulas da disciplina?", respondivel: true, esperado: "17 de dezembro" },
+  { pergunta: "Liste o conteúdo das aulas do semestre", respondivel: true, esperado: "Exame Final" },
+  { pergunta: "O que vai ser estudado na disciplina?", respondivel: true, esperado: "dezembro" },
+  { pergunta: "Quais são as datas de avaliação?", respondivel: true, esperado: "26 de novembro" },
+  { pergunta: "Quais assuntos entram em aprendizado de máquina?", respondivel: true, esperado: "agrupamento" },
+
   // Respondíveis pelo contrato didático.
   { pergunta: "Qual é o limite de faltas da disciplina?", respondivel: true, esperado: "25" },
   { pergunta: "Quanto vale o quiz na nota?", respondivel: true, esperado: "20" },
@@ -65,7 +74,14 @@ const CASOS: Caso[] = [
 ];
 
 async function main(): Promise<void> {
-  const limiar = Number(process.argv[2] ?? LIMIAR_RELEVANCIA);
+  // Sem argumento, o limiar NÃO é fixado aqui: cada consulta usa o do provedor
+  // que gerou o vetor. Fixar um número só era um defeito desta ferramenta, e
+  // dos silenciosos: a bateria rodava o modo generativo com o limiar do modo
+  // local (0,15), que deixa passar contexto irrelevante e derruba a recusa para
+  // perto de zero. A tabela de calibração continua válida porque foi levantada
+  // varrendo o limiar explicitamente, argumento por argumento.
+  const argumento = process.argv[2];
+  const limiar = argumento === undefined ? undefined : Number(argumento);
 
   const disciplina = await prisma.disciplina.findFirst({
     where: { nome: { contains: "Inteligência Artificial" } },
@@ -74,7 +90,9 @@ async function main(): Promise<void> {
   if (!disciplina) throw new Error("Disciplina de Inteligência Artificial não encontrada. Rode o seed antes.");
 
   console.log(`Disciplina: ${disciplina.nome}`);
-  console.log(`Limiar de relevância: ${limiar}\n`);
+  console.log(
+    `Limiar de relevância: ${limiar ?? `automático por provedor (local ${LIMIAR_RELEVANCIA})`}\n`
+  );
 
   let respondiveisAcertadas = 0;
   let respondiveisTotal = 0;
