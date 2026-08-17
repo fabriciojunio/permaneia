@@ -54,12 +54,34 @@ body {
     @apply font-mono text-[11px] uppercase tracking-carimbo text-tinta-fraca;
   }
 
+  /*
+    Grade assimétrica com marginália. A coluna estreita da esquerda carrega
+    número de seção, rótulo e nota de rodapé; a larga carrega o texto. É como
+    monografia e relatório impresso se organizam, e é o que tira a página da
+    coluna única empilhada.
+
+    Abaixo de md a margem vira uma faixa acima do conteúdo, porque em tela
+    estreita não há margem para ocupar.
+  */
+  .grade {
+    @apply grid gap-x-8 gap-y-2 md:grid-cols-[11rem_minmax(0,1fr)];
+  }
+
+  .margem {
+    @apply md:pt-1 md:text-right;
+  }
+
   .secao {
     @apply mb-5 flex items-baseline gap-3 border-b-2 border-tinta pb-2;
   }
 
   .secao-numero {
     @apply font-mono text-sm text-sagrado;
+  }
+
+  /* Numeral grande da seção, alinhado na margem como num sumário. */
+  .margem-numero {
+    @apply font-display text-3xl leading-none text-regua-forte;
   }
 
   .rotulo-campo {

@@ -21,16 +21,20 @@ export default async function PaginaDisciplinas() {
   });
 
   return (
-    <div className="space-y-6">
-      <header className="border-b-2 border-tinta pb-3">
-        <p className="carimbo mb-2">Coordenação pedagógica</p>
-        <h1 className="font-display text-3xl text-tinta">Disciplinas e documentos</h1>
-        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-tinta-media">
-          O assistente só responde com base no que estiver indexado aqui. Informe a data ou versão
-          de cada documento: é essa referência que aparece na citação da resposta, e é ela que
-          permite ao aluno perceber material desatualizado.
-        </p>
-      </header>
+    <div>
+      <div className="grade border-b border-regua pb-6">
+        <div className="margem">
+          <p className="carimbo">Coordenação</p>
+        </div>
+        <div>
+          <h1 className="font-display text-3xl text-tinta">Disciplinas e documentos</h1>
+          <p className="mt-2 max-w-[38rem] text-[15px] leading-relaxed text-tinta-media">
+            O assistente só responde com base no que estiver indexado aqui. Informe a data ou versão
+            de cada documento: é essa referência que aparece na citação da resposta, e é ela que
+            permite ao aluno perceber material desatualizado.
+          </p>
+        </div>
+      </div>
 
       <GestaoDisciplinas
         disciplinas={disciplinas.map((d) => ({

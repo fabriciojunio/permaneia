@@ -29,61 +29,69 @@ export default async function PaginaInicio() {
   ]);
 
   const provedor = origemAtual();
+  let numeroSecao = 0;
 
   return (
-    <div className="space-y-10">
-      <header className="border-b-2 border-tinta pb-3">
-        <p className="carimbo mb-2">Painel de trabalho</p>
-        <h1 className="font-display text-3xl text-tinta">Olá, {primeiroNome(sessao.nome)}</h1>
-        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-tinta-media">
-          {verPainel
-            ? "Comece pelo painel de risco: a lista já vem ordenada de quem precisa de contato primeiro."
-            : "Tire dúvidas sobre suas disciplinas com base nos documentos oficiais enviados pela coordenação."}
-        </p>
-      </header>
+    <div>
+      <div className="grade border-b border-regua pb-8">
+        <div className="margem">
+          <p className="carimbo">Painel de trabalho</p>
+        </div>
+        <div>
+          <h1 className="font-display text-3xl text-tinta">Olá, {primeiroNome(sessao.nome)}</h1>
+          <p className="mt-2 max-w-[38rem] text-[15px] leading-relaxed text-tinta-media">
+            {verPainel
+              ? "Comece pelo painel de risco: a lista já vem ordenada de quem precisa de contato primeiro."
+              : "Tire dúvidas sobre suas disciplinas com base nos documentos oficiais enviados pela coordenação."}
+          </p>
+        </div>
+      </div>
 
       {resumo && (
-        <section aria-labelledby="resumo">
-          <div className="secao">
-            <span className="secao-numero">1</span>
-            <h2 id="resumo" className="text-xl text-tinta">
+        <section className="grade border-b border-regua py-8" aria-labelledby="resumo">
+          <div className="margem">
+            <p className="margem-numero">{++numeroSecao}</p>
+            <p className="carimbo mt-1">Situação da base</p>
+          </div>
+          <div>
+            <h2 id="resumo" className="sr-only">
               Situação da base
             </h2>
-          </div>
-          <table className="w-full max-w-lg text-left">
-            <tbody>
+            <dl className="flex flex-wrap gap-x-10 gap-y-4">
               {FAIXAS.map(([chave, rotulo, cor]) => (
-                <tr key={chave} className="border-b border-regua-fraca">
-                  <th scope="row" className="py-2 pr-6 font-sans text-[15px] font-normal text-tinta-media">
-                    {rotulo}
-                  </th>
-                  <td className={`py-2 text-right font-mono text-xl font-bold ${cor}`}>
+                <div key={chave}>
+                  <dd className={`font-mono text-2xl font-bold leading-none ${cor}`}>
                     {resumo[chave] ?? 0}
-                  </td>
-                </tr>
+                  </dd>
+                  <dt className="carimbo mt-1.5">{rotulo}</dt>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </dl>
+          </div>
         </section>
       )}
 
-      <section aria-labelledby="acessos">
-        <div className="secao">
-          <span className="secao-numero">{resumo ? "2" : "1"}</span>
-          <h2 id="acessos" className="text-xl text-tinta">
+      <section className="grade border-b border-regua py-8" aria-labelledby="acessos">
+        <div className="margem">
+          <p className="margem-numero">{++numeroSecao}</p>
+          <p className="carimbo mt-1">O que fazer agora</p>
+        </div>
+        <div className="space-y-5">
+          <h2 id="acessos" className="sr-only">
             O que fazer agora
           </h2>
-        </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
           {podeFazer(sessao.papel, "chat.perguntar") && (
-            <Link href="/chat" className="folha block p-5 transition-colors hover:border-sagrado">
-              <h3 className="mb-2 text-lg text-tinta">Assistente de estudos</h3>
+            <Link
+              href="/chat"
+              className="block max-w-[38rem] border-l-2 border-sagrado pl-5 transition-colors hover:border-sagrado-escuro"
+            >
+              <h3 className="mb-1 text-lg text-tinta">Assistente de estudos</h3>
               <p className="text-[14px] leading-relaxed text-tinta-media">
                 Pergunte sobre datas, critérios de avaliação e conteúdo. A resposta cita o documento
                 de onde veio, e o sistema admite quando a informação não está no material.
               </p>
-              <p className="carimbo mt-4">
+              <p className="carimbo mt-2">
                 {pluralizar(disciplinas, "disciplina", "disciplinas")} ·{" "}
                 {pluralizar(documentos, "documento", "documentos")}
               </p>
@@ -91,14 +99,17 @@ export default async function PaginaInicio() {
           )}
 
           {verPainel && (
-            <Link href="/dashboard" className="folha block p-5 transition-colors hover:border-sagrado">
-              <h3 className="mb-2 text-lg text-tinta">Painel de risco de evasão</h3>
+            <Link
+              href="/dashboard"
+              className="block max-w-[38rem] border-l-2 border-sagrado pl-5 transition-colors hover:border-sagrado-escuro"
+            >
+              <h3 className="mb-1 text-lg text-tinta">Painel de risco de evasão</h3>
               <p className="text-[14px] leading-relaxed text-tinta-media">
                 Todos os alunos ordenados pelo score fuzzy, do mais crítico ao menos. Cada linha abre
                 o detalhamento das regras que produziram aquele número.
               </p>
               {resumo && (
-                <p className="carimbo mt-4">
+                <p className="carimbo mt-2">
                   {(resumo.critico ?? 0) + (resumo.alto ?? 0)} precisando de contato
                 </p>
               )}
@@ -107,24 +118,31 @@ export default async function PaginaInicio() {
         </div>
       </section>
 
-      <section aria-labelledby="modo">
-        <h2 id="modo" className="carimbo mb-2">
-          Modo de operação do assistente
-        </h2>
-        <p className="max-w-2xl border-l-2 border-regua-forte pl-4 text-[14px] leading-relaxed text-tinta-media">
-          {provedor === "gemini" ? (
-            <>
-              <span className="font-medium text-tinta">Generativo.</span> As respostas são redigidas
-              por um modelo de linguagem a partir dos trechos recuperados, sempre com a fonte citada.
-            </>
-          ) : (
-            <>
-              <span className="font-medium text-tinta">Leitura direta do material.</span> Sem chave
-              de API configurada, o sistema responde transcrevendo os trechos recuperados em vez de
-              redigir um texto novo. Continua respondendo e continua citando a fonte.
-            </>
-          )}
-        </p>
+      <section className="grade py-8" aria-labelledby="modo">
+        <div className="margem">
+          <p className="margem-numero">{++numeroSecao}</p>
+          <p className="carimbo mt-1">Modo do assistente</p>
+        </div>
+        <div>
+          <h2 id="modo" className="sr-only">
+            Modo de operação do assistente
+          </h2>
+          <p className="max-w-[38rem] text-[14px] leading-relaxed text-tinta-media">
+            {provedor === "gemini" ? (
+              <>
+                <span className="font-medium text-tinta">Generativo.</span> As respostas são
+                redigidas por um modelo de linguagem a partir dos trechos recuperados, sempre com a
+                fonte citada.
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-tinta">Leitura direta do material.</span> Sem
+                chave de API configurada, o sistema responde transcrevendo os trechos recuperados em
+                vez de redigir um texto novo. Continua respondendo e continua citando a fonte.
+              </>
+            )}
+          </p>
+        </div>
       </section>
     </div>
   );

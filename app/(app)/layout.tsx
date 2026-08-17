@@ -20,36 +20,37 @@ export default async function LayoutAplicacao({ children }: { children: React.Re
   ].filter((i) => i.visivel);
 
   return (
-    <div className="min-h-screen">
-      <header className="nao-imprime border-b-2 border-tinta bg-papel-alto">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-regua py-2">
-            <Link href="/inicio" className="font-display text-lg text-tinta">
-              Permane<span className="text-sagrado">IA</span>
-            </Link>
-            <div className="flex items-baseline gap-4">
-              <span className="carimbo hidden sm:inline">
-                {primeiroNome(sessao.nome)} · {rotuloPapel(sessao.papel)}
-              </span>
-              <BotaoSair />
-            </div>
+    <div className="mx-auto min-h-screen max-w-6xl px-6">
+      <header className="nao-imprime">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b-2 border-tinta pb-2 pt-5">
+          <Link href="/inicio" className="font-display text-xl text-tinta">
+            Permane<span className="text-sagrado">IA</span>
+          </Link>
+          <div className="flex items-baseline gap-5">
+            <span className="carimbo hidden sm:inline">
+              {primeiroNome(sessao.nome)} · {rotuloPapel(sessao.papel)}
+            </span>
+            <BotaoSair />
           </div>
-
-          <nav aria-label="Navegação principal" className="flex flex-wrap">
-            {itens.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="border-b-2 border-transparent px-3 py-2 font-mono text-[11px] uppercase tracking-carimbo text-tinta-media transition-colors hover:border-sagrado hover:text-tinta"
-              >
-                {item.rotulo}
-              </Link>
-            ))}
-          </nav>
         </div>
+
+        <nav
+          aria-label="Navegação principal"
+          className="flex flex-wrap gap-x-6 border-b border-regua py-1.5"
+        >
+          {itens.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="font-mono text-[11px] uppercase tracking-carimbo text-tinta-media transition-colors hover:text-sagrado"
+            >
+              {item.rotulo}
+            </Link>
+          ))}
+        </nav>
       </header>
 
-      <main id="conteudo" className="mx-auto max-w-6xl px-6 py-8">
+      <main id="conteudo" className="py-8">
         {children}
       </main>
     </div>
