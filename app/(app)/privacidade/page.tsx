@@ -12,31 +12,30 @@ const GUARDADO = [
 
 export default function PaginaPrivacidade() {
   return (
-    <div className="max-w-3xl space-y-8">
-      <header className="border-b-2 border-tinta pb-3">
-        <p className="carimbo mb-2">Tratamento de dados pessoais</p>
-        <h1 className="font-display text-3xl text-tinta">Meus dados</h1>
-      </header>
-
-      <section aria-labelledby="aviso-instalacao">
-        <h2 id="aviso-instalacao" className="carimbo mb-2">
-          Sobre esta instalação
-        </h2>
-        <p className="aviso">
-          Esta é uma instalação acadêmica e toda a base é sintética: os alunos, as notas, as
-          frequências e os acessos foram gerados por script. Nenhum registro corresponde a uma
-          pessoa real, e nenhum dado de colega de turma foi usado.
-        </p>
-      </section>
-
-      <section aria-labelledby="guardado">
-        <div className="secao">
-          <span className="secao-numero">1</span>
-          <h2 id="guardado" className="text-xl text-tinta">
-            O que é guardado
-          </h2>
+    <div>
+      <div className="grade border-b border-regua pb-6">
+        <div className="margem">
+          <p className="carimbo">Tratamento de dados</p>
         </div>
-        <table className="w-full text-left">
+        <div>
+          <h1 className="font-display text-3xl text-tinta">Meus dados</h1>
+          <p className="aviso mt-3 max-w-[38rem]">
+            Esta é uma instalação acadêmica e toda a base é sintética: os alunos, as notas, as
+            frequências e os acessos foram gerados por script. Nenhum registro corresponde a uma
+            pessoa real, e nenhum dado de colega de turma foi usado.
+          </p>
+        </div>
+      </div>
+
+      <section className="grade border-b border-regua py-8" aria-labelledby="guardado">
+        <div className="margem">
+          <p className="margem-numero">1</p>
+          <p className="carimbo mt-1">O que é guardado</p>
+        </div>
+        <table className="w-full max-w-[38rem] text-left">
+          <caption className="sr-only" id="guardado">
+            O que é guardado
+          </caption>
           <tbody>
             {GUARDADO.map(([titulo, texto]) => (
               <tr key={titulo} className="border-b border-regua-fraca align-baseline">
@@ -50,14 +49,13 @@ export default function PaginaPrivacidade() {
         </table>
       </section>
 
-      <section aria-labelledby="score">
-        <div className="secao">
-          <span className="secao-numero">2</span>
-          <h2 id="score" className="text-xl text-tinta">
-            Quem vê o seu score de risco
-          </h2>
+      <section className="grade border-b border-regua py-8" aria-labelledby="score">
+        <div className="margem">
+          <p className="margem-numero">2</p>
+          <p className="carimbo mt-1">Quem vê o score</p>
         </div>
-        <p className="text-[15px] leading-[1.7] text-tinta-media">
+        <p className="max-w-[38rem] text-[15px] leading-[1.7] text-tinta-media">
+          <span id="score" className="sr-only">Quem vê o seu score de risco</span>
           Apenas a coordenação pedagógica. O score não é exibido ao aluno, e essa foi uma decisão
           deliberada de projeto: informar alguém de que um sistema o classificou como risco crítico
           pode produzir justamente o desligamento que o sistema existe para evitar. O score serve
@@ -65,18 +63,18 @@ export default function PaginaPrivacidade() {
         </p>
       </section>
 
-      <section aria-labelledby="acesso">
-        <div className="secao">
-          <span className="secao-numero">3</span>
-          <h2 id="acesso" className="text-xl text-tinta">
-            Acesso e portabilidade
-          </h2>
+      <section className="grade py-8" aria-labelledby="acesso">
+        <div className="margem">
+          <p className="margem-numero">3</p>
+          <p className="carimbo mt-1" id="acesso">Acesso e portabilidade</p>
         </div>
-        <p className="mb-4 text-[15px] leading-[1.7] text-tinta-media">
+        <div>
+        <p className="mb-4 max-w-[38rem] text-[15px] leading-[1.7] text-tinta-media">
           Você pode baixar tudo que o sistema guarda sobre você, em formato aberto, a qualquer
           momento. É o direito de acesso e portabilidade previsto no artigo 18 da LGPD.
         </p>
         <BotaoExportarDados />
+        </div>
       </section>
     </div>
   );

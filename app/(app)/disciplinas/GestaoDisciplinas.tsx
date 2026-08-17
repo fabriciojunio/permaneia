@@ -27,83 +27,92 @@ export function GestaoDisciplinas({ disciplinas }: { disciplinas: Disciplina[] }
   const [mensagem, setMensagem] = useState<{ tipo: "ok" | "erro"; texto: string } | null>(null);
 
   return (
-    <div className="space-y-6">
-      {mensagem && (
-        <p
-          role="status"
-          className={
-            mensagem.tipo === "ok"
-              ? "border-l-2 border-risco-baixo bg-papel-alto px-4 py-3 text-sm text-tinta"
-              : "aviso"
-          }
-        >
-          {mensagem.texto}
+    <div className="grade mt-8">
+      <div className="margem">
+        <p className="carimbo">Acervo</p>
+        <p className="mt-1 text-[13px] leading-snug text-tinta-fraca md:ml-auto md:max-w-[10rem]">
+          Cada PDF vira trechos indexados no banco.
         </p>
-      )}
+      </div>
 
-      <NovaDisciplina
-        aoCriar={(texto) => {
-          setMensagem({ tipo: "ok", texto });
-          router.refresh();
-        }}
-        aoFalhar={(texto) => setMensagem({ tipo: "erro", texto })}
-      />
+      <div className="space-y-6">
+        {mensagem && (
+          <p
+            role="status"
+            className={
+              mensagem.tipo === "ok"
+                ? "border-l-2 border-risco-baixo bg-papel-alto px-4 py-3 text-sm text-tinta"
+                : "aviso"
+            }
+          >
+            {mensagem.texto}
+          </p>
+        )}
 
-      {disciplinas.length === 0 ? (
-        <div className="folha p-6 text-[15px] text-tinta-media">
-          Nenhuma disciplina cadastrada ainda.
-        </div>
-      ) : (
-        <ul className="space-y-4">
-          {disciplinas.map((d) => (
-            <li key={d.id} className="folha p-5">
-              <div className="mb-3 border-b border-regua pb-2">
-                <h2 className="text-lg text-tinta">{d.nome}</h2>
-                <p className="carimbo mt-0.5">
-                  {[d.professor, d.periodo].filter(Boolean).join(" · ") || "Sem professor ou período"}
-                  {" · "}
-                  {pluralizar(d.matriculas, "matrícula", "matrículas")}
-                </p>
-              </div>
+        <NovaDisciplina
+          aoCriar={(texto) => {
+            setMensagem({ tipo: "ok", texto });
+            router.refresh();
+          }}
+          aoFalhar={(texto) => setMensagem({ tipo: "erro", texto })}
+        />
 
-              {d.documentos.length === 0 ? (
-                <p className="mb-4 border-l-2 border-risco-medio bg-papel px-3 py-2 text-[13px] text-tinta-media">
-                  Sem documento indexado. O assistente não responde perguntas desta disciplina até
-                  que a ementa ou o cronograma seja enviado.
-                </p>
-              ) : (
-                <table className="mb-4 w-full text-left text-[13px]">
-                  <tbody>
-                    {d.documentos.map((doc) => (
-                      <tr key={doc.id} className="border-b border-regua-fraca last:border-0">
-                        <td className="py-1.5 pr-4 text-tinta">{doc.titulo}</td>
-                        <td className="py-1.5 pr-4 font-mono text-[11px] text-sagrado">
-                          {doc.referencia ?? ""}
-                        </td>
-                        <td className="py-1.5 pr-4 text-right font-mono text-[11px] text-tinta-fraca">
-                          {doc.totalChunks} trecho(s)
-                        </td>
-                        <td className="py-1.5 text-right font-mono text-[11px] text-tinta-fraca">
-                          {formatarData(doc.criadoEm)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+        {disciplinas.length === 0 ? (
+          <div className="folha p-6 text-[15px] text-tinta-media">
+            Nenhuma disciplina cadastrada ainda.
+          </div>
+        ) : (
+          <ul className="space-y-4">
+            {disciplinas.map((d) => (
+              <li key={d.id} className="folha p-5">
+                <div className="mb-3 border-b border-regua pb-2">
+                  <h2 className="text-lg text-tinta">{d.nome}</h2>
+                  <p className="carimbo mt-0.5">
+                    {[d.professor, d.periodo].filter(Boolean).join(" · ") || "Sem professor ou período"}
+                    {" · "}
+                    {pluralizar(d.matriculas, "matrícula", "matrículas")}
+                  </p>
+                </div>
 
-              <EnvioDocumento
-                disciplinaId={d.id}
-                aoEnviar={(texto) => {
-                  setMensagem({ tipo: "ok", texto });
-                  router.refresh();
-                }}
-                aoFalhar={(texto) => setMensagem({ tipo: "erro", texto })}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
+                {d.documentos.length === 0 ? (
+                  <p className="mb-4 border-l-2 border-risco-medio bg-papel px-3 py-2 text-[13px] text-tinta-media">
+                    Sem documento indexado. O assistente não responde perguntas desta disciplina até
+                    que a ementa ou o cronograma seja enviado.
+                  </p>
+                ) : (
+                  <table className="mb-4 w-full text-left text-[13px]">
+                    <tbody>
+                      {d.documentos.map((doc) => (
+                        <tr key={doc.id} className="border-b border-regua-fraca last:border-0">
+                          <td className="py-1.5 pr-4 text-tinta">{doc.titulo}</td>
+                          <td className="py-1.5 pr-4 font-mono text-[11px] text-sagrado">
+                            {doc.referencia ?? ""}
+                          </td>
+                          <td className="py-1.5 pr-4 text-right font-mono text-[11px] text-tinta-fraca">
+                            {doc.totalChunks} trecho(s)
+                          </td>
+                          <td className="py-1.5 text-right font-mono text-[11px] text-tinta-fraca">
+                            {formatarData(doc.criadoEm)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                <EnvioDocumento
+                  disciplinaId={d.id}
+                  aoEnviar={(texto) => {
+                    setMensagem({ tipo: "ok", texto });
+                    router.refresh();
+                  }}
+                  aoFalhar={(texto) => setMensagem({ tipo: "erro", texto })}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

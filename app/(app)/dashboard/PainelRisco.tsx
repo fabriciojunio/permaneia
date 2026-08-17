@@ -74,12 +74,14 @@ export function PainelRisco({
   }
 
   return (
-    <div className="space-y-6">
-      <section>
-        <h2 className="carimbo mb-2">Distribuição</h2>
-        <div className="flex flex-wrap divide-x divide-regua border border-regua bg-papel-alto">
+    <div>
+      <section className="grade border-b border-regua py-6">
+        <div className="margem">
+          <p className="carimbo">Distribuição</p>
+        </div>
+        <div className="flex flex-wrap gap-x-10 gap-y-3">
           {RESUMO.map(([chave, rotulo, cor]) => (
-            <div key={chave} className="flex-1 px-4 py-3">
+            <div key={chave}>
               <p className={`font-mono text-2xl font-bold ${cor}`}>{formatarNumero(resumo[chave] ?? 0)}</p>
               <p className="carimbo mt-0.5">{rotulo}</p>
             </div>
@@ -87,10 +89,12 @@ export function PainelRisco({
         </div>
       </section>
 
-      <div className="nao-imprime">
-        <label htmlFor="filtro-disciplina" className="rotulo-campo">
-          Filtrar por disciplina
-        </label>
+      <section className="grade nao-imprime border-b border-regua py-4">
+        <div className="margem">
+          <label htmlFor="filtro-disciplina" className="carimbo">
+            Filtrar
+          </label>
+        </div>
         <select
           id="filtro-disciplina"
           value={disciplinaSelecionada}
@@ -108,9 +112,9 @@ export function PainelRisco({
             </option>
           ))}
         </select>
-      </div>
+      </section>
 
-      <div className="folha overflow-hidden">
+      <div className="mt-6 folha overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[52rem] table-fixed text-sm">
             <caption className="sr-only">

@@ -262,13 +262,13 @@ async function main(): Promise<void> {
   await prisma.usuario.createMany({
     data: [
       {
-        nome: "Coordenação Pedagógica",
+        nome: "Regina Sartori",
         email: "coordenacao@permaneia.exemplo",
         senhaHash: senhaDemo,
         papel: "coordenacao",
       },
       {
-        nome: "Administração do Sistema",
+        nome: "Otávio Bettencourt",
         email: "admin@permaneia.exemplo",
         senhaHash: senhaDemo,
         papel: "admin",
