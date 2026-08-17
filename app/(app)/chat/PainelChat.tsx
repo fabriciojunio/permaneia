@@ -25,11 +25,15 @@ type Mensagem =
   | { autor: "aluno"; texto: string }
   | { autor: "assistente"; texto: string; fontes: Fonte[]; diagnostico: Diagnostico };
 
+// Toda sugestão aqui é uma pergunta que o material responde. "Que conteúdo cai
+// na aula de lógica fuzzy" saiu da lista: o cronograma diz que a aula é sobre
+// lógica fuzzy, e não que assunto cai numa prova, então a resposta certa era
+// uma recusa. Sugestão que devolve recusa faz o assistente parecer quebrado.
 const SUGESTOES = [
   "Quando é a Prova P1?",
+  "Em que aula entra lógica fuzzy?",
   "Qual é o limite de faltas da disciplina?",
-  "Quanto vale o quiz na nota?",
-  "Que conteúdo cai na aula de lógica fuzzy?",
+  "Quais são os temas de todas as aulas?",
 ];
 
 export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
