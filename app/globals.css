@@ -54,15 +54,6 @@ body {
     @apply font-mono text-[11px] uppercase tracking-carimbo text-tinta-fraca;
   }
 
-  /*
-    Grade assimétrica com marginália. A coluna estreita da esquerda carrega
-    número de seção, rótulo e nota de rodapé; a larga carrega o texto. É como
-    monografia e relatório impresso se organizam, e é o que tira a página da
-    coluna única empilhada.
-
-    Abaixo de md a margem vira uma faixa acima do conteúdo, porque em tela
-    estreita não há margem para ocupar.
-  */
   /* Toda página ocupa a altura da janela: cabeçalho no topo, conteúdo no meio
      e rodapé encostado embaixo, como folha impressa. Sem isso, tela curta
      deixava o rodapé flutuando no meio e um vazio embaixo dele. */
@@ -80,8 +71,19 @@ body {
     @apply flex flex-1 flex-col;
   }
 
+  /*
+    Grade assimétrica com marginália. A coluna estreita da esquerda carrega
+    número de seção, rótulo e nota de rodapé; a larga carrega o texto. É como
+    monografia e relatório impresso se organizam, e é o que tira a página da
+    coluna única empilhada.
+
+    Abaixo de md a margem vira uma faixa acima do conteúdo, porque em tela
+    estreita não há margem para ocupar. O `grid-cols-1` não é decorativo: sem
+    ele a coluna implícita é dimensionada por max-content, e um filho largo
+    empurra a página inteira para os lados no celular.
+  */
   .grade {
-    @apply grid content-start gap-x-8 gap-y-2 md:grid-cols-[11rem_minmax(0,1fr)];
+    @apply grid grid-cols-1 content-start gap-x-8 gap-y-2 md:grid-cols-[11rem_minmax(0,1fr)];
   }
 
   .margem {
@@ -106,13 +108,13 @@ body {
   }
 
   .campo {
-    @apply w-full border border-regua-forte bg-papel-alto px-3 py-2 font-sans text-tinta
+    @apply min-h-11 w-full border border-regua-forte bg-papel-alto px-3 py-2 font-sans text-tinta
            placeholder:text-tinta-apagada focus:border-sagrado focus:outline-none
            focus:ring-1 focus:ring-sagrado disabled:bg-papel-fundo disabled:text-tinta-fraca;
   }
 
   .botao {
-    @apply inline-flex items-center justify-center gap-2 border px-4 py-2 font-mono text-[12px]
+    @apply inline-flex min-h-11 items-center justify-center gap-2 border px-4 py-2 font-mono text-[12px]
            uppercase tracking-carimbo transition-colors disabled:cursor-not-allowed
            disabled:opacity-45;
   }
