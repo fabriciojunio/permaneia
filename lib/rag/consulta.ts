@@ -38,6 +38,13 @@ import {
 
 /** Quantos trechos são recuperados do banco antes da filtragem. */
 export const K_RECUPERACAO = 8;
+/**
+ * Recuperação mais larga para pergunta de enumeração. Com 8 candidatos, um
+ * documento verboso ocupa a lista inteira e os outros nem chegam ao filtro de
+ * relevância: no modo de leitura direta, "quais são os temas das aulas" trazia
+ * oito trechos do contrato didático e o cronograma ficava de fora.
+ */
+export const K_RECUPERACAO_ABRANGENTE = 20;
 /** Quantos trechos, no máximo, entram no contexto enviado ao modelo. */
 export const K_CONTEXTO = 4;
 /** Teto de trechos quando a pergunta abre o documento inteiro. */
@@ -149,6 +156,10 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
     };
   }
 
+  // A classe da pergunta é decidida antes da busca: ela muda a largura da
+  // recuperação, e não só o corte do contexto.
+  const abrangente = perguntaAbrangente(opcoes.pergunta);
+
   // 1. Vetor da pergunta.
   const embedding = await gerarEmbeddingComFallback(opcoes.pergunta);
 
@@ -161,7 +172,7 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
     opcoes.disciplinaId,
     embedding.valor,
     embedding.origem,
-    K_RECUPERACAO
+    abrangente ? K_RECUPERACAO_ABRANGENTE : K_RECUPERACAO
   );
 
   const maxSimilaridade = similaridadeMaxima(candidatos);
@@ -189,7 +200,6 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
   // o documento que melhor casou, inteiro e em ordem, porque a resposta certa
   // para "qual é o conteúdo das aulas" é a lista toda e não a aula que ficou em
   // primeiro no ranking.
-  const abrangente = perguntaAbrangente(opcoes.pergunta);
   const contexto = abrangente
     ? await documentosRelevantesInteiros(relevantes)
     : removerRedundantes(relevantes).slice(0, K_CONTEXTO);
