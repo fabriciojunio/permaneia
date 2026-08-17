@@ -32,7 +32,7 @@ export default async function PaginaInicio() {
   let numeroSecao = 0;
 
   return (
-    <div>
+    <div className="pagina">
       <div className="grade border-b border-regua pb-8">
         <div className="margem">
           <p className="carimbo">Painel de trabalho</p>
@@ -48,7 +48,7 @@ export default async function PaginaInicio() {
       </div>
 
       {resumo && (
-        <section className="grade border-b border-regua py-8" aria-labelledby="resumo">
+        <section className="grade grow border-b border-regua py-8" aria-labelledby="resumo">
           <div className="margem">
             <p className="margem-numero">{++numeroSecao}</p>
             <p className="carimbo mt-1">Situação da base</p>
@@ -71,7 +71,7 @@ export default async function PaginaInicio() {
         </section>
       )}
 
-      <section className="grade border-b border-regua py-8" aria-labelledby="acessos">
+      <section className="grade grow border-b border-regua py-8" aria-labelledby="acessos">
         <div className="margem">
           <p className="margem-numero">{++numeroSecao}</p>
           <p className="carimbo mt-1">O que fazer agora</p>
@@ -135,7 +135,7 @@ export default async function PaginaInicio() {
         </div>
       </section>
 
-      <section className="grade py-8" aria-labelledby="modo">
+      <section className="grade grow py-8" aria-labelledby="modo">
         <div className="margem">
           <p className="margem-numero">{++numeroSecao}</p>
           <p className="carimbo mt-1">Modo do assistente</p>

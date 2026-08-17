@@ -23,13 +23,13 @@ const CONDICOES = [
 
 export default function PaginaCadastro() {
   return (
-    <main id="conteudo" className="mx-auto min-h-screen max-w-6xl px-6">
+    <main id="conteudo" className="folha-tela max-w-6xl">
       <div className="carimbo flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b-2 border-tinta pb-2 pt-5">
         <span>Unisagrado · Inteligência Artificial · Quinta-feira</span>
         <span>2026-2</span>
       </div>
 
-      <div className="grid items-start gap-x-16 gap-y-10 py-12 lg:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid flex-1 content-center items-start gap-x-16 gap-y-10 py-12 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div>
           <p className="carimbo">Ficha de cadastro</p>
           <h1 className="mt-2 font-display text-4xl leading-none text-tinta">Criar conta de aluno</h1>
@@ -72,6 +72,11 @@ export default function PaginaCadastro() {
           </div>
         </div>
       </div>
+
+      <footer className="rodape-folha">
+        <p className="carimbo">Projeto prático de IA generativa</p>
+        <p className="carimbo">Prof. Patrick Pedreira Silva</p>
+      </footer>
     </main>
   );
 }
