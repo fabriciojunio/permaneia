@@ -67,9 +67,13 @@ Senha de todas: `permanencia2026`.
 
 | Conta | Papel | O que ela mostra |
 |---|---|---|
-| `coordenacao@permaneia.exemplo` | coordenação | Painel de risco com os 30 alunos sintéticos |
+| `coordenacao@permaneia.exemplo` | coordenação | Painel de risco com os 30 alunos sintéticos, disciplinas e documentos |
 | `aluno@permaneia.exemplo` | aluno | Assistente de estudos com o cronograma indexado |
 | `admin@permaneia.exemplo` | administração | Gestão de contas e auditoria |
+
+As duas primeiras não se sobrepõem: a coordenação não alcança o assistente e o
+aluno não alcança o painel. Para ver as duas metades na apresentação é preciso
+trocar de conta, e isso é proposital.
 
 Qualquer pessoa também pode criar uma conta de aluno em `/cadastro`.
 
@@ -93,10 +97,10 @@ duas o aluno está lendo seria desonesto.
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Build de produção |
-| `npm test` | 1692 testes unitários |
+| `npm test` | 1824 testes unitários |
 | `npm run test:coverage` | Testes com gate de cobertura em 90% |
-| `npm run test:integration` | 63 testes contra Postgres real |
-| `npm run test:e2e` | 48 testes de ponta a ponta |
+| `npm run test:integration` | 72 testes contra Postgres real |
+| `npm run test:e2e` | 54 testes de ponta a ponta |
 | `npm run test:vistoria` | Vistoria visual da aplicação publicada, com captura de tela |
 | `npm run db:seed` | Dados sintéticos e documentos de exemplo |
 | `npx tsx scripts/avaliar-rag.ts` | Mede cobertura e recusa do assistente |

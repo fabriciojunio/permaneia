@@ -2,13 +2,18 @@
 //
 // Três papéis, com fronteiras que espelham o mundo real da instituição:
 //
-//   aluno        vê o próprio chat e os próprios dados. Nunca vê o painel de
-//                risco, nem o próprio score. Mostrar a um aluno que o sistema o
-//                classificou como "risco crítico" é capaz de produzir
+//   aluno        usa o assistente de estudos e vê os próprios dados. Nunca vê o
+//                painel de risco, nem o próprio score. Mostrar a um aluno que o
+//                sistema o classificou como "risco crítico" é capaz de produzir
 //                exatamente o desligamento que se quer evitar.
-//   coordenacao  vê o painel de risco da instituição e gerencia disciplinas e
-//                documentos. Não gerencia contas.
-//   admin        gerencia contas e vê a auditoria.
+//   coordenacao  vê o painel de risco da instituição e mantém as disciplinas e
+//                os documentos. Não usa o assistente e não gerencia contas: o
+//                assistente responde dúvidas de aluno sobre a própria
+//                disciplina, e uma pergunta feita pela coordenação entraria no
+//                histórico como se fosse dúvida de aluno.
+//   admin        papel técnico, superconjunto dos outros. Gerencia contas, vê a
+//                auditoria e alcança o assistente para conseguir diagnosticar
+//                falhas de resposta sem pedir a senha de um aluno.
 //
 // A regra vive aqui, num único lugar, e é aplicada tanto pelo middleware (que
 // evita a renderização da página) quanto por cada rota de API (que é a defesa
@@ -35,7 +40,6 @@ export type Permissao =
 const PERMISSOES: Record<Papel, ReadonlySet<Permissao>> = {
   aluno: new Set<Permissao>(["chat.perguntar", "disciplina.ler", "privacidade.propriosDados"]),
   coordenacao: new Set<Permissao>([
-    "chat.perguntar",
     "disciplina.ler",
     "disciplina.escrever",
     "documento.ingerir",
@@ -87,6 +91,9 @@ export function exigir(sessao: Sessao | null, permissao: Permissao): Resultado<S
  * renderize. A proteção real de dados está nas rotas de API.
  */
 export function podeVerPagina(caminho: string, papel: Papel): boolean {
+  if (caminho === "/chat" || caminho.startsWith("/chat/")) {
+    return podeFazer(papel, "chat.perguntar");
+  }
   if (caminho === "/dashboard" || caminho.startsWith("/dashboard/")) {
     return podeFazer(papel, "dashboard.ver");
   }

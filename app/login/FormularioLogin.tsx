@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { rotuloPapel } from "@/lib/formato";
 
 type ContaDemo = { papel: "aluno" | "coordenacao"; email: string; descricao: string };
 
@@ -128,7 +129,7 @@ export function FormularioLogin({
                 className="w-full border border-regua-forte bg-papel-alto p-3 text-left transition-colors hover:border-sagrado disabled:opacity-45"
               >
                 <span className="block font-mono text-[11px] uppercase tracking-carimbo text-sagrado">
-                  {conta.papel}
+                  {rotuloPapel(conta.papel)}
                 </span>
                 <span className="mt-0.5 block text-[13px] leading-snug text-tinta-media">
                   {conta.descricao}

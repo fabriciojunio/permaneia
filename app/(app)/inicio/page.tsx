@@ -115,6 +115,23 @@ export default async function PaginaInicio() {
               )}
             </Link>
           )}
+
+          {podeFazer(sessao.papel, "disciplina.escrever") && (
+            <Link
+              href="/disciplinas"
+              className="block max-w-[38rem] border-l-2 border-sagrado pl-5 transition-colors hover:border-sagrado-escuro"
+            >
+              <h3 className="mb-1 text-lg text-tinta">Disciplinas e documentos</h3>
+              <p className="text-[14px] leading-relaxed text-tinta-media">
+                O assistente só cita o que estiver indexado aqui. Enviar a ementa e o cronograma é o
+                que faz o aluno receber a data certa em vez de uma recusa.
+              </p>
+              <p className="carimbo mt-2">
+                {pluralizar(disciplinas, "disciplina", "disciplinas")} ·{" "}
+                {pluralizar(documentos, "documento", "documentos")}
+              </p>
+            </Link>
+          )}
         </div>
       </section>
 

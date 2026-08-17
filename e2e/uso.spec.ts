@@ -38,6 +38,18 @@ test.describe("assistente de estudos", () => {
     ).toBeVisible({ timeout: 45_000 });
   });
 
+  test("a pergunta de enumeração devolve o cronograma, e não uma aula só", async ({ page }) => {
+    // O defeito que este teste tranca: "qual é o conteúdo das aulas" respondia
+    // com a aula que ficou em primeiro na busca vetorial, correta e parcial.
+    await page.getByLabel("Sua pergunta").fill("Quais são os temas de todas as aulas da disciplina?");
+    await page.getByRole("button", { name: "Perguntar" }).click();
+
+    const log = page.getByRole("log");
+    await expect(log).toContainText("agosto", { timeout: 60_000 });
+    await expect(log).toContainText("novembro");
+    await expect(log).toContainText(/lógica fuzzy/i);
+  });
+
   test("admite não saber quando a informação não está no material", async ({ page }) => {
     await page.getByLabel("Sua pergunta").fill("Qual é o valor da mensalidade do curso?");
     await page.getByRole("button", { name: "Perguntar" }).click();

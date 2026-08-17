@@ -6,6 +6,7 @@
 // O embedding usa hashing sobre n-gramas: sem vocabulário, sem dependência e
 // determinístico, que é o que os testes precisam.
 
+import { perguntaAbrangente } from "@/lib/rag/abrangencia";
 import {
   DIMENSAO_EMBEDDING,
   normalizarVetor,
@@ -143,6 +144,9 @@ export function frases(texto: string): string[] {
 export const SEM_RESPOSTA_LOCAL =
   "Não encontrei essa informação no material desta disciplina. Vale confirmar diretamente com o professor ou com a coordenação.";
 
+/** Teto de trechos transcritos numa resposta de enumeração. */
+export const LIMITE_BLOCOS_ABRANGENTE = 20;
+
 /**
  * Devolve o trecho INTEIRO, e não as frases que casam com a pergunta. Selecionar
  * frase a frase escolhia "Avaliação. Prova P1" e descartava "24 de setembro de
@@ -162,6 +166,17 @@ export function responderExtrativo(prompt: string): string {
     .filter(Boolean);
 
   if (blocos.length === 0) return SEM_RESPOSTA_LOCAL;
+
+  // Pedido de enumeração devolve tudo que a camada de RAG entregou, na ordem em
+  // que veio. Escolher os dois melhores aqui responderia "quais são os temas"
+  // com dois temas, o que é pior do que não responder: parece uma lista
+  // completa e não é.
+  if (perguntaAbrangente(pergunta)) {
+    return [
+      "Leitura direta do material, sem geração de texto. Copio abaixo os trechos do documento:",
+      ...blocos.slice(0, LIMITE_BLOCOS_ABRANGENTE),
+    ].join("\n\n");
+  }
 
   const termosPergunta = new Set(tokenizar(pergunta));
   const pontuados = blocos.map((bloco) => {

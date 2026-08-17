@@ -21,13 +21,18 @@ recusa premia um sistema que nunca responde. Só o par diz alguma coisa.
 
 ## Conjunto de avaliação
 
-26 perguntas escritas à mão sobre os três documentos indexados na disciplina de
+31 perguntas escritas à mão sobre os três documentos indexados na disciplina de
 Inteligência Artificial (cronograma, contrato didático e enunciado do projeto):
 
-- **18 respondíveis**, cada uma com o trecho que precisa aparecer na resposta
+- **23 respondíveis**, cada uma com o trecho que precisa aparecer na resposta
   (por exemplo, "Quando é a Prova P1?" precisa devolver "24 de setembro");
 - **8 não respondíveis**, sobre informação que não está em documento nenhum
   (valor da mensalidade, número de créditos, como trancar a matrícula).
+
+Cinco das respondíveis são de **enumeração**, e nelas o trecho esperado é sempre
+o ÚLTIMO item do documento. É proposital: uma resposta que começa certo e para
+no meio acerta o começo e falha o teste, que é exatamente o defeito descrito
+adiante.
 
 As não respondíveis foram escritas de propósito no mesmo vocabulário das
 outras. Perguntar "qual o valor da mensalidade" com termos que não aparecem em
@@ -91,9 +96,9 @@ texto, apenas recuperação e transcrição literal dos trechos.
 **Valor adotado: 0,15.** É o ponto em que a recusa sobe de 50% para 75% sem
 custo nenhum de cobertura. Acima dele a cobertura despenca sem ganho.
 
-## Três defeitos encontrados durante a calibração
+## Cinco defeitos encontrados durante a calibração
 
-O caminho até esses números importa mais que os números, e todos os três
+O caminho até esses números importa mais que os números, e todos os cinco
 defeitos abaixo apareceram porque a avaliação existia. Nenhum deles seria
 visível testando o assistente à mão com meia dúzia de perguntas.
 
@@ -137,6 +142,59 @@ justamente porque a informação está completa dentro dele; recortar abaixo del
 quebra a informação.
 
 Efeito medido: cobertura de 44,4% para 88,9%.
+
+### 4. Enumeração respondida com um item (o defeito que parecia funcionar)
+
+Perguntado "qual é o conteúdo das aulas", o assistente respondia com a primeira
+aula do semestre, citada e correta. Todo o instrumental de honestidade do
+sistema dizia que estava tudo bem: similaridade alta, fonte apontada,
+diagnóstico de resposta gerada. O que faltava era a metade da resposta.
+
+A causa não era o modelo nem o prompt: era a recuperação. O contexto entregue
+continha uma aula, porque foi a que ficou em primeiro no ranking, e nenhuma
+instrução faz um modelo citar o que não recebeu.
+
+Correção: classificar a pergunta antes de montar o contexto. Pedido de
+enumeração passa a receber inteiros, e em ordem, todos os documentos que
+contribuíram algum trecho relevante. Detalhes e alternativas descartadas em
+[ADR 007](adr/007-pergunta-abrangente-abre-o-documento.md).
+
+Efeito medido: cobertura de 78,3% para 91,3% com os cinco casos novos incluídos.
+
+### 5. A própria ferramenta de avaliação medindo o limiar errado
+
+Este apareceu no meio da correção anterior, e é o mais desconfortável dos cinco:
+`scripts/avaliar-rag.ts` usava `LIMIAR_RELEVANCIA` como padrão quando nenhum
+argumento era passado. Esse é o limiar do modo de **leitura direta** (0,15), e a
+bateria o aplicava também ao modo generativo, cujo limiar é 0,65.
+
+Com 0,15, praticamente todo trecho passa no filtro de relevância, o modelo
+recebe contexto irrelevante em toda pergunta, e a recusa correta despenca. A
+execução padrão relatava **0/8**; as mesmas perguntas, no limiar do provedor,
+recusavam **6/8**.
+
+As tabelas de calibração deste documento não foram afetadas, porque foram
+levantadas varrendo o limiar explicitamente, argumento por argumento. O que
+estava errado era só o caso sem argumento, que é justamente o que se roda no
+dia a dia.
+
+Correção: sem argumento, a bateria não fixa limiar nenhum e deixa cada consulta
+usar o do provedor que gerou o vetor.
+
+Lição registrada sem rodeio: uma métrica que ninguém audita mede o que a
+ferramenta faz, e não o que o sistema faz.
+
+## Resultado atual da bateria
+
+Execução padrão, modo generativo, limiar automático por provedor:
+
+| Métrica | Resultado |
+|---|---|
+| Cobertura | 21/23 (91,3%) |
+| Recusa correta | 6/8 (75,0%) |
+
+Continua valendo a ressalva de não determinismo registrada acima: o número
+oscila entre execuções porque o modelo reformula a resposta a cada chamada.
 
 ## Tamanho do trecho
 

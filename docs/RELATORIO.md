@@ -50,6 +50,14 @@ que não sabe.
 por um score contínuo de risco de evasão, com a explicação das regras que
 produziram cada número e uma ação sugerida.
 
+Os dois lados não se sobrepõem no controle de acesso, e essa foi uma decisão
+deliberada e não um esquecimento: a coordenação não alcança o assistente, o
+aluno não alcança o painel, e as permissões dos dois papéis operacionais são
+disjuntas fora do que a LGPD obriga. Coordenação não é "aluno com mais poder":
+é outra função, com outra tela. Uma pergunta feita pela coordenação entraria no
+histórico de consultas como se fosse dúvida de aluno, e o histórico é o que
+mostra onde o material da disciplina está falhando.
+
 ### 1.3 O resultado que sustenta a escolha
 
 O sistema em produção, consultado com os sinais de um aluno com **média 8,6,
@@ -308,10 +316,11 @@ scripts executáveis que estão no repositório.
 
 ### 4.1 Qualidade do assistente, medida
 
-Conjunto de avaliação: 26 perguntas escritas à mão sobre os três documentos
-indexados. 18 respondíveis, cada uma com o trecho que precisa aparecer na
+Conjunto de avaliação: 31 perguntas escritas à mão sobre os três documentos
+indexados. 23 respondíveis, cada uma com o trecho que precisa aparecer na
 resposta; 8 **não** respondíveis, escritas de propósito no mesmo vocabulário das
-outras.
+outras. Cinco das respondíveis são de enumeração, e nelas o trecho esperado é
+sempre o último item do documento: resposta que para no meio falha o teste.
 
 Duas métricas que puxam em direções opostas:
 
@@ -324,7 +333,7 @@ Duas métricas que puxam em direções opostas:
 Valor adotado: 0,15. É o ponto em que a recusa sobe de 50% para 75% sem custo
 nenhum de cobertura.
 
-### 4.2 Três defeitos que só a medição revelou
+### 4.2 Cinco defeitos que só a medição revelou
 
 O caminho até esses números importa mais que os números. Nenhum destes defeitos
 seria visível testando o assistente à mão com meia dúzia de perguntas.
@@ -349,8 +358,29 @@ que casa com a pergunta é a segunda, a que tem a resposta é a primeira. O alun
 recebia a confirmação de que a prova existe, sem a data. Corrigido devolvendo o
 trecho inteiro, a cobertura foi de 44,4% para 88,9%.
 
-A lição vale além deste código: **recortar abaixo da unidade em que a informação
-foi escrita quebra a informação.**
+**Enumeração respondida com um item.** Perguntado "qual é o conteúdo das
+aulas", o assistente devolvia a primeira aula do semestre, citada e correta.
+Todo o instrumental de honestidade dizia que estava tudo bem: similaridade alta,
+fonte apontada, diagnóstico de resposta gerada. Faltava metade da resposta, e
+nada sinalizava isso. A causa não era o modelo nem o prompt: o contexto entregue
+continha uma aula, porque foi a que ficou em primeiro no ranking, e nenhuma
+instrução faz um modelo citar o que não recebeu. Corrigido classificando a
+pergunta antes de montar o contexto (ADR 007); a cobertura foi de 78,3% para
+91,3% com os casos novos incluídos.
+
+**A própria ferramenta de avaliação medindo o limiar errado.** O mais
+desconfortável dos cinco. `scripts/avaliar-rag.ts` usava, quando rodado sem
+argumento, o limiar do modo de leitura direta (0,15) também para o modo
+generativo, cujo limiar é 0,65. Com 0,15 quase todo trecho passa no filtro, o
+modelo recebe contexto irrelevante em toda pergunta e a recusa desaba: a
+execução padrão relatava 0/8, e as mesmas perguntas no limiar do provedor
+recusavam 6/8. As tabelas de calibração não foram afetadas, porque foram
+levantadas varrendo o limiar explicitamente; errado estava o caso sem
+argumento, que é justamente o que se roda no dia a dia.
+
+Duas lições que valem além deste código: **recortar abaixo da unidade em que a
+informação foi escrita quebra a informação**, e **uma métrica que ninguém audita
+mede o que a ferramenta faz, não o que o sistema faz.**
 
 ### 4.3 O tamanho do trecho é o parâmetro de maior impacto
 
@@ -497,7 +527,7 @@ um sai de um script no repositório e pode ser reproduzido:
 ```bash
 npx tsx scripts/avaliar-rag.ts        # cobertura e recusa
 npx tsx scripts/diagnostico-fuzzy.ts  # monotonicidade e artefato do centroide
-npm run test:coverage                 # 1690 testes e cobertura
+npm run test:coverage                 # 1824 testes e cobertura
 ```
 
 Nenhum número deste relatório foi estimado ou gerado por IA. Onde não medimos,

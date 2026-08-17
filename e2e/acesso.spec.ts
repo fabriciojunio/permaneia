@@ -47,6 +47,45 @@ test.describe("proteção de rotas", () => {
   });
 });
 
+test.describe("separação entre coordenação e aluno", () => {
+  test("a coordenação não tem o assistente na navegação", async ({ page }) => {
+    await entrar(page, CONTAS.coordenacao);
+    await expect(
+      page.getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name: "Assistente" })
+    ).toHaveCount(0);
+  });
+
+  test("a coordenação é devolvida ao início se tentar a rota do assistente", async ({ page }) => {
+    await entrar(page, CONTAS.coordenacao);
+    await page.goto("/chat");
+    await expect(page).toHaveURL(/\/inicio/);
+  });
+
+  test("a API do assistente recusa a coordenação com PROIBIDO", async ({ page }) => {
+    // A borda que conta: esconder o link não protege nada se a rota responder.
+    await entrar(page, CONTAS.coordenacao);
+    const resposta = await page.request.post("/api/rag/perguntar", {
+      headers: { origin: ORIGEM },
+      data: { disciplinaId: "00000000-0000-0000-0000-000000000000", pergunta: "Quando é a P1?" },
+    });
+    expect(resposta.status()).toBe(403);
+    expect((await resposta.json()).erro.codigo).toBe("PROIBIDO");
+  });
+
+  test("o aluno não tem painel de risco nem disciplinas na navegação", async ({ page }) => {
+    await entrar(page, CONTAS.aluno);
+    const nav = page.getByRole("navigation", { name: "Navegação principal" });
+    await expect(nav.getByRole("link", { name: "Painel de risco" })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "Disciplinas" })).toHaveCount(0);
+  });
+
+  test("o aluno é devolvido ao início se tentar a rota de disciplinas", async ({ page }) => {
+    await entrar(page, CONTAS.aluno);
+    await page.goto("/disciplinas");
+    await expect(page).toHaveURL(/\/inicio/);
+  });
+});
+
 test.describe("login", () => {
   test("entra com credenciais corretas", async ({ page }) => {
     await entrar(page, CONTAS.coordenacao);
