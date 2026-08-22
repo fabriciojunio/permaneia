@@ -25,16 +25,21 @@ import {
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import {
+  AVISO_FORA_DO_MATERIAL,
+  INSTRUCAO_GERAL,
   INSTRUCAO_SISTEMA,
   RESPOSTA_SEM_CONTEXTO,
   admitiuNaoSaber,
   citaAlgumaFonte,
   montarPrompt,
+  montarPromptGeral,
 } from "./prompt";
 import { avaliarPergunta, type CategoriaBloqueio } from "./guardrails";
 import { acertosConfiaveis, buscarPorTermos } from "./lexico";
 import { fundir, type OrigemRecuperacao, type TrechoFundido } from "./fusao";
-import { perguntaAbrangente } from "./abrangencia";
+import { perguntaAbrangente, perguntaTemporal } from "./abrangencia";
+import { calendarioDaDisciplina, hojeEmBrasilia, resumirAgenda } from "./calendario";
+import { escopoDaPergunta, type EscopoGeral } from "./escopo";
 import {
   filtrarRelevantes,
   limiarDoProvedor,
@@ -90,6 +95,11 @@ export type RespostaRag = {
   respostaFundamentada: boolean;
   /** Preenchido quando a pergunta foi barrada antes de chegar ao provedor. */
   bloqueada?: CategoriaBloqueio;
+  /**
+   * Verdadeiro quando a resposta veio do conhecimento geral do modelo, e não
+   * dos documentos indexados. A tela precisa dizer isso ao aluno.
+   */
+  foraDoMaterial?: EscopoGeral;
   duracaoMs: number;
   motivoFallback?: string;
 };
@@ -218,6 +228,81 @@ function fontesRepresentativas(
   return escolhidos.map(paraFonte);
 }
 
+/**
+ * O calendário inteiro na frente, e o que a busca achou depois.
+ *
+ * Numa pergunta temporal o documento certo é conhecido: é o que tem as datas.
+ * Entregá-lo inteiro evita o caso que apareceu no registro de consultas, em que
+ * a busca trouxe seis aulas do cronograma, todas já realizadas, e o modelo não
+ * tinha como responder qual é a próxima.
+ */
+async function comCalendarioInteiro(
+  documentoId: string,
+  relevantes: TrechoFundido[]
+): Promise<Array<TrechoRecuperado & { origemRecuperacao?: OrigemRecuperacao }>> {
+  const origens = new Map(relevantes.map((t) => [t.chunkId, t.origemRecuperacao]));
+  const medidas = new Map(relevantes.map((t) => [t.chunkId, t.similaridade]));
+
+  const calendario = (await buscarTrechosDoDocumento(documentoId, K_DOCUMENTO_INTEIRO)).map((t) => ({
+    ...t,
+    similaridade: medidas.get(t.chunkId) ?? t.similaridade,
+    ...(origens.has(t.chunkId) ? { origemRecuperacao: origens.get(t.chunkId) } : {}),
+  }));
+
+  // O resto do que a busca achou continua valendo: a pergunta pode misturar
+  // calendário e contrato, como em "a prova que vem é presencial?".
+  const outros = removerRedundantes(relevantes)
+    .filter((t) => t.documentoId !== documentoId)
+    .slice(0, K_CONTEXTO);
+
+  return [...calendario, ...outros];
+}
+
+/**
+ * Terceira saída, quando o material não responde mas o assunto ainda é nosso.
+ *
+ * Devolve `null` fora do escopo, e é esse `null` que preserva a recusa como
+ * comportamento padrão. O texto sempre começa pelo aviso escrito em código, e
+ * não pelo que o modelo resolver dizer: é ele que separa, para quem lê, o que
+ * tem fonte no acervo do que é conhecimento geral.
+ */
+async function responderComConhecimentoGeral(
+  opcoes: OpcoesConsulta,
+  base: RespostaRag,
+  inicio: number
+): Promise<RespostaRag | null> {
+  const escopo = escopoDaPergunta(opcoes.pergunta);
+  if (escopo === null) return null;
+
+  const geracao = await gerarTextoComFallback(montarPromptGeral(opcoes.pergunta, opcoes.hoje), {
+    sistema: INSTRUCAO_GERAL,
+    maxTokens: 1200,
+    temperatura: 0.2,
+  });
+
+  // Sem provedor externo não há conhecimento geral: o modo local só transcreve
+  // documento, e aqui não há documento nenhum para transcrever.
+  if (geracao.origem !== "gemini" || geracao.valor.trim().length === 0) return null;
+
+  logger.info("Resposta fora do material", {
+    disciplinaId: opcoes.disciplinaId,
+    escopo,
+  });
+
+  return {
+    ...base,
+    resposta: `${AVISO_FORA_DO_MATERIAL}\n\n${geracao.valor.trim()}`,
+    fontes: [],
+    origemIa: geracao.origem,
+    // Continua sendo verdade, e é o que o aviso diz na primeira linha: isto não
+    // está no material da disciplina.
+    admitiuNaoSaber: true,
+    respostaFundamentada: false,
+    foraDoMaterial: escopo,
+    duracaoMs: Date.now() - inicio,
+  };
+}
+
 export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
   const inicio = Date.now();
 
@@ -249,6 +334,7 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
   // A classe da pergunta é decidida antes da busca: ela muda a largura da
   // recuperação, e não só o corte do contexto.
   const abrangente = perguntaAbrangente(opcoes.pergunta);
+  const temporal = perguntaTemporal(opcoes.pergunta);
 
   // 1. Vetor da pergunta.
   const embedding = await gerarEmbeddingComFallback(opcoes.pergunta);
@@ -293,8 +379,19 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
     });
 
   const relevantes = fundir({ vetoriais, lexicos, maximo: k });
-  if (relevantes.length === 0) {
-    const resultado: RespostaRag = {
+
+  // 4,5. Agenda, quando a pergunta depende de saber que dia é hoje.
+  //
+  // O calendário sai do material indexado, mas a conta de dias é feita aqui, no
+  // domínio, e não pelo modelo. "Qual é a próxima aula" e "o que tem na semana
+  // que vem" eram recusadas mesmo com seis trechos do cronograma no contexto,
+  // porque trecho solto não diz o que já passou. Ver lib/rag/calendario.ts.
+  const eventos = temporal ? calendarioDaDisciplina(catalogo) : [];
+  const agenda = temporal ? resumirAgenda(eventos, hojeEmBrasilia(opcoes.hoje)) : null;
+  const documentoDoCalendario = agenda ? eventos[0]?.documentoId : undefined;
+
+  if (relevantes.length === 0 && !agenda) {
+    const semMaterial: RespostaRag = {
       resposta: RESPOSTA_SEM_CONTEXTO,
       fontes: [],
       origemIa: embedding.origem,
@@ -304,6 +401,9 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
       duracaoMs: Date.now() - inicio,
       ...(embedding.motivoFallback ? { motivoFallback: embedding.motivoFallback } : {}),
     };
+
+    const geral = await responderComConhecimentoGeral(opcoes, semMaterial, inicio);
+    const resultado = geral ?? semMaterial;
     if (opcoes.registrar !== false) await gravarConsulta(opcoes, resultado);
     return resultado;
   }
@@ -313,12 +413,15 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
   // Pergunta pontual leva os trechos mais próximos. Pergunta de enumeração leva
   // o documento que melhor casou, inteiro e em ordem, porque a resposta certa
   // para "qual é o conteúdo das aulas" é a lista toda e não a aula que ficou em
-  // primeiro no ranking.
-  const contexto = abrangente
-    ? await documentosRelevantesInteiros(relevantes)
-    : removerRedundantes(relevantes).slice(0, K_CONTEXTO);
+  // primeiro no ranking. Pergunta temporal leva o calendário inteiro, mesmo que
+  // a busca só tenha alcançado uma parte dele.
+  const contexto = documentoDoCalendario
+    ? await comCalendarioInteiro(documentoDoCalendario, relevantes)
+    : abrangente
+      ? await documentosRelevantesInteiros(relevantes)
+      : removerRedundantes(relevantes).slice(0, K_CONTEXTO);
 
-  const prompt = montarPrompt(opcoes.pergunta, contexto, opcoes.hoje);
+  const prompt = montarPrompt(opcoes.pergunta, contexto, opcoes.hoje, agenda);
 
   // 6. Geração, com degradação para o modo extrativo.
   const geracao = await gerarTextoComFallback(prompt, {
@@ -352,7 +455,7 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
     textoFinal = RESPOSTA_SEM_CONTEXTO;
   }
 
-  const resultado: RespostaRag = {
+  const comMaterial: RespostaRag = {
     resposta: textoFinal,
     fontes: fontesRepresentativas(contexto, K_CONTEXTO),
     origemIa: geracao.origem,
@@ -365,6 +468,14 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
     ...(geracao.motivoFallback ? { motivoFallback: geracao.motivoFallback } : {}),
   };
 
+  // O material foi consultado e não respondeu. Se o assunto ainda for do
+  // assistente, a resposta de conhecimento geral é melhor para o aluno do que
+  // uma recusa seca, desde que fique claro de onde ela veio.
+  const geral = comMaterial.admitiuNaoSaber
+    ? await responderComConhecimentoGeral(opcoes, comMaterial, inicio)
+    : null;
+
+  const resultado = geral ?? comMaterial;
   if (opcoes.registrar !== false) await gravarConsulta(opcoes, resultado);
   return resultado;
 }

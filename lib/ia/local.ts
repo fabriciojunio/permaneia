@@ -157,6 +157,19 @@ export function responderExtrativo(prompt: string): string {
   const contexto = prompt.match(/<contexto>([\s\S]*?)<\/contexto>/)?.[1]?.trim() ?? "";
   const pergunta = prompt.match(/<pergunta>([\s\S]*?)<\/pergunta>/)?.[1]?.trim() ?? "";
 
+  // A agenda vem calculada pelo domínio, a partir do cronograma indexado, e é
+  // a única parte do prompt que já está pronta para virar resposta. Quando ela
+  // existe, transcrevê-la é melhor do que qualquer trecho que este modo
+  // pudesse escolher: a pergunta era sobre o calendário, e a resposta do
+  // calendário está ali. Sem isso, o modo de degradação recusava justamente as
+  // perguntas que o sistema tinha resolvido sozinho.
+  const agenda = prompt.match(/<agenda>([\s\S]*?)<\/agenda>/)?.[1]?.trim();
+  if (agenda) {
+    return ["Leitura direta do material, sem geração de texto. O calendário da disciplina diz:", agenda].join(
+      "\n\n"
+    );
+  }
+
   if (!contexto) return SEM_RESPOSTA_LOCAL;
 
   // A camada de RAG separa os trechos por uma linha de três hifens.

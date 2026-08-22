@@ -291,8 +291,59 @@ describe("consulta completa", () => {
       pergunta: "Qual é o valor da mensalidade do curso?",
       registrar: false,
     });
+    // A resposta pode vir do conhecimento geral, e nesse caso ela abre dizendo
+    // que aquilo não está no material. O que não pode, em nenhum dos dois
+    // caminhos, é apresentar um valor como se o acervo o tivesse.
     expect(r.admitiuNaoSaber).toBe(true);
     expect(r.fontes).toHaveLength(0);
+  });
+
+  it("responde qual é o próximo encontro, com a data de hoje injetada", async () => {
+    // A data entra por parâmetro para o teste não depender do dia em que roda.
+    // O cronograma de exemplo tem aula em 20 e em 27 de agosto de 2026.
+    const r = await responder({
+      disciplinaId,
+      pergunta: "Quando é a proxima aula",
+      registrar: false,
+      hoje: new Date("2026-08-22T15:00:00Z"),
+    });
+    expect(r.admitiuNaoSaber).toBe(false);
+    expect(r.resposta).toContain("27 de agosto");
+  });
+
+  it("responde o que cai na semana que vem", async () => {
+    const r = await responder({
+      disciplinaId,
+      pergunta: "na materia da semana que vem vai ter o que?",
+      registrar: false,
+      hoje: new Date("2026-08-22T15:00:00Z"),
+    });
+    expect(r.admitiuNaoSaber).toBe(false);
+    expect(r.resposta).toContain("27 de agosto");
+  });
+
+  it("a pergunta temporal não inventa encontro depois do fim do semestre", async () => {
+    // Com a data depois do último encontro, a resposta certa é dizer que o
+    // cronograma acabou. O que não pode é aparecer uma aula que não existe.
+    const r = await responder({
+      disciplinaId,
+      pergunta: "Quando é a proxima aula",
+      registrar: false,
+      hoje: new Date("2027-03-01T15:00:00Z"),
+    });
+    expect(r.resposta.toLowerCase()).toMatch(
+      /não há mais encontro|nao ha mais encontro|último encontro|ultimo encontro|17 de dezembro|encerr/
+    );
+  });
+
+  it("pergunta fora do material e fora do assunto continua recusada", async () => {
+    const r = await responder({
+      disciplinaId,
+      pergunta: "Quem ganhou a Copa do Mundo de 2022?",
+      registrar: false,
+    });
+    expect(r.admitiuNaoSaber).toBe(true);
+    expect(r.foraDoMaterial).toBeUndefined();
   });
 
   it("com limiar impossível e pergunta sem termo em comum, admite não saber", async () => {

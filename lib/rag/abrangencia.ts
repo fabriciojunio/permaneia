@@ -43,3 +43,38 @@ export function perguntaAbrangente(pergunta: string): boolean {
   if (PADROES_PONTUAIS.some((p) => p.test(texto))) return false;
   return PADROES_ABRANGENTES.some((p) => p.test(texto));
 }
+
+/**
+ * Perguntas que dependem de saber que dia é hoje.
+ *
+ * São uma classe à parte porque o contexto certo para elas não é o trecho mais
+ * parecido, e sim o calendário inteiro mais a conta de dias já resolvida. O
+ * registro de consultas mostrou "Quando é a proxima aula" e "na materia da
+ * semana que vem vai ter o que?" sendo recusadas com seis trechos do cronograma
+ * no contexto: o modelo tinha aulas soltas na mão, sem saber quais já passaram.
+ */
+const PADROES_TEMPORAIS: RegExp[] = [
+  /\bpr[óo]xim[ao]s?\b/,
+  /\bseguinte\b/,
+  /\bhoje\b/,
+  // Sem fronteira no fim: em "amanhã?" o \b do JavaScript não casa depois de
+  // letra acentuada, que ele não considera caractere de palavra.
+  /\bamanh[ãa]/,
+  /\bontem\b/,
+  /\bessa\s+semana\b/,
+  /\b(semana|m[êe]s|aula|prova|avalia[çc][ãa]o|entrega)\s+que\s+vem\b/,
+  /\bsemana\s+(passada|seguinte)\b/,
+  /\bfalta[m]?\s+(quanto|quantos|quantas)\b/,
+  /\bquanto\s+(tempo|falta)\b/,
+  /\bquantos\s+dias\b/,
+  /\bj[áa]\s+(passou|teve|aconteceu)\b/,
+  /\bvem\s+(agora|a\s+seguir)\b/,
+  /\ba\s+seguir\b/,
+  /\bdepois\s+de\s+hoje\b/,
+  /\best[áa]\s+atrasad/,
+];
+
+export function perguntaTemporal(pergunta: string): boolean {
+  const texto = pergunta.toLowerCase();
+  return PADROES_TEMPORAIS.some((p) => p.test(texto));
+}
