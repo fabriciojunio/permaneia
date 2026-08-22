@@ -19,3 +19,7 @@ Thumbs.db
 e2e/.auth/
 .vercel
 vistoria/
+
+# Backup operacional do histórico de perguntas. Sai da máquina de quem opera,
+# não do repositório: são perguntas que pessoas digitaram.
+data/historico-consultas.json

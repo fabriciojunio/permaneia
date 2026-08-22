@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Disciplina = {
   id: string;
@@ -10,7 +10,13 @@ type Disciplina = {
   documentos: number;
 };
 
-type Fonte = { titulo: string; referencia: string | null; similaridade: number; trecho: string };
+type Fonte = {
+  titulo: string;
+  referencia: string | null;
+  similaridade: number;
+  trecho: string;
+  origemRecuperacao?: "vetorial" | "termos" | "ambos";
+};
 
 type Diagnostico = {
   origemIa: "gemini" | "local";
@@ -25,6 +31,16 @@ type Mensagem =
   | { autor: "aluno"; texto: string }
   | { autor: "assistente"; texto: string; fontes: Fonte[]; diagnostico: Diagnostico };
 
+/** Uma pergunta já respondida, vinda do servidor ou do próprio navegador. */
+type ItemHistorico = {
+  id: string;
+  disciplinaId: string;
+  pergunta: string;
+  resposta: string;
+  fontes: Fonte[];
+  criadoEm: string;
+};
+
 // Toda sugestão aqui é uma pergunta que o material responde. "Que conteúdo cai
 // na aula de lógica fuzzy" saiu da lista: o cronograma diz que a aula é sobre
 // lógica fuzzy, e não que assunto cai numa prova, então a resposta certa era
@@ -36,13 +52,114 @@ const SUGESTOES = [
   "Quais são os temas de todas as aulas?",
 ];
 
+/**
+ * Cópia local do histórico.
+ *
+ * O servidor é a fonte principal, mas ele pode não responder: sessão expirada,
+ * rede caindo no meio da apresentação, gravação recusada pelo banco. Em
+ * qualquer um desses casos a pergunta que a pessoa acabou de fazer não pode
+ * simplesmente desaparecer, então ela também fica guardada aqui, no navegador.
+ */
+const CHAVE_LOCAL = "permaneia:historico:v1";
+const LIMITE_LOCAL = 50;
+
+function lerHistoricoLocal(): ItemHistorico[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const bruto = window.localStorage.getItem(CHAVE_LOCAL);
+    if (!bruto) return [];
+    const dados: unknown = JSON.parse(bruto);
+    return Array.isArray(dados) ? (dados as ItemHistorico[]) : [];
+  } catch {
+    // Modo anônimo, armazenamento cheio ou conteúdo corrompido. O histórico é
+    // conveniência, e nenhuma dessas situações justifica quebrar a tela.
+    return [];
+  }
+}
+
+function gravarHistoricoLocal(itens: ItemHistorico[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CHAVE_LOCAL, JSON.stringify(itens.slice(-LIMITE_LOCAL)));
+  } catch {
+    /* Sem espaço ou sem permissão: segue sem a cópia local. */
+  }
+}
+
+function momento(iso: string): string {
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(data);
+}
+
 export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
-  const [disciplinaId, setDisciplinaId] = useState(disciplinas[0]?.id ?? "");
+  // Começa numa disciplina que tenha material. Começar na primeira da lista
+  // parece inofensivo e não é: a ordem é alfabética, e uma disciplina sem
+  // documento indexado recusa toda pergunta antes mesmo de buscar. Quem abria a
+  // tela e perguntava concluía, com razão, que o assistente não achava nada.
+  const [disciplinaId, setDisciplinaId] = useState(
+    () => (disciplinas.find((d) => d.documentos > 0) ?? disciplinas[0])?.id ?? ""
+  );
   const [pergunta, setPergunta] = useState("");
   const [mensagens, setMensagens] = useState<Mensagem[]>([]);
+  const [historico, setHistorico] = useState<ItemHistorico[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const fim = useRef<HTMLDivElement>(null);
+
+  const disciplinaAtual = disciplinas.find((d) => d.id === disciplinaId);
+  const semMaterial = disciplinaAtual !== undefined && disciplinaAtual.documentos === 0;
+
+  /** Junta o que veio do servidor com o que está no navegador, sem repetir. */
+  const guardar = useCallback((novos: ItemHistorico[]) => {
+    setHistorico((atual) => {
+      const porId = new Map(atual.map((i) => [i.id, i]));
+      for (const item of novos) porId.set(item.id, item);
+      const juntos = [...porId.values()].sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
+      gravarHistoricoLocal(juntos);
+      return juntos;
+    });
+  }, []);
+
+  useEffect(() => {
+    let ativo = true;
+    guardar(lerHistoricoLocal());
+
+    (async () => {
+      try {
+        const resposta = await fetch("/api/rag/historico");
+        if (!resposta.ok) return;
+        const dados = await resposta.json();
+        if (!ativo || !Array.isArray(dados?.consultas)) return;
+        guardar(
+          dados.consultas.map((c: Record<string, unknown>) => ({
+            id: String(c.id),
+            disciplinaId: String((c.disciplina as { id?: string } | undefined)?.id ?? ""),
+            pergunta: String(c.pergunta ?? ""),
+            resposta: String(c.resposta ?? ""),
+            fontes: Array.isArray(c.fontes) ? (c.fontes as Fonte[]) : [],
+            criadoEm: new Date(String(c.criadoEm)).toISOString(),
+          }))
+        );
+      } catch {
+        /* Sem servidor, fica o que o navegador guardou. */
+      }
+    })();
+
+    return () => {
+      ativo = false;
+    };
+  }, [guardar]);
+
+  const anteriores = useMemo(
+    () => historico.filter((i) => i.disciplinaId === disciplinaId).slice(-20).reverse(),
+    [historico, disciplinaId]
+  );
 
   async function perguntar(texto: string) {
     const limpo = texto.trim();
@@ -63,6 +180,18 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
 
       if (!resposta.ok) {
         setErro(dados?.erro?.mensagem ?? "Não foi possível responder agora.");
+        // A pergunta fica guardada mesmo quando a resposta falha: é justamente
+        // a pergunta que ficou sem resposta que interessa rever depois.
+        guardar([
+          {
+            id: `local:${Date.now()}`,
+            disciplinaId,
+            pergunta: limpo,
+            resposta: dados?.erro?.mensagem ?? "A pergunta não foi respondida.",
+            fontes: [],
+            criadoEm: new Date().toISOString(),
+          },
+        ]);
         return;
       }
 
@@ -75,6 +204,16 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
           diagnostico: dados.diagnostico,
         },
       ]);
+      guardar([
+        {
+          id: `local:${Date.now()}`,
+          disciplinaId,
+          pergunta: limpo,
+          resposta: dados.resposta,
+          fontes: dados.fontes ?? [],
+          criadoEm: new Date().toISOString(),
+        },
+      ]);
       requestAnimationFrame(() => fim.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
     } catch {
       setErro("Falha de conexão. Verifique sua internet e tente de novo.");
@@ -83,7 +222,27 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
     }
   }
 
-  const disciplinaAtual = disciplinas.find((d) => d.id === disciplinaId);
+  /** Traz para a conversa uma pergunta já respondida, sem gastar nova consulta. */
+  function reabrir(item: ItemHistorico) {
+    setMensagens((atual) => [
+      ...atual,
+      { autor: "aluno", texto: item.pergunta },
+      {
+        autor: "assistente",
+        texto: item.resposta,
+        fontes: item.fontes,
+        diagnostico: {
+          origemIa: "local",
+          similaridadeMaxima: 0,
+          admitiuNaoSaber: false,
+          respostaFundamentada: true,
+          bloqueada: null,
+          duracaoMs: 0,
+        },
+      },
+    ]);
+    requestAnimationFrame(() => fim.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
+  }
 
   return (
     <div className="grade mt-8 grow">
@@ -104,7 +263,7 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
             value={disciplinaId}
             onChange={(e) => {
               setDisciplinaId(e.target.value);
-              // Trocar de disciplina zera o histórico: manter a conversa daria a
+              // Trocar de disciplina zera a conversa: manter as mensagens daria a
               // impressão de que o contexto anterior ainda vale.
               setMensagens([]);
               setErro(null);
@@ -115,6 +274,7 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
               <option key={d.id} value={d.id}>
                 {d.nome}
                 {d.periodo ? ` · ${d.periodo}` : ""}
+                {d.documentos === 0 ? " · sem material indexado" : ""}
               </option>
             ))}
           </select>
@@ -124,7 +284,40 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
               {disciplinaAtual.documentos} documento(s) indexado(s)
             </p>
           )}
+          {semMaterial && (
+            <p className="aviso mt-3">
+              Esta disciplina ainda não tem documento indexado, então o assistente não tem o que
+              consultar. Escolha uma disciplina com material ou peça à coordenação para enviar o
+              cronograma.
+            </p>
+          )}
         </div>
+
+        {anteriores.length > 0 && (
+          <details className="folha p-4">
+            <summary className="carimbo cursor-pointer hover:text-tinta">
+              {anteriores.length} pergunta(s) que você já fez nesta disciplina
+            </summary>
+            <ul className="mt-3 space-y-2">
+              {anteriores.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => reabrir(item)}
+                    className="w-full border border-regua bg-papel px-3 py-2 text-left transition-colors hover:border-sagrado"
+                  >
+                    <span className="font-mono text-[11px] text-tinta-fraca">
+                      {momento(item.criadoEm)}
+                    </span>
+                    <span className="mt-0.5 block text-[14px] leading-snug text-tinta">
+                      {item.pergunta}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
 
         <div className="folha min-h-[20rem] p-4" role="log" aria-live="polite" aria-label="Conversa">
           {mensagens.length === 0 ? (
@@ -136,7 +329,7 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
                     key={s}
                     type="button"
                     onClick={() => perguntar(s)}
-                    disabled={carregando}
+                    disabled={carregando || semMaterial}
                     className="border border-regua-forte bg-papel px-3 py-1.5 text-[13px] text-tinta-media transition-colors hover:border-sagrado hover:text-tinta disabled:opacity-45"
                   >
                     {s}
@@ -182,7 +375,10 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
                                   {f.titulo}
                                   {f.referencia ? ` · ${f.referencia}` : ""}
                                   <span className="ml-2 text-tinta-fraca">
-                                    similaridade {f.similaridade.toFixed(2)}
+                                    {f.origemRecuperacao === "termos"
+                                      ? "encontrado por termos"
+                                      : `similaridade ${f.similaridade.toFixed(2)}`}
+                                    {f.origemRecuperacao === "ambos" && " e por termos"}
                                   </span>
                                 </p>
                                 <p className="text-[13px] leading-relaxed text-tinta-media">{f.trecho}</p>
@@ -242,9 +438,13 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
             className="campo flex-1"
             placeholder="Pergunte sobre datas, critérios de avaliação ou conteúdo"
             maxLength={1000}
-            disabled={carregando}
+            disabled={carregando || semMaterial}
           />
-          <button type="submit" disabled={carregando || pergunta.trim().length < 3} className="botao-primario">
+          <button
+            type="submit"
+            disabled={carregando || semMaterial || pergunta.trim().length < 3}
+            className="botao-primario"
+          >
             Perguntar
           </button>
         </form>
