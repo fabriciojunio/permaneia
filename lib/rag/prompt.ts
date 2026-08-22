@@ -74,6 +74,14 @@ export function montarPrompt(
     "</pergunta>",
     "",
     "Responda seguindo as regras, usando apenas o contexto acima e citando o documento de origem entre colchetes.",
+    // Sem esta linha, o modelo que recebe o cronograma inteiro junto da agenda
+    // responde "o que tem na semana que vem" listando o semestre completo. A
+    // resposta fica correta e inútil: quem perguntou queria uma linha.
+    ...(agenda
+      ? [
+          "A agenda acima já traz a conta de datas pronta. Se ela responde à pergunta, use apenas a linha dela que corresponde e não liste o cronograma inteiro.",
+        ]
+      : []),
   ].join("\n");
 }
 
