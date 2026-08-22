@@ -24,6 +24,8 @@ type Diagnostico = {
   admitiuNaoSaber: boolean;
   respostaFundamentada: boolean;
   bloqueada: "injecao" | "ilicito" | "dados-de-terceiros" | null;
+  /** Preenchido quando a resposta veio do conhecimento geral, e não do material. */
+  foraDoMaterial?: "instituicao" | "conteudo" | null;
   duracaoMs: number;
 };
 
@@ -47,7 +49,7 @@ type ItemHistorico = {
 // uma recusa. Sugestão que devolve recusa faz o assistente parecer quebrado.
 const SUGESTOES = [
   "Quando é a Prova P1?",
-  "Em que aula entra lógica fuzzy?",
+  "Qual é a próxima aula?",
   "Qual é o limite de faltas da disciplina?",
   "Quais são os temas de todas as aulas?",
 ];
@@ -349,13 +351,22 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
                   ) : (
                     <div>
                       <p className="carimbo mb-1">
-                        {m.diagnostico.bloqueada ? "Pergunta barrada" : "Resposta"}
+                        {m.diagnostico.bloqueada
+                          ? "Pergunta barrada"
+                          : m.diagnostico.foraDoMaterial
+                            ? "Resposta fora do material"
+                            : "Resposta"}
                       </p>
                       <div
                         className={
                           m.diagnostico.bloqueada
                             ? "aviso"
-                            : "border-l-2 border-sagrado bg-papel px-4 py-3"
+                            : m.diagnostico.foraDoMaterial
+                              ? // Traço diferente do das respostas com fonte: quem
+                                // olha a tela de longe precisa ver que esta não
+                                // saiu dos documentos da disciplina.
+                                "border-l-2 border-dashed border-tinta-fraca bg-papel px-4 py-3"
+                              : "border-l-2 border-sagrado bg-papel px-4 py-3"
                         }
                       >
                         <p className="whitespace-pre-wrap text-[15px] leading-[1.65] text-tinta">
@@ -398,7 +409,10 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
                               : "Leitura direta do material"}
                             {" · "}
                             {m.diagnostico.duracaoMs} ms
-                            {m.diagnostico.admitiuNaoSaber && " · o assistente admitiu não ter a informação"}
+                            {m.diagnostico.foraDoMaterial
+                              ? " · conhecimento geral do modelo, sem fonte no material indexado"
+                              : m.diagnostico.admitiuNaoSaber &&
+                                " · o assistente admitiu não ter a informação"}
                           </>
                         )}
                       </p>

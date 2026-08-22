@@ -68,9 +68,26 @@ test.describe("assistente de estudos", () => {
   });
 
   test("admite não saber quando a informação não está no material", async ({ page }) => {
+    // Os dois desfechos aceitáveis dizem a mesma coisa na primeira linha: isto
+    // não saiu do acervo. Ou é a recusa, ou é a resposta de conhecimento geral,
+    // que abre pelo aviso escrito em código. O que não pode é a mensalidade
+    // aparecer como se algum documento indexado a trouxesse.
     await page.getByLabel("Sua pergunta").fill("Qual é o valor da mensalidade do curso?");
     await page.getByRole("button", { name: "Perguntar" }).click();
-    await expect(page.getByRole("log")).toContainText(/Não encontrei/i, { timeout: 45_000 });
+    await expect(page.getByRole("log")).toContainText(/Não encontrei|não está no material/i, {
+      timeout: 45_000,
+    });
+  });
+
+  test("responde qual é a próxima aula, em vez de recusar", async ({ page }) => {
+    // Esta era a pergunta que o registro de consultas mostrava sendo recusada
+    // com o cronograma inteiro indexado. Quem responde agora é a agenda
+    // calculada em código, e o teste vale nos dois modos de operação.
+    await page.getByRole("button", { name: "Qual é a próxima aula?" }).click();
+
+    const log = page.getByRole("log");
+    await expect(log).toContainText(/encontro|de 202\d/i, { timeout: 45_000 });
+    await expect(log).not.toContainText("Não encontrei essa informação");
   });
 
   test("o botão fica desabilitado para pergunta curta demais", async ({ page }) => {

@@ -71,6 +71,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
       admitiuNaoSaber: resultado.admitiuNaoSaber,
       respostaFundamentada: resultado.respostaFundamentada,
       bloqueada: resultado.bloqueada ?? null,
+      foraDoMaterial: resultado.foraDoMaterial ?? null,
       duracaoMs: resultado.duracaoMs,
     },
   });
