@@ -282,7 +282,7 @@ rodape(s);
 s = slide();
 titulo(s, "Visão crítica", "O que medimos, e o que não conseguimos resolver");
 
-metrica(s, 0.7, 1.95, 2.8, "100%", "das 37 perguntas respondíveis foram respondidas", VERDE_CLARO);
+metrica(s, 0.7, 1.95, 2.8, "100%", "das 41 perguntas respondíveis foram respondidas", VERDE_CLARO);
 metrica(s, 3.75, 1.95, 2.8, "100%", "das 8 perguntas fora do material foram recusadas", VERDE_CLARO);
 metrica(s, 6.8, 1.95, 2.8, "0", "inversões de faixa em 26.460 comparações", VERDE_CLARO);
 metrica(s, 9.85, 1.95, 2.8, "21/21", "casos da bateria adversarial de barreiras", VERDE_CLARO);

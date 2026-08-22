@@ -26,6 +26,12 @@ type Caso = {
   respondivel: boolean;
   /** Trecho que precisa aparecer na resposta, quando ela é esperada. */
   esperado?: string;
+  /**
+   * Espera-se resposta de conhecimento geral, fora do material? São perguntas
+   * que o acervo não responde e que o assistente ainda deve atender, avisando
+   * que a resposta não tem fonte no material.
+   */
+  geral?: boolean;
 };
 
 const CASOS: Caso[] = [
@@ -84,6 +90,19 @@ const CASOS: Caso[] = [
   { pergunta: "Onde encontro a Lista 3 de exercícios?", respondivel: true, esperado: "drive.google.com" },
   { pergunta: "Quantas turmas o professor tem neste semestre?", respondivel: true, esperado: "cinco" },
 
+  // Perguntas que dependem de saber que dia é hoje. Sem trecho esperado de
+  // propósito: a resposta certa muda a cada semana, e o que se cobra aqui é que
+  // o assistente responda em vez de recusar.
+  { pergunta: "Quando é a proxima aula", respondivel: true },
+  { pergunta: "na materia da semana que vem vai ter o que?", respondivel: true },
+  { pergunta: "quantos dias faltam para a P1", respondivel: true },
+  { pergunta: "o que já passou do cronograma?", respondivel: true },
+
+  // Fora do material, mas dentro do assunto do assistente.
+  { pergunta: "O que é uma heurística admissível?", respondivel: false, geral: true },
+  { pergunta: "Como funciona o trancamento de matrícula?", respondivel: false, geral: true },
+  { pergunta: "Explique a diferença entre busca em largura e em profundidade", respondivel: false, geral: true },
+
   // NÃO respondíveis: informação que não está em nenhum documento indexado.
   { pergunta: "Qual é a nota mínima para passar direto sem exame?", respondivel: false },
   { pergunta: "Qual a sala e o horário exato da aula?", respondivel: false },
@@ -130,6 +149,8 @@ async function main(): Promise<void> {
   // e a culpa parece ser da recuperação.
   const PAUSA_MS = 4_000;
   let respostasDegradadas = 0;
+  let geralTotal = 0;
+  let geralAtendidas = 0;
 
   for (const caso of CASOS) {
     await new Promise((resolve) => setTimeout(resolve, PAUSA_MS));
@@ -141,6 +162,17 @@ async function main(): Promise<void> {
     });
 
     if (r.origemIa === "local") respostasDegradadas += 1;
+
+    if (caso.geral) {
+      geralTotal += 1;
+      const respondeuFora = r.foraDoMaterial !== undefined && r.resposta.length > 120;
+      if (respondeuFora) geralAtendidas += 1;
+      else falhas.push(`  [geral] "${caso.pergunta}" deveria receber resposta fora do material`);
+      console.log(
+        `${respondeuFora ? "ok  " : "FALHA"} ${caso.pergunta.padEnd(58)} fora=${r.foraDoMaterial ?? "-"}`
+      );
+      continue;
+    }
 
     if (caso.respondivel) {
       respondiveisTotal += 1;
@@ -170,6 +202,9 @@ async function main(): Promise<void> {
   console.log("\nResultado");
   console.log(`  Cobertura: ${respondiveisAcertadas}/${respondiveisTotal} (${cobertura.toFixed(1)}%)`);
   console.log(`  Recusa correta: ${recusasCorretas}/${naoRespondiveisTotal} (${recusa.toFixed(1)}%)`);
+  if (geralTotal > 0) {
+    console.log(`  Fora do material, com aviso: ${geralAtendidas}/${geralTotal}`);
+  }
 
   if (respostasDegradadas > 0) {
     console.log(

@@ -74,6 +74,14 @@ achado mais interessante do nosso projeto e quase nunca aparece em tutorial de
 RAG: com o cronograma inteiro em quatro pedaços, cada vetor passa a representar
 quatro aulas ao mesmo tempo, e a busca deixa de discriminar.
 
+**Terceiro diferencial, e o que mais impressiona ao vivo:** perguntar "qual é a
+próxima aula?" e "o que tem na semana que vem?". Um RAG comum recusa as duas,
+porque o trecho recuperado diz a data da aula e não diz se ela já passou. No
+nosso sistema quem faz a conta de datas é o código, e não o modelo: a agenda é
+calculada a partir do cronograma indexado e entregue pronta ao modelo, que só
+redige. Vale mostrar a recusa antiga, que está registrada no histórico de
+perguntas, ao lado da resposta de hoje.
+
 **Segundo diferencial, também barato de mostrar:** perguntar "qual é o conteúdo
 das aulas?" e reparar que o assistente responde com UMA aula, a que ficou em
 primeiro na busca. A resposta sai correta e citada, e é metade da verdade. É o

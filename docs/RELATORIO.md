@@ -382,9 +382,9 @@ Duas lições que valem além deste código: **recortar abaixo da unidade em que
 informação foi escrita quebra a informação**, e **uma métrica que ninguém audita
 mede o que a ferramenta faz, não o que o sistema faz.**
 
-### 4.3 Três defeitos que só o uso revelou
+### 4.3 Quatro defeitos que só o uso revelou
 
-Os cinco anteriores apareceram na bancada de medição. Os três seguintes só
+Os cinco anteriores apareceram na bancada de medição. Os quatro seguintes só
 apareceram depois, com o sistema no ar: alguém usou o assistente e disse que ele
 não achava nada. O que transformou a reclamação em diagnóstico foi o registro de
 `consultas_rag`, que guarda toda pergunta feita, com a similaridade máxima
@@ -436,10 +436,55 @@ errada. Corrigido com divisão por unidade de informação, um parágrafo por
 trecho, sem sobreposição, com o título do documento e a seção colados em cada
 trecho.
 
-Com as três correções, a bateria ampliada para 45 perguntas passou de 89,2% para
-100% de cobertura e de 87,5% para 100% de recusa correta.
+**O calendário sem saber que dia é hoje.** No mesmo registro, duas perguntas
+recusadas com o cronograma inteiro indexado e seis trechos dele no contexto:
+"Quando é a proxima aula", com similaridade 0,721, e "na materia da semana que
+vem vai ter o que?", com 0,664. A recuperação acertou, os trechos eram do
+cronograma. Faltava outra coisa: um trecho diz "20 de agosto de 2026,
+quinta-feira. Aula normal. Busca heurística." e não diz se essa aula já
+aconteceu. Responder qual é a próxima exige comparar vinte datas com o dia de
+hoje, e isso é aritmética, não recuperação. A data de hoje já ia no prompt desde
+a correção anterior, e não bastou.
 
-### 4.4 O tamanho do trecho é o parâmetro de maior impacto
+Corrigido tirando a conta do modelo: `lib/rag/calendario.ts` lê as datas por
+extenso do material, identifica o documento que é o calendário e monta um bloco
+com o último encontro realizado, o próximo, o que cai na semana que vem e a
+próxima avaliação, com a diferença de dias já resolvida. O modelo recebe isso
+pronto e só redige. É a mesma divisão do motor fuzzy: quem calcula é o domínio,
+quem redige é o modelo. Sem provedor externo, o bloco é transcrito literalmente,
+e a pergunta temporal continua respondida.
+
+Com as quatro correções, a bateria ampliada para 52 perguntas passou de 89,2%
+para 100% de cobertura e de 87,5% para 100% de recusa correta.
+
+### 4.4 A terceira saída: responder fora do material, avisando
+
+O sistema tinha dois desfechos, e a fronteira entre eles era o acervo indexado.
+Isso é o certo para "quando é a P1", porque uma data inventada é o pior
+resultado possível deste projeto. Mas produzia recusa em perguntas que qualquer
+pessoa espera que um assistente de estudos responda: como funciona o trancamento
+de matrícula, o que é uma heurística admissível.
+
+A terceira saída responde com o conhecimento geral do modelo. O que a torna
+aceitável é o recorte, e ele é deliberadamente estreito:
+
+- vale para dois assuntos apenas, a vida acadêmica e o conteúdo das disciplinas;
+  fora deles a recusa continua, e "quem ganhou a Copa de 2022" segue recusada;
+- o aviso de que aquilo não está no material é escrito **pelo código**, sempre na
+  primeira linha, e não pelo modelo. Pedir ao modelo que avise seria cumprido
+  quase sempre, e quase sempre não serve para a fronteira entre o que tem fonte
+  e o que não tem;
+- a instrução proíbe afirmar data, valor, prazo, nota mínima ou nome de pessoa
+  da instituição, e manda dizer onde confirmar;
+- a lista de fontes fica vazia e a tela muda o traço da resposta.
+
+Testado com as perguntas que mais convidam à invenção, o comportamento se
+manteve: perguntado quem coordena o curso, o assistente diz que a informação
+muda e manda procurar a secretaria; perguntado o valor da mensalidade, explica
+que varia por curso e turno e aponta os canais oficiais. Nenhuma das duas
+inventou nome ou número.
+
+### 4.5 O tamanho do trecho é o parâmetro de maior impacto
 
 Com trechos de 900 caracteres, o cronograma inteiro cabia em 4 trechos e cada
 vetor representava quatro aulas ao mesmo tempo. A similaridade de um par
@@ -450,7 +495,7 @@ A regra que saiu daí: o trecho deve ter o tamanho da **unidade de informação 
 documento**, e não um tamanho fixo em caracteres. Texto corrido admite trechos
 grandes; lista de fatos independentes exige trechos pequenos.
 
-### 4.5 O risco que não conseguimos eliminar
+### 4.6 O risco que não conseguimos eliminar
 
 O maior risco deste sistema não é inventar uma data. É **repetir com confiança a
 data certa de uma ementa do semestre passado.**
@@ -464,7 +509,7 @@ A mitigação implementada é parcial: todo documento tem um campo de referênci
 perceber. É uma mitigação, não uma solução. Uma solução exigiria integração com o
 sistema acadêmico, o que está fora do escopo.
 
-### 4.6 Sensibilidade do score fuzzy
+### 4.7 Sensibilidade do score fuzzy
 
 Três alunos sintéticos, com o mesmo sistema:
 
@@ -479,7 +524,7 @@ binário". O critério da secretaria classifica esse aluno como tranquilo. O
 sistema fuzzy o coloca na faixa alta, e a regra 8 explica por quê em linguagem
 que a coordenação pode repetir numa conversa.
 
-### 4.7 O artefato do método Mamdani
+### 4.8 O artefato do método Mamdani
 
 Encontramos e medimos uma limitação do método que a disciplina ensina.
 
@@ -505,7 +550,7 @@ de trocar por uma defuzzificação que o esconderia. A escolha custa 3,4% de
 inversões marginais e preserva a correspondência entre o código e o conteúdo da
 disciplina.
 
-### 4.8 Limitação da calibração dos conjuntos
+### 4.9 Limitação da calibração dos conjuntos
 
 Os conjuntos de frequência seguem a especificação do trabalho, em que "baixa"
 termina em 60%. O contrato didático da disciplina, porém, reprova por falta
@@ -516,7 +561,7 @@ institucional, mas o sistema o classifica como risco **médio**. Alinhar o
 conjunto "baixa" à linha dos 75% é a primeira recalibração que sugerimos, e está
 registrada como teste que documenta o comportamento atual.
 
-### 4.9 Limitações honestas da própria avaliação
+### 4.10 Limitações honestas da própria avaliação
 
 - **26 perguntas é pouco.** O conjunto serve para comparar configurações entre
   si, que é para o que foi usado, e não para afirmar uma taxa absoluta.
@@ -529,7 +574,7 @@ registrada como teste que documenta o comportamento atual.
   evasão real. Não sabemos se o score prevê alguma coisa; sabemos que ele captura
   o padrão que a literatura descreve.
 
-### 4.10 Lições aprendidas
+### 4.11 Lições aprendidas
 
 1. **Medir muda o que se constrói.** Os três defeitos da seção 4.2 estavam no
    sistema e pareciam corretos. Só apareceram quando existiu um número.
@@ -584,7 +629,7 @@ um sai de um script no repositório e pode ser reproduzido:
 ```bash
 npx tsx scripts/avaliar-rag.ts        # cobertura e recusa
 npx tsx scripts/diagnostico-fuzzy.ts  # monotonicidade e artefato do centroide
-npm run test:coverage                 # 1870 testes e cobertura
+npm run test:coverage                 # 1935 testes e cobertura
 ```
 
 Nenhum número deste relatório foi estimado ou gerado por IA. Onde não medimos,

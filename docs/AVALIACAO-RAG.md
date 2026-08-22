@@ -21,18 +21,22 @@ recusa premia um sistema que nunca responde. Só o par diz alguma coisa.
 
 ## Conjunto de avaliação
 
-45 perguntas escritas à mão sobre os sete documentos indexados na disciplina de
+52 perguntas escritas à mão sobre os sete documentos indexados na disciplina de
 Inteligência Artificial (cronograma, contrato didático, enunciado do projeto,
 as três atividades propostas em aula e a lista de materiais por aula):
 
-- **37 respondíveis**, cada uma com o trecho que precisa aparecer na resposta
-  (por exemplo, "Quando é a Prova P1?" precisa devolver "24 de setembro");
+- **41 respondíveis**, cada uma com o trecho que precisa aparecer na resposta
+  (por exemplo, "Quando é a Prova P1?" precisa devolver "24 de setembro"), das
+  quais 4 dependem de saber que dia é hoje e por isso não têm trecho esperado:
+  a resposta certa delas muda a cada semana;
 - **8 não respondíveis**, sobre informação que não está em documento nenhum
-  (valor da mensalidade, número de créditos, como trancar a matrícula).
+  (valor da mensalidade, número de créditos, sala e horário da aula);
+- **3 fora do material**, que o acervo não responde e que o assistente ainda
+  deve atender, avisando que a resposta não tem fonte no material.
 
-Três delas são escritas do jeito que aluno digita, em minúsculas e sem
-pontuação: "quando vai ser a prova", "tem prova em dezembro?", "qual é a próxima
-aula". Foram acrescentadas depois que o registro de consultas mostrou que era
+Várias são escritas do jeito que aluno digita, em minúsculas, sem acento e sem
+pontuação: "quando vai ser a prova", "Quando é a proxima aula", "na materia da
+semana que vem vai ter o que?". Foram acrescentadas depois que o registro de consultas mostrou que era
 exatamente nesse formato que o assistente falhava em produção.
 
 Cinco das respondíveis são de **enumeração**, e nelas o trecho esperado é sempre
@@ -102,14 +106,14 @@ texto, apenas recuperação e transcrição literal dos trechos.
 **Valor adotado: 0,15.** É o ponto em que a recusa sobe de 50% para 75% sem
 custo nenhum de cobertura. Acima dele a cobertura despenca sem ganho.
 
-## Oito defeitos encontrados, e como cada um apareceu
+## Nove defeitos encontrados, e como cada um apareceu
 
 O caminho até esses números importa mais que os números. Os cinco primeiros
 apareceram porque a avaliação existia, e nenhum deles seria visível testando o
-assistente à mão com meia dúzia de perguntas. Os três últimos apareceram de
+assistente à mão com meia dúzia de perguntas. Os quatro últimos apareceram de
 outro jeito, que vale registrar: alguém usou o sistema no ar e disse que ele não
 respondia nada. O registro de consultas mostrou quais perguntas foram feitas e o
-que cada uma devolveu, e foi ele que transformou a reclamação em três defeitos
+que cada uma devolveu, e foi ele que transformou a reclamação em defeitos
 localizados.
 
 ### 1. Trigramas de caracteres afogando o sinal (cobertura: 0%)
@@ -256,15 +260,72 @@ sobreposição, e cada trecho carrega o título do documento e a seção em que 
 O cronograma passou de 12 para 21 trechos, um por aula, e cada um responde
 sozinho.
 
+### 9. O calendário sem saber que dia é hoje
+
+Este veio pelo mesmo caminho do anterior, e no mesmo dia. Duas perguntas da
+turma, com o cronograma inteiro indexado e seis trechos dele no contexto:
+
+| Pergunta | Similaridade | Resposta |
+|---|---|---|
+| "Quando é a proxima aula" | 0,721 | "não encontrei essa informação" |
+| "na materia da semana que vem vai ter o que?" | 0,664 | "não encontrei essa informação" |
+
+A recuperação acertou: os trechos eram do cronograma. O que faltava era outra
+coisa. Um trecho diz "20 de agosto de 2026, quinta-feira. Aula normal. Busca
+heurística." e não diz se essa aula já aconteceu. Responder "qual é a próxima"
+exige comparar vinte datas com o dia de hoje, e isso é aritmética, não
+recuperação. A data de hoje já estava no prompt desde a correção anterior, e não
+bastou: com aulas soltas na mão, sem saber quais já passaram, a recusa era a
+resposta honesta que sobrava ao modelo.
+
+Correção: a agenda passou a ser calculada em código
+([ADR 009](adr/009-agenda-e-resposta-fora-do-material.md)). `lib/rag/calendario.ts`
+lê as datas por extenso do material, escolhe como calendário o documento com
+mais dias distintos, e monta um bloco com o último encontro realizado, o
+próximo, o que cai na semana que vem e a próxima avaliação, cada um com a
+diferença de dias já resolvida. O modelo recebe isso pronto e só redige.
+
+A regra que saiu daí é a mesma do motor fuzzy: **quem calcula é o domínio, quem
+redige é o modelo.** No modo de leitura direta a agenda é transcrita
+literalmente, então a pergunta temporal continua sendo respondida mesmo sem o
+provedor externo.
+
+## A terceira saída: responder fora do material
+
+Até aqui havia dois desfechos, e a fronteira entre eles era o acervo indexado.
+Isso é o certo para "quando é a P1", porque uma data inventada é o pior
+resultado possível deste sistema. Mas produzia recusa em perguntas que qualquer
+pessoa espera que um assistente de estudos responda: como funciona o
+trancamento de matrícula, o que é uma heurística admissível.
+
+A terceira saída responde com o conhecimento geral do modelo, e o que a torna
+aceitável é o recorte, descrito na [ADR 009](adr/009-agenda-e-resposta-fora-do-material.md):
+
+- vale para dois assuntos apenas, a vida acadêmica e o conteúdo das disciplinas;
+- o aviso de que aquilo não está no material é escrito **pelo código**, na
+  primeira linha, e não pelo modelo;
+- a instrução proíbe afirmar data, valor, prazo, nota mínima ou nome de pessoa
+  da instituição, e manda dizer onde confirmar;
+- a lista de fontes fica vazia e a tela muda o traço da resposta.
+
+`admitiuNaoSaber` continua verdadeiro nessas respostas, e isso é proposital: o
+campo sempre significou "o sistema declarou que não achou isso no acervo", que é
+exatamente o que a primeira linha diz. As métricas de recusa não mudam de
+sentido, e a bateria adversarial não muda de resultado.
+
 ## Resultado atual da bateria
 
 Execução padrão, modo generativo, limiar automático por provedor, com pausa de 4
-segundos entre as perguntas para não esbarrar no limite por minuto do provedor:
+segundos entre as perguntas para não esbarrar no limite por minuto do provedor.
+A bateria tem hoje 52 perguntas: 41 respondíveis pelo material, 8 que ele não
+responde e que precisam continuar recusadas, e 3 que devem receber resposta
+fora do material com o aviso.
 
 | Métrica | Antes da recuperação híbrida | Depois |
 |---|---|---|
-| Cobertura | 33/37 (89,2%) | **37/37 (100,0%)** |
+| Cobertura | 33/37 (89,2%) | **41/41 (100,0%)** |
 | Recusa correta | 7/8 (87,5%) | **8/8 (100,0%)** |
+| Fora do material, com aviso | não existia | **3/3** |
 
 Continua valendo a ressalva de não determinismo registrada acima: o número
 oscila entre execuções porque o modelo reformula a resposta a cada chamada. Uma
