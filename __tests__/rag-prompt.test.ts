@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dataPorExtenso,
   INSTRUCAO_SISTEMA,
   RESPOSTA_SEM_CONTEXTO,
   admitiuNaoSaber,
@@ -186,5 +187,45 @@ describe("RESPOSTA_SEM_CONTEXTO", () => {
 
   it("não promete nem sugere uma resposta provável", () => {
     expect(RESPOSTA_SEM_CONTEXTO).not.toMatch(/provavelmente|talvez|acredito/i);
+  });
+});
+
+describe("data de hoje no prompt", () => {
+  const trechoQualquer = {
+    chunkId: "c1",
+    documentoId: "d1",
+    titulo: "Cronograma de aulas",
+    referencia: null,
+    indice: 0,
+    texto: "24 de setembro de 2026, quinta-feira. Avaliação. Prova P1.",
+    similaridade: 0.8,
+  };
+
+  it("inclui o bloco de hoje", () => {
+    const prompt = montarPrompt("Quando é a prova?", [trechoQualquer], new Date("2026-08-22T15:00:00Z"));
+    expect(prompt).toContain("<hoje>");
+    expect(prompt).toContain("</hoje>");
+  });
+
+  it("escreve a data por extenso, em português", () => {
+    const prompt = montarPrompt("oi", [trechoQualquer], new Date("2026-08-22T15:00:00Z"));
+    expect(prompt).toContain("agosto");
+    expect(prompt).toContain("2026");
+  });
+
+  it("usa o fuso de Brasília, e não o do servidor", () => {
+    // 23h de Brasília do dia 22 é 02h de Londres do dia 23. O servidor roda em
+    // UTC, e sem o fuso explícito o assistente diria que a aula de hoje foi ontem.
+    expect(dataPorExtenso(new Date("2026-08-23T02:00:00Z"))).toContain("22");
+  });
+
+  it("mantém o contexto e a pergunta depois do bloco de hoje", () => {
+    const prompt = montarPrompt("Quando é a prova?", [trechoQualquer], new Date("2026-08-22T15:00:00Z"));
+    expect(prompt.indexOf("<hoje>")).toBeLessThan(prompt.indexOf("<contexto>"));
+    expect(prompt.indexOf("<contexto>")).toBeLessThan(prompt.indexOf("<pergunta>"));
+  });
+
+  it("a instrução do sistema explica para que serve a data de hoje", () => {
+    expect(INSTRUCAO_SISTEMA).toContain("<hoje>");
   });
 });

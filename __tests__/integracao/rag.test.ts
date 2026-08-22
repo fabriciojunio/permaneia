@@ -295,15 +295,33 @@ describe("consulta completa", () => {
     expect(r.fontes).toHaveLength(0);
   });
 
-  it("com limiar impossível, sempre admite não saber em vez de inventar", async () => {
+  it("com limiar impossível e pergunta sem termo em comum, admite não saber", async () => {
+    // O limiar governa apenas o braço vetorial. Com ele no teto e uma pergunta
+    // que não compartilha palavra alguma com o material, os dois braços voltam
+    // vazios e a recusa é a única saída possível.
+    const r = await responder({
+      disciplinaId,
+      pergunta: "Qual é o valor da mensalidade do curso?",
+      registrar: false,
+      limiar: 0.999,
+    });
+    expect(r.admitiuNaoSaber).toBe(true);
+    expect(r.fontes).toHaveLength(0);
+  });
+
+  it("o casamento de termos recupera o trecho que o limiar vetorial descartou", async () => {
+    // O braço léxico existe justamente para isto: com o limiar no teto, nenhum
+    // trecho passa pela similaridade, e mesmo assim a pergunta sobre a Prova P1
+    // encontra a linha do cronograma que traz essas duas palavras. É o que
+    // mantém o assistente de pé quando o provedor de embeddings está fora.
     const r = await responder({
       disciplinaId,
       pergunta: "Quando é a Prova P1?",
       registrar: false,
       limiar: 0.999,
     });
-    expect(r.admitiuNaoSaber).toBe(true);
-    expect(r.fontes).toHaveLength(0);
+    expect(r.fontes.length).toBeGreaterThan(0);
+    expect(r.resposta).toContain("24 de setembro");
   });
 
   it("declara a origem da resposta, para o aluno saber o que está lendo", async () => {
