@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { CONTAS, entrar, navegar } from "./ajudantes";
+import { prisma } from "../lib/prisma";
 
 test.describe("assistente de estudos", () => {
   test.beforeEach(async ({ page }) => {
@@ -88,6 +89,45 @@ test.describe("assistente de estudos", () => {
     await expect(page.getByText("Comece por uma destas perguntas")).toBeVisible();
   });
 
+  test("a pergunta continua acessível depois de recarregar a página", async ({ page }) => {
+    // A conversa vivia só na memória do navegador: bastava atualizar a página
+    // para o histórico sumir, e numa demonstração ao vivo isso significa perder
+    // o que acabou de ser mostrado.
+    await page.getByRole("button", { name: "Quando é a Prova P1?" }).click();
+    await expect(page.getByRole("log")).toContainText("24 de setembro", { timeout: 45_000 });
+
+    await page.reload();
+
+    const anteriores = page.getByText(/pergunta\(s\) que você já fez/);
+    await expect(anteriores).toBeVisible({ timeout: 15_000 });
+    await anteriores.click();
+    await expect(page.getByRole("button", { name: /Quando é a Prova P1\?/ }).first()).toBeVisible();
+  });
+
+  test("reabrir uma pergunta anterior traz a resposta de volta", async ({ page }) => {
+    await page.getByRole("button", { name: "Qual é o limite de faltas da disciplina?" }).click();
+    await expect(page.getByRole("log")).toContainText("25", { timeout: 45_000 });
+
+    await page.reload();
+    await page.getByText(/pergunta\(s\) que você já fez/).click();
+    await page
+      .getByRole("button", { name: /Qual é o limite de faltas da disciplina\?/ })
+      .first()
+      .click();
+
+    await expect(page.getByRole("log")).toContainText("25");
+  });
+
+  test("a fonte declara por qual busca o trecho foi encontrado", async ({ page }) => {
+    await page.getByRole("button", { name: "Quando é a Prova P1?" }).click();
+    await expect(page.getByText(/trecho\(s\) usado\(s\) como fonte/)).toBeVisible({ timeout: 45_000 });
+    await page.getByText(/trecho\(s\) usado\(s\) como fonte/).click();
+
+    await expect(
+      page.getByText(/similaridade \d|encontrado por termos/).first()
+    ).toBeVisible();
+  });
+
   test("o aluno não enxerga o painel de risco na navegação", async ({ page }) => {
     await expect(
       page.getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name: "Painel de risco" })
@@ -155,9 +195,23 @@ test.describe("gestão de disciplinas", () => {
   });
 
   test("avisa quando a disciplina não tem documento indexado", async ({ page }) => {
+    // A disciplina é criada aqui, e apagada no fim. Todas as disciplinas do seed
+    // passaram a ter pelo menos as informações gerais indexadas, e o teste
+    // anterior, que só abria a tela e procurava o aviso, deixou de exercitar o
+    // estado vazio no dia em que isso mudou.
     await entrar(page, CONTAS.coordenacao);
     await page.goto("/disciplinas");
+
+    const nome = `Disciplina sem material ${Date.now()}`;
+    await page.getByLabel("Nome", { exact: true }).fill(nome);
+    await page.getByRole("button", { name: "Criar disciplina" }).click();
+
+    // Pelo cabeçalho do cartão, e não pelo texto solto: o aviso de sucesso
+    // também repete o nome, e os dois juntos violam o modo estrito do locator.
+    await expect(page.getByRole("heading", { name: nome })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/Sem documento indexado/).first()).toBeVisible();
+
+    await prisma.disciplina.deleteMany({ where: { nome } });
   });
 });
 
