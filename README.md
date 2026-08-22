@@ -25,10 +25,14 @@ o trancamento. Quem olha só a nota chega tarde.
 Duas frentes, cada uma com uma técnica de IA diferente.
 
 **1. Assistente de estudos com RAG.** O aluno pergunta sobre a disciplina e o
-sistema busca a resposta nos documentos institucionais indexados (ementa,
-cronograma, contrato didático) antes de acionar o modelo de linguagem. A
-resposta vem com a fonte citada. Quando a informação não está no material, o
-sistema diz que não sabe em vez de inventar uma data de prova.
+sistema busca a resposta nos documentos institucionais indexados (cronograma,
+contrato didático, enunciado do projeto, atividades e materiais de cada aula)
+antes de acionar o modelo de linguagem. A busca tem dois braços, proximidade
+vetorial e casamento de termos, fundidos por posição: o primeiro acha a
+paráfrase, o segundo acha a palavra que decide uma pergunta curta como "quando
+vai ser a prova". A resposta vem com a fonte citada e com a indicação de por
+qual dos dois braços cada trecho chegou. Quando a informação não está no
+material, o sistema diz que não sabe em vez de inventar uma data de prova.
 
 **2. Painel de risco de evasão com lógica fuzzy.** Frequência, desempenho e
 engajamento entram num sistema Mamdani de 27 regras e saem como um score
@@ -97,13 +101,15 @@ duas o aluno está lendo seria desonesto.
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Build de produção |
-| `npm test` | 1824 testes unitários |
+| `npm test` | 1870 testes unitários |
 | `npm run test:coverage` | Testes com gate de cobertura em 90% |
-| `npm run test:integration` | 72 testes contra Postgres real |
-| `npm run test:e2e` | 77 testes de ponta a ponta, incluindo a verificação de celular |
+| `npm run test:integration` | 73 testes contra Postgres real |
+| `npm run test:e2e` | 80 testes de ponta a ponta, incluindo a verificação de celular |
 | `npm run test:vistoria` | Vistoria visual da aplicação publicada, com captura de tela |
 | `npm run db:seed` | Dados sintéticos e documentos de exemplo |
 | `npx tsx scripts/avaliar-rag.ts` | Mede cobertura e recusa do assistente |
+| `npx tsx scripts/reparar-indice.ts` | Reindexa trechos gravados no espaço vetorial errado |
+| `npx tsx scripts/historico-consultas.ts exportar` | Salva as perguntas já feitas antes de resemear a base |
 | `npx tsx scripts/diagnostico-fuzzy.ts` | Verifica a monotonicidade da base de regras |
 | `npm run gerar:apresentacao` | Gera a apresentação em PPTX |
 
@@ -127,7 +133,7 @@ Next.js (App Router) na Vercel
        │   ├── motor        fuzzificação, inferência, agregação, centroide
        │   └── risco        fachada e comparação com o critério por nota
        │
-       ├── rag/             chunking, similaridade, prompt, consulta
+       ├── rag/             chunking, busca léxica, fusão, prompt, consulta
        ├── ia/              provedor Gemini e provedor local determinístico
        └── repositorios/    Prisma e SQL da busca vetorial
    │
@@ -141,17 +147,17 @@ Decisões de arquitetura estão registradas em [docs/adr](docs/adr).
 
 | Métrica | Valor |
 |---|---|
-| Testes unitários | 1692 |
-| Testes de integração | 63 |
-| Testes de ponta a ponta | 48 |
-| **Total** | **1803** |
+| Testes unitários | 1870 |
+| Testes de integração | 73 |
+| Testes de ponta a ponta | 80 |
+| **Total** | **2023** |
 | Cobertura da lógica de domínio | 97,4% |
-| Cobertura do assistente | 83,3% das perguntas respondíveis |
-| Recusa correta | 75,0% das perguntas fora do material |
+| Cobertura do assistente | 100% das 37 perguntas respondíveis da bateria |
+| Recusa correta | 100% das 8 perguntas fora do material |
 | Inversões de faixa de risco | 0 em 26.460 comparações |
 | Vulnerabilidades de produção | 0 |
 
-A metodologia de avaliação do assistente, com a tabela de calibração e os três
+A metodologia de avaliação do assistente, com a tabela de calibração e os oito
 defeitos que ela revelou, está em [docs/AVALIACAO-RAG.md](docs/AVALIACAO-RAG.md).
 
 ## Segurança
