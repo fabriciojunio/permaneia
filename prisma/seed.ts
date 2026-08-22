@@ -113,6 +113,10 @@ async function main(): Promise<void> {
   await limpar();
 
   console.log("Criando disciplinas…");
+  // As cinco turmas do professor no período, como aparecem no portal público de
+  // disciplinas. Só a de quinta-feira tem cronograma indexado, porque é a única
+  // cujo calendário completo foi divulgado; inventar as datas das outras seria
+  // exatamente o erro que este sistema existe para não cometer.
   const ia = await prisma.disciplina.create({
     data: {
       nome: "Inteligência Artificial - Quinta-feira",
@@ -120,31 +124,54 @@ async function main(): Promise<void> {
       periodo: "2026-2",
     },
   });
-  const grafos = await prisma.disciplina.create({
+  const iaSegunda = await prisma.disciplina.create({
+    data: {
+      nome: "Inteligência Artificial - Segunda-feira",
+      professor: "Patrick Pedreira Silva",
+      periodo: "2026-2",
+    },
+  });
+  const iaSexta = await prisma.disciplina.create({
+    data: {
+      nome: "Inteligência Artificial - Sexta-feira",
+      professor: "Patrick Pedreira Silva",
+      periodo: "2026-2",
+    },
+  });
+  const grafosTerca = await prisma.disciplina.create({
     data: { nome: "Teoria dos Grafos - Terça-feira", professor: "Patrick Pedreira Silva", periodo: "2026-2" },
   });
-  const engenharia = await prisma.disciplina.create({
-    data: { nome: "Engenharia de Software II", professor: "Corpo docente", periodo: "2026-2" },
+  const grafosQuarta = await prisma.disciplina.create({
+    data: { nome: "Teoria dos Grafos - Quarta-feira", professor: "Patrick Pedreira Silva", periodo: "2026-2" },
   });
-  const disciplinas = [ia, grafos, engenharia];
+  const disciplinas = [ia, iaSegunda, iaSexta, grafosTerca, grafosQuarta];
 
-  console.log("Indexando documentos da disciplina de Inteligência Artificial…");
+  console.log("Indexando os documentos da disciplina…");
+  const REFERENCIA_QUINTA = "Inteligência Artificial, quinta-feira, 2026-2";
   const documentos = [
-    {
-      arquivo: "ia-cronograma-2026-2.md",
-      titulo: "Cronograma de aulas",
-      referencia: "Inteligência Artificial, quinta-feira, 2026-2",
-    },
-    {
-      arquivo: "ia-contrato-didatico-2026-2.md",
-      titulo: "Contrato didático",
-      referencia: "Inteligência Artificial, quinta-feira, 2026-2",
-    },
+    { arquivo: "ia-cronograma-2026-2.md", titulo: "Cronograma de aulas", referencia: REFERENCIA_QUINTA },
+    { arquivo: "ia-contrato-didatico-2026-2.md", titulo: "Contrato didático", referencia: REFERENCIA_QUINTA },
     {
       arquivo: "ia-projeto-pratico-2026-2.md",
       titulo: "Enunciado do Projeto Prático de IA Generativa",
       referencia: "entrega em 19/11/2026",
     },
+    {
+      arquivo: "ia-desafio-sistema-inteligente.md",
+      titulo: "Desafio: o que torna este sistema inteligente?",
+      referencia: "aula de 06/08/2026",
+    },
+    {
+      arquivo: "ia-atividade-llms.md",
+      titulo: "Atividade prática: avaliando agentes de conversação",
+      referencia: "aula de 13/08/2026",
+    },
+    {
+      arquivo: "ia-atividade-busca-cega.md",
+      titulo: "Atividade: modelagem de problemas e busca cega",
+      referencia: "aula de 20/08/2026",
+    },
+    { arquivo: "ia-materiais-por-aula.md", titulo: "Materiais e links por aula", referencia: REFERENCIA_QUINTA },
   ];
 
   for (const doc of documentos) {
@@ -155,23 +182,33 @@ async function main(): Promise<void> {
       referencia: doc.referencia,
       conteudo,
       origem: "seed",
-      // Trechos bem menores que o padrão, e isso é uma decisão sobre o formato
-      // do documento, não uma configuração arbitrária.
+      // Um trecho por parágrafo, e não por tamanho.
       //
-      // O padrão de 2000 caracteres serve a texto corrido, em que o parágrafo
-      // vizinho ajuda a entender o assunto. Estes três documentos são listas de
-      // fatos independentes: cada aula do cronograma tem sua data e seu
-      // conteúdo, e nada do que vem antes ou depois ajuda a respondê-la.
-      //
-      // Empacotar quatro aulas no mesmo trecho tem um efeito direto e medido:
-      // o vetor do trecho passa a representar quatro assuntos ao mesmo tempo, a
-      // similaridade com uma pergunta específica despenca, e a pergunta sobre a
-      // Prova P1 recupera meio semestre. Com cerca de uma aula por trecho, a
-      // similaridade do par relevante mais que dobra. Ver docs/AVALIACAO-RAG.md.
-      tamanhoAlvo: 320,
-      sobreposicao: 60,
+      // Estes documentos são listas de fatos independentes: cada aula do
+      // cronograma tem sua data e seu conteúdo, e nada do que vem antes ou
+      // depois ajuda a respondê-la. A divisão por tamanho empacotava duas aulas
+      // por trecho e, por causa da sobreposição, começava o trecho seguinte no
+      // meio de uma entrada, separando o tema da sua data. Ver o comentário de
+      // dividirPorUnidade em lib/rag/chunk.ts.
+      modo: "unidade",
     });
     console.log(`  ${resultado.titulo}: ${resultado.trechos} trecho(s), embeddings do provedor ${resultado.origemEmbedding}`);
+  }
+
+  // As informações gerais valem para qualquer turma do professor: quem ele é,
+  // como falar com ele, onde ficam os materiais. Sem isso, uma turma sem
+  // cronograma divulgado seria uma tela que só sabe dizer que não sabe.
+  const gerais = readFileSync(resolve(process.cwd(), "data/documentos_exemplo", "ia-informacoes-gerais.md"), "utf8");
+  for (const disciplina of disciplinas) {
+    const resultado = await ingerir({
+      disciplinaId: disciplina.id,
+      titulo: "Informações gerais da disciplina",
+      referencia: "portal de disciplinas, 2026-2",
+      conteudo: gerais,
+      origem: "seed",
+      modo: "unidade",
+    });
+    console.log(`  ${disciplina.nome}: ${resultado.trechos} trecho(s) de informações gerais`);
   }
 
   console.log("Gerando alunos sintéticos…");

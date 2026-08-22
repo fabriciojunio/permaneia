@@ -11,7 +11,7 @@ Encontros previstos: 20
 
 13 de agosto de 2026, quinta-feira. Aula normal. Agentes inteligentes e busca cega. Materiais: Pathfinding Visualizer, simulador do mundo do aspirador de pó, slide 2 sobre agentes inteligentes, slide 3 sobre busca cega, Lista 2 de exercícios sobre agentes inteligentes, Lista 3 de exercícios sobre busca cega, código base em Python de busca cega, ebook capítulos 2, 3 e 4 sobre agentes inteligentes, busca como estratégia e estratégias de busca sem informação. Atividade prática: conversando e avaliando agentes inteligentes de conversação, os modelos de linguagem.
 
-20 de agosto de 2026, quinta-feira. Aula normal. Busca heurística.
+20 de agosto de 2026, quinta-feira. Aula normal. Busca heurística. Materiais: atividade pré-aula sobre buscas, para ser realizada em sala antes da discussão do conteúdo do dia, slide 3 sobre busca heurística, Lista 4 de exercícios sobre busca heurística e código base em Python de busca cega e heurística. Atividade: Modelagem de Problemas e Algoritmos de Busca Cega.
 
 27 de agosto de 2026, quinta-feira. Aula normal. Busca online e busca competitiva.
 

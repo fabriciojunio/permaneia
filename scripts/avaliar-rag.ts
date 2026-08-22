@@ -60,7 +60,29 @@ const CASOS: Caso[] = [
   { pergunta: "Quantas pessoas podem formar o grupo do projeto?", respondivel: true, esperado: "6" },
   { pergunta: "Quanto tempo deve ter o vídeo tutorial da parte 2?", respondivel: true, esperado: "10" },
   { pergunta: "Que estrutura o relatório do projeto precisa ter?", respondivel: true, esperado: "crítica" },
-  { pergunta: "Preciso descrever o uso de IA na escrita do relatório?", respondivel: true, esperado: "ética" },
+  { pergunta: "Preciso descrever o uso de IA na escrita do relatório?", respondivel: true, esperado: "descrit" },
+
+  // Perguntas curtas e genéricas, do jeito que aluno digita. Foram elas que
+  // expuseram o defeito da recuperação só vetorial: o vetor de "quando vai ser
+  // a prova" é pouco discriminante e o trecho da P1 não subia sozinho.
+  { pergunta: "quando vai ser a prova", respondivel: true, esperado: "setembro" },
+  { pergunta: "tem prova em dezembro?", respondivel: true, esperado: "dezembro" },
+  { pergunta: "qual é a próxima aula", respondivel: true, esperado: "de 2026" },
+
+  // Respondíveis pelas atividades propostas em aula.
+  { pergunta: "Que ferramenta a atividade sobre LLMs usa?", respondivel: true, esperado: "lmarena" },
+  { pergunta: "No problema do robô, o que ele precisa pegar antes?", respondivel: true, esperado: "kit" },
+  { pergunta: "Qual é o custo do deslocamento de A para C?", respondivel: true, esperado: "1" },
+  { pergunta: "Como desempatar os sucessores na busca em largura?", respondivel: true, esperado: "alfabética" },
+  { pergunta: "Quais sistemas posso escolher no desafio da primeira aula?", respondivel: true, esperado: "spam" },
+  { pergunta: "Quais são as perspectivas de inteligência do desafio?", respondivel: true, esperado: "racionalmente" },
+
+  // Respondíveis pela lista de materiais e pelas informações gerais.
+  { pergunta: "Onde fica o repositório de materiais do professor?", respondivel: true, esperado: "repositorio" },
+  { pergunta: "Qual é o site pessoal do professor?", respondivel: true, esperado: "patrickpedreira" },
+  { pergunta: "Onde está o simulador do mundo do aspirador de pó?", respondivel: true, esperado: "aspirador" },
+  { pergunta: "Onde encontro a Lista 3 de exercícios?", respondivel: true, esperado: "drive.google.com" },
+  { pergunta: "Quantas turmas o professor tem neste semestre?", respondivel: true, esperado: "cinco" },
 
   // NÃO respondíveis: informação que não está em nenhum documento indexado.
   { pergunta: "Qual é a nota mínima para passar direto sem exame?", respondivel: false },
@@ -100,13 +122,25 @@ async function main(): Promise<void> {
   let naoRespondiveisTotal = 0;
   const falhas: string[] = [];
 
+  // Pausa entre as perguntas.
+  //
+  // A cota gratuita do provedor é por minuto. Sem a pausa, a bateria dispara
+  // quarenta e cinco chamadas seguidas, o provedor recusa da décima em diante e
+  // a avaliação mede o modo de degradação em vez do sistema: a cobertura despenca
+  // e a culpa parece ser da recuperação.
+  const PAUSA_MS = 4_000;
+  let respostasDegradadas = 0;
+
   for (const caso of CASOS) {
+    await new Promise((resolve) => setTimeout(resolve, PAUSA_MS));
     const r = await responder({
       disciplinaId: disciplina.id,
       pergunta: caso.pergunta,
       registrar: false,
       limiar,
     });
+
+    if (r.origemIa === "local") respostasDegradadas += 1;
 
     if (caso.respondivel) {
       respondiveisTotal += 1;
@@ -136,6 +170,13 @@ async function main(): Promise<void> {
   console.log("\nResultado");
   console.log(`  Cobertura: ${respondiveisAcertadas}/${respondiveisTotal} (${cobertura.toFixed(1)}%)`);
   console.log(`  Recusa correta: ${recusasCorretas}/${naoRespondiveisTotal} (${recusa.toFixed(1)}%)`);
+
+  if (respostasDegradadas > 0) {
+    console.log(
+      `
+  Atenção: ${respostasDegradadas} resposta(s) vieram do modo local. O provedor externo recusou chamadas, provavelmente por limite por minuto, e estes números medem o modo de degradação.`
+    );
+  }
 
   if (falhas.length > 0) {
     console.log("\nCasos que falharam:");
