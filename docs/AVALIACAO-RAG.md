@@ -21,13 +21,19 @@ recusa premia um sistema que nunca responde. Só o par diz alguma coisa.
 
 ## Conjunto de avaliação
 
-31 perguntas escritas à mão sobre os três documentos indexados na disciplina de
-Inteligência Artificial (cronograma, contrato didático e enunciado do projeto):
+45 perguntas escritas à mão sobre os sete documentos indexados na disciplina de
+Inteligência Artificial (cronograma, contrato didático, enunciado do projeto,
+as três atividades propostas em aula e a lista de materiais por aula):
 
-- **23 respondíveis**, cada uma com o trecho que precisa aparecer na resposta
+- **37 respondíveis**, cada uma com o trecho que precisa aparecer na resposta
   (por exemplo, "Quando é a Prova P1?" precisa devolver "24 de setembro");
 - **8 não respondíveis**, sobre informação que não está em documento nenhum
   (valor da mensalidade, número de créditos, como trancar a matrícula).
+
+Três delas são escritas do jeito que aluno digita, em minúsculas e sem
+pontuação: "quando vai ser a prova", "tem prova em dezembro?", "qual é a próxima
+aula". Foram acrescentadas depois que o registro de consultas mostrou que era
+exatamente nesse formato que o assistente falhava em produção.
 
 Cinco das respondíveis são de **enumeração**, e nelas o trecho esperado é sempre
 o ÚLTIMO item do documento. É proposital: uma resposta que começa certo e para
@@ -96,11 +102,15 @@ texto, apenas recuperação e transcrição literal dos trechos.
 **Valor adotado: 0,15.** É o ponto em que a recusa sobe de 50% para 75% sem
 custo nenhum de cobertura. Acima dele a cobertura despenca sem ganho.
 
-## Cinco defeitos encontrados durante a calibração
+## Oito defeitos encontrados, e como cada um apareceu
 
-O caminho até esses números importa mais que os números, e todos os cinco
-defeitos abaixo apareceram porque a avaliação existia. Nenhum deles seria
-visível testando o assistente à mão com meia dúzia de perguntas.
+O caminho até esses números importa mais que os números. Os cinco primeiros
+apareceram porque a avaliação existia, e nenhum deles seria visível testando o
+assistente à mão com meia dúzia de perguntas. Os três últimos apareceram de
+outro jeito, que vale registrar: alguém usou o sistema no ar e disse que ele não
+respondia nada. O registro de consultas mostrou quais perguntas foram feitas e o
+que cada uma devolveu, e foi ele que transformou a reclamação em três defeitos
+localizados.
 
 ### 1. Trigramas de caracteres afogando o sinal (cobertura: 0%)
 
@@ -184,17 +194,84 @@ usar o do provedor que gerou o vetor.
 Lição registrada sem rodeio: uma métrica que ninguém audita mede o que a
 ferramenta faz, e não o que o sistema faz.
 
+### 6. Recuperação só vetorial perdendo a pergunta curta (o defeito relatado em uso)
+
+Os três anteriores apareceram na calibração. Este apareceu com o sistema no ar,
+no registro de `consultas_rag`, que guarda toda pergunta feita:
+
+| Pergunta | Similaridade máxima | Resposta |
+|---|---|---|
+| "Quando é a Prova P1?" | 0,691 | respondida, com a data certa |
+| "quando vai ser a prova" | 0,692 | "não encontrei essa informação" |
+| "Quando é a proxima aula" | 0,742 | "não encontrei essa informação" |
+
+Duas perguntas sobre o mesmo fato, similaridade praticamente igual, respostas
+opostas. O problema não era o limiar: os trechos passavam. Era o conjunto
+recuperado. O vetor de uma pergunta de cinco palavras, das quais quatro são
+vazias, é pouco discriminante, e os quatro trechos que chegavam ao modelo eram
+aulas quaisquer do cronograma. A palavra que decide a pergunta, "prova", pesa
+pouco num vetor de 768 dimensões e não pesa nada num limiar.
+
+E "próxima aula" não tinha como ser respondida por construção: o prompt não
+informava que dia é hoje.
+
+Correções, detalhadas na [ADR 008](adr/008-recuperacao-hibrida.md):
+
+- segundo braço de recuperação por casamento de termos (BM25), fundido ao
+  vetorial por posição;
+- data de hoje injetada no prompt, no fuso de Brasília;
+- regra explícita para pergunta genérica: listar TODAS as ocorrências que o
+  contexto traz, em vez de escolher uma ou recusar.
+
+### 7. Índice partido pela cota do provedor
+
+Numa carga de oito documentos seguidos, o provedor recusou duas chamadas de
+embedding por limite de requisições por minuto. A ingestão caiu para o modo
+local, gravou os vetores e não reclamou. Como a busca filtra por origem do
+embedding, e precisa filtrar, aqueles dois documentos ficaram invisíveis para a
+busca vetorial: apareciam na lista da disciplina, tinham trechos, e não
+respondiam nada.
+
+Três correções, em camadas diferentes:
+
+- a ingestão insiste com o provedor externo antes de aceitar o vetor local
+  (numa consulta de aluno cair para o local é certo, porque ele espera resposta;
+  numa ingestão não, porque o resultado fica gravado);
+- `/api/health` passou a informar quantos trechos existem e se o índice tem mais
+  de uma origem de embedding;
+- `scripts/reparar-indice.ts` reindexa os trechos no espaço errado a partir do
+  texto já guardado, em lotes pequenos e com pausa, sem precisar do arquivo
+  original.
+
+### 8. A sobreposição do chunking separando o tema da sua data
+
+Com trechos de 320 caracteres e 60 de sobreposição, o cronograma virava 12
+trechos, e a cauda repetida abria o trecho seguinte no meio de uma entrada. Um
+trecho começava em "Aula normal. Finalização das médias." e a data dessa aula
+tinha ficado no trecho anterior. Quem lesse aquele trecho sozinho, modelo ou
+aluno, casava o tema com a data errada.
+
+Correção: divisão por unidade de informação. Cada parágrafo vira um trecho, sem
+sobreposição, e cada trecho carrega o título do documento e a seção em que está.
+O cronograma passou de 12 para 21 trechos, um por aula, e cada um responde
+sozinho.
+
 ## Resultado atual da bateria
 
-Execução padrão, modo generativo, limiar automático por provedor:
+Execução padrão, modo generativo, limiar automático por provedor, com pausa de 4
+segundos entre as perguntas para não esbarrar no limite por minuto do provedor:
 
-| Métrica | Resultado |
-|---|---|
-| Cobertura | 21/23 (91,3%) |
-| Recusa correta | 6/8 (75,0%) |
+| Métrica | Antes da recuperação híbrida | Depois |
+|---|---|---|
+| Cobertura | 33/37 (89,2%) | **37/37 (100,0%)** |
+| Recusa correta | 7/8 (87,5%) | **8/8 (100,0%)** |
 
 Continua valendo a ressalva de não determinismo registrada acima: o número
-oscila entre execuções porque o modelo reformula a resposta a cada chamada.
+oscila entre execuções porque o modelo reformula a resposta a cada chamada. Uma
+execução sem a pausa entre perguntas mede outra coisa: o provedor recusa da
+décima chamada em diante, as respostas passam a vir do modo de leitura direta, e
+a bateria avalia o modo de degradação. A ferramenta agora avisa quando isso
+acontece, contando quantas respostas vieram do modo local.
 
 ## Tamanho do trecho
 

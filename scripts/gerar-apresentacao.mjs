@@ -256,24 +256,25 @@ rodape(s);
 
 // ---------------------------------------------------------------- SLIDE 8
 s = slide();
-titulo(s, "Visão crítica", "Mais dois, e os piores: os que pareciam funcionar");
+titulo(s, "Visão crítica", "Mais três, e os piores: os que pareciam funcionar");
 
 const defeitosTardios = [
   ["Enumeração com um item só", "Cobertura 78% → 91%", "\"Qual é o conteúdo das aulas?\" devolvia a primeira aula do semestre, citada e correta. Similaridade alta, fonte apontada, metade da resposta faltando, e nada sinalizando isso."],
   ["A régua medindo errado", "Recusa 0/8 → 6/8", "A bateria de avaliação aplicava o limiar do modo local (0,15) também ao modo generativo, cujo limiar é 0,65. A métrica media o que a ferramenta fazia, não o que o sistema fazia."],
+  ["Pergunta curta, recusa errada", "Cobertura 89% → 100%", "\"Quando é a Prova P1?\" respondia; \"quando vai ser a prova\" recusava, com a mesma similaridade. O registro de consultas mostrou o par. A busca ganhou um segundo braço, por casamento de termos."],
 ];
 
-y = 2.2;
+y = 2.0;
 for (const [nome, impacto, texto] of defeitosTardios) {
-  cartao(s, 0.7, y, 11.9, 1.8);
-  s.addText(nome, { x: 1.0, y: y + 0.2, w: 4.6, h: 0.35, fontSize: 15, color: BRANCO, bold: true, fontFace: FONTE });
-  s.addText(impacto, { x: 1.0, y: y + 0.68, w: 4.6, h: 0.35, fontSize: 12.5, color: LARANJA, bold: true, fontFace: FONTE });
-  s.addText(texto, { x: 5.8, y: y + 0.22, w: 6.6, h: 1.35, fontSize: 12, color: SUAVE, fontFace: FONTE, lineSpacingMultiple: 1.15 });
-  y += 2.0;
+  cartao(s, 0.7, y, 11.9, 1.5);
+  s.addText(nome, { x: 1.0, y: y + 0.15, w: 4.6, h: 0.35, fontSize: 14, color: BRANCO, bold: true, fontFace: FONTE });
+  s.addText(impacto, { x: 1.0, y: y + 0.58, w: 4.6, h: 0.35, fontSize: 12, color: LARANJA, bold: true, fontFace: FONTE });
+  s.addText(texto, { x: 5.8, y: y + 0.18, w: 6.6, h: 1.1, fontSize: 11.5, color: SUAVE, fontFace: FONTE, lineSpacingMultiple: 1.15 });
+  y += 1.62;
 }
 
-s.addText("Uma métrica que ninguém audita mede o que a ferramenta faz, e não o que o sistema faz.", {
-  x: 0.7, y: 6.5, w: 12, h: 0.35, fontSize: 13, color: TEXTO, bold: true, fontFace: FONTE,
+s.addText("Os dois primeiros a medição revelou. O terceiro só o uso revelou, e quem o encontrou foi o registro de perguntas.", {
+  x: 0.7, y: 6.9, w: 12, h: 0.35, fontSize: 12, color: TEXTO, bold: true, fontFace: FONTE,
 });
 rodape(s);
 
@@ -281,8 +282,8 @@ rodape(s);
 s = slide();
 titulo(s, "Visão crítica", "O que medimos, e o que não conseguimos resolver");
 
-metrica(s, 0.7, 1.95, 2.8, "91,3%", "das perguntas respondíveis foram respondidas", VERDE_CLARO);
-metrica(s, 3.75, 1.95, 2.8, "75,0%", "das perguntas fora do material foram recusadas", VERDE_CLARO);
+metrica(s, 0.7, 1.95, 2.8, "100%", "das 37 perguntas respondíveis foram respondidas", VERDE_CLARO);
+metrica(s, 3.75, 1.95, 2.8, "100%", "das 8 perguntas fora do material foram recusadas", VERDE_CLARO);
 metrica(s, 6.8, 1.95, 2.8, "0", "inversões de faixa em 26.460 comparações", VERDE_CLARO);
 metrica(s, 9.85, 1.95, 2.8, "21/21", "casos da bateria adversarial de barreiras", VERDE_CLARO);
 

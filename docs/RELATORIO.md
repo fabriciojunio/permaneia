@@ -382,7 +382,64 @@ Duas lições que valem além deste código: **recortar abaixo da unidade em que
 informação foi escrita quebra a informação**, e **uma métrica que ninguém audita
 mede o que a ferramenta faz, não o que o sistema faz.**
 
-### 4.3 O tamanho do trecho é o parâmetro de maior impacto
+### 4.3 Três defeitos que só o uso revelou
+
+Os cinco anteriores apareceram na bancada de medição. Os três seguintes só
+apareceram depois, com o sistema no ar: alguém usou o assistente e disse que ele
+não achava nada. O que transformou a reclamação em diagnóstico foi o registro de
+`consultas_rag`, que guarda toda pergunta feita, com a similaridade máxima
+alcançada e a resposta devolvida.
+
+**A recuperação só vetorial perde a pergunta curta.** O registro mostrou duas
+perguntas sobre o mesmo fato, com similaridade praticamente igual e respostas
+opostas:
+
+| Pergunta | Similaridade máxima | Resposta |
+|---|---|---|
+| "Quando é a Prova P1?" | 0,691 | respondida, com a data certa |
+| "quando vai ser a prova" | 0,692 | "não encontrei essa informação" |
+
+O limiar não era o problema, porque os trechos passavam. O problema era o
+conjunto recuperado: o vetor de uma pergunta de cinco palavras, das quais quatro
+são vazias, é pouco discriminante, e os quatro trechos entregues ao modelo eram
+aulas quaisquer do cronograma. A palavra que decide a pergunta, "prova", pesa
+pouco num vetor de 768 dimensões e não pesa nada num limiar. Corrigido com um
+segundo braço de recuperação, por casamento de termos (BM25), fundido ao
+vetorial por posição com Reciprocal Rank Fusion (ADR 008).
+
+No mesmo registro havia "Quando é a proxima aula", também recusada. Essa não
+tinha como ser respondida por construção: o prompt não informava que dia é hoje.
+Passou a informar, no fuso de Brasília, porque o servidor roda em UTC e às 21h de
+uma quinta-feira em Bauru já é sexta em Londres.
+
+**A cota do provedor partiu o índice, em silêncio.** Numa carga de oito
+documentos seguidos, o provedor recusou duas chamadas de embedding por limite de
+requisições por minuto. A ingestão caiu para o modo local, gravou os vetores e
+não reclamou. Como a busca filtra por origem do embedding, e precisa filtrar
+para não comparar espaços diferentes, aqueles dois documentos ficaram invisíveis
+para a busca vetorial: apareciam na lista da disciplina, tinham trechos
+gravados, e não respondiam nada. Corrigido em três camadas: a ingestão insiste
+com o provedor externo antes de aceitar o vetor local, `/api/health` passou a
+declarar se o índice tem mais de uma origem, e `scripts/reparar-indice.ts`
+reindexa o que ficou no espaço errado a partir do texto já guardado.
+
+A distinção que ficou registrada: **cair para o modo local é a decisão certa
+numa consulta de aluno, que está esperando resposta, e é a decisão errada numa
+ingestão, cujo resultado fica gravado.**
+
+**A sobreposição do chunking separava o tema da sua data.** Com trechos de 320
+caracteres e 60 de sobreposição, a cauda repetida abria o trecho seguinte no
+meio de uma entrada do cronograma: o trecho começava em "Aula normal.
+Finalização das médias." e a data daquela aula tinha ficado no trecho anterior.
+Quem lesse aquele trecho sozinho, modelo ou aluno, casava o tema com a data
+errada. Corrigido com divisão por unidade de informação, um parágrafo por
+trecho, sem sobreposição, com o título do documento e a seção colados em cada
+trecho.
+
+Com as três correções, a bateria ampliada para 45 perguntas passou de 89,2% para
+100% de cobertura e de 87,5% para 100% de recusa correta.
+
+### 4.4 O tamanho do trecho é o parâmetro de maior impacto
 
 Com trechos de 900 caracteres, o cronograma inteiro cabia em 4 trechos e cada
 vetor representava quatro aulas ao mesmo tempo. A similaridade de um par
@@ -393,7 +450,7 @@ A regra que saiu daí: o trecho deve ter o tamanho da **unidade de informação 
 documento**, e não um tamanho fixo em caracteres. Texto corrido admite trechos
 grandes; lista de fatos independentes exige trechos pequenos.
 
-### 4.4 O risco que não conseguimos eliminar
+### 4.5 O risco que não conseguimos eliminar
 
 O maior risco deste sistema não é inventar uma data. É **repetir com confiança a
 data certa de uma ementa do semestre passado.**
@@ -407,7 +464,7 @@ A mitigação implementada é parcial: todo documento tem um campo de referênci
 perceber. É uma mitigação, não uma solução. Uma solução exigiria integração com o
 sistema acadêmico, o que está fora do escopo.
 
-### 4.5 Sensibilidade do score fuzzy
+### 4.6 Sensibilidade do score fuzzy
 
 Três alunos sintéticos, com o mesmo sistema:
 
@@ -422,7 +479,7 @@ binário". O critério da secretaria classifica esse aluno como tranquilo. O
 sistema fuzzy o coloca na faixa alta, e a regra 8 explica por quê em linguagem
 que a coordenação pode repetir numa conversa.
 
-### 4.6 O artefato do método Mamdani
+### 4.7 O artefato do método Mamdani
 
 Encontramos e medimos uma limitação do método que a disciplina ensina.
 
@@ -448,7 +505,7 @@ de trocar por uma defuzzificação que o esconderia. A escolha custa 3,4% de
 inversões marginais e preserva a correspondência entre o código e o conteúdo da
 disciplina.
 
-### 4.7 Limitação da calibração dos conjuntos
+### 4.8 Limitação da calibração dos conjuntos
 
 Os conjuntos de frequência seguem a especificação do trabalho, em que "baixa"
 termina em 60%. O contrato didático da disciplina, porém, reprova por falta
@@ -459,7 +516,7 @@ institucional, mas o sistema o classifica como risco **médio**. Alinhar o
 conjunto "baixa" à linha dos 75% é a primeira recalibração que sugerimos, e está
 registrada como teste que documenta o comportamento atual.
 
-### 4.8 Limitações honestas da própria avaliação
+### 4.9 Limitações honestas da própria avaliação
 
 - **26 perguntas é pouco.** O conjunto serve para comparar configurações entre
   si, que é para o que foi usado, e não para afirmar uma taxa absoluta.
@@ -472,7 +529,7 @@ registrada como teste que documenta o comportamento atual.
   evasão real. Não sabemos se o score prevê alguma coisa; sabemos que ele captura
   o padrão que a literatura descreve.
 
-### 4.9 Lições aprendidas
+### 4.10 Lições aprendidas
 
 1. **Medir muda o que se constrói.** Os três defeitos da seção 4.2 estavam no
    sistema e pareciam corretos. Só apareceram quando existiu um número.
@@ -527,7 +584,7 @@ um sai de um script no repositório e pode ser reproduzido:
 ```bash
 npx tsx scripts/avaliar-rag.ts        # cobertura e recusa
 npx tsx scripts/diagnostico-fuzzy.ts  # monotonicidade e artefato do centroide
-npm run test:coverage                 # 1824 testes e cobertura
+npm run test:coverage                 # 1870 testes e cobertura
 ```
 
 Nenhum número deste relatório foi estimado ou gerado por IA. Onde não medimos,
