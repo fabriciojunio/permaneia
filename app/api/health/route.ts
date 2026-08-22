@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { contarTrechosPorOrigem } from "@/lib/repositorios/documento";
 import { origemAtual } from "@/lib/ia";
 import { BASE_DE_REGRAS } from "@/lib/fuzzy/regras";
 import { comTratamentoDeErro, respostaOk } from "@/lib/observabilidade";
@@ -57,6 +58,21 @@ export const GET = comTratamentoDeErro(async () => {
     bancoOk = false;
   }
 
+  // Estado do índice. Um índice com trechos de duas origens de embedding é um
+  // índice partido: a busca vetorial filtra por origem, então metade do
+  // material fica invisível para ela. O sintoma na tela é o assistente dizer
+  // que não encontrou nada sobre um documento que está lá, e é o tipo de falha
+  // que não aparece em teste nenhum rodado sobre o código.
+  let trechos = 0;
+  let origensDoIndice: string[] = [];
+  try {
+    const porOrigem = await contarTrechosPorOrigem();
+    origensDoIndice = Object.keys(porOrigem).sort();
+    trechos = Object.values(porOrigem).reduce((soma, n) => soma + n, 0);
+  } catch {
+    /* O erro de banco já foi capturado acima. */
+  }
+
   const barreirasOk = barreirasIntactas();
   const saudavel = bancoOk && extensaoVetorOk && barreirasOk;
   const corpo = {
@@ -67,6 +83,13 @@ export const GET = comTratamentoDeErro(async () => {
     // Qual provedor responderia agora. Não expõe a chave, só o modo de operação.
     provedorIa: origemAtual(),
     regrasFuzzy: BASE_DE_REGRAS.length,
+    indice: {
+      trechos,
+      origens: origensDoIndice,
+      // Não derruba a saúde do serviço: com o índice partido o assistente
+      // continua respondendo pela busca por termos. Mas quem opera precisa ver.
+      misturado: origensDoIndice.length > 1,
+    },
     latenciaMs: Date.now() - inicio,
     momento: new Date().toISOString(),
   };

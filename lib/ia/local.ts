@@ -186,11 +186,16 @@ export function responderExtrativo(prompt: string): string {
     return { bloco, acertos };
   });
 
+  // Nenhum bloco tem uma palavra sequer da pergunta: a busca trouxe algo por
+  // proximidade vetorial, mas não há evidência de que responda. Transcrever o
+  // primeiro bloco assim mesmo era o defeito antigo deste modo, e produzia o
+  // pior tipo de resposta: um trecho verdadeiro do documento, apresentado como
+  // se respondesse uma pergunta que ele não responde.
+  if (!pontuados.some((p) => p.acertos > 0)) return SEM_RESPOSTA_LOCAL;
+
   // Os blocos já chegam ordenados por similaridade; a contagem de termos exatos
   // só desempata.
-  const escolhidos = pontuados.some((p) => p.acertos > 0)
-    ? pontuados.filter((p) => p.acertos > 0).slice(0, 2)
-    : pontuados.slice(0, 1);
+  const escolhidos = pontuados.filter((p) => p.acertos > 0).slice(0, 2);
 
   return [
     "Leitura direta do material, sem geração de texto. Copio abaixo os trechos do documento que respondem à sua pergunta:",

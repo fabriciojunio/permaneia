@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dividirPorUnidade,
   SOBREPOSICAO,
   TAMANHO_ALVO,
   TAMANHO_MINIMO,
@@ -249,5 +250,95 @@ describe("dividirEmTrechos", () => {
     const trechos = dividirEmTrechos("texto   com\n\n\n\n\nespaço  demais", 2000, 100);
     expect(trechos[0]!.texto).not.toContain("   ");
     expect(trechos[0]!.texto).not.toContain("\n\n\n");
+  });
+});
+
+describe("divisão por unidade de informação", () => {
+  const CRONOGRAMA = [
+    "# Cronograma de aulas — Inteligência Artificial",
+    "",
+    "Professor: Patrick Pedreira Silva",
+    "",
+    "## Calendário",
+    "",
+    "24 de setembro de 2026, quinta-feira. Avaliação. Prova P1.",
+    "",
+    "01 de outubro de 2026, quinta-feira. Aula normal. Devolutiva da prova e algoritmos genéticos.",
+    "",
+    "29 de outubro de 2026, quinta-feira. Aula normal. Lógica Fuzzy e sistemas de inferência.",
+  ].join("\n");
+
+  it("faz um trecho por parágrafo", () => {
+    const trechos = dividirPorUnidade(CRONOGRAMA);
+    expect(trechos).toHaveLength(4);
+  });
+
+  it("mantém cada data junto do seu tema", () => {
+    for (const trecho of dividirPorUnidade(CRONOGRAMA).slice(1)) {
+      expect(trecho.texto).toMatch(/\d{2} de \w+ de 2026/);
+    }
+  });
+
+  it("nunca começa um trecho no meio de uma entrada", () => {
+    // A divisão por tamanho abria o trecho seguinte na cauda do anterior, e o
+    // tema aparecia sem a data. Aqui isso não pode acontecer.
+    for (const trecho of dividirPorUnidade(CRONOGRAMA)) {
+      expect(trecho.texto).not.toMatch(/^Aula normal/);
+    }
+  });
+
+  it("carrega o título do documento em cada trecho", () => {
+    for (const trecho of dividirPorUnidade(CRONOGRAMA)) {
+      expect(trecho.texto).toContain("Cronograma de aulas");
+    }
+  });
+
+  it("carrega a seção em que o trecho está", () => {
+    const doCalendario = dividirPorUnidade(CRONOGRAMA).filter((t) => t.texto.includes("2026, quinta"));
+    for (const trecho of doCalendario) {
+      expect(trecho.texto).toContain("Calendário");
+    }
+  });
+
+  it("não devolve o cabeçalho como trecho sozinho", () => {
+    const trechos = dividirPorUnidade(CRONOGRAMA);
+    expect(trechos.some((t) => t.texto.trim() === "Cronograma de aulas — Inteligência Artificial")).toBe(false);
+  });
+
+  it("cola a linha de metadado curta na unidade seguinte", () => {
+    const trechos = dividirPorUnidade(CRONOGRAMA);
+    expect(trechos[0]!.texto).toContain("Patrick Pedreira Silva");
+  });
+
+  it("numera os trechos a partir de zero e sem buraco", () => {
+    const trechos = dividirPorUnidade(CRONOGRAMA);
+    expect(trechos.map((t) => t.indice)).toEqual([0, 1, 2, 3]);
+  });
+
+  it("devolve lista vazia para texto vazio", () => {
+    expect(dividirPorUnidade("   \n\n  ")).toEqual([]);
+  });
+
+  it("parte o parágrafo grande por fronteira de frase", () => {
+    const grande = `# Documento\n\n${"Uma frase de tamanho conhecido. ".repeat(60)}`;
+    const trechos = dividirPorUnidade(grande, 300);
+    expect(trechos.length).toBeGreaterThan(1);
+    for (const trecho of trechos) {
+      expect(trecho.texto.length).toBeLessThanOrEqual(320);
+      expect(trecho.texto.trimEnd().endsWith(".")).toBe(true);
+    }
+  });
+
+  it("não perde conteúdo pelo caminho", () => {
+    const junto = dividirPorUnidade(CRONOGRAMA).map((t) => t.texto).join(" ");
+    expect(junto).toContain("Prova P1");
+    expect(junto).toContain("Lógica Fuzzy");
+    expect(junto).toContain("algoritmos genéticos");
+  });
+
+  it("respeita o piso de tamanho informado", () => {
+    const curtos = "# Doc\n\nUm.\n\nDois.\n\nTrês.";
+    expect(dividirPorUnidade(curtos, 1200, 1)).toHaveLength(3);
+    expect(dividirPorUnidade(curtos, 1200, 500)).toHaveLength(1);
   });
 });

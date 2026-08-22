@@ -290,12 +290,15 @@ describe("responderExtrativo", () => {
     expect(blocos.length).toBeLessThanOrEqual(2);
   });
 
-  it("sem nenhum termo em comum, ainda devolve o trecho mais similar recuperado", () => {
-    // A busca vetorial já filtrou por relevância; devolver nada aqui
-    // descartaria um resultado que passou pelo limiar.
+  it("sem nenhum termo em comum, admite que não encontrou", () => {
+    // A regra mudou depois que a recuperação ganhou o braço léxico. Antes, o
+    // contexto só chegava aqui se tivesse passado do limiar vetorial, e
+    // transcrever o trecho mais próximo era defensável. Agora chega também por
+    // casamento parcial de termos, e transcrever um trecho que não tem palavra
+    // alguma da pergunta apresenta como resposta algo que não responde nada.
     const contexto = "[Doc]\nConteúdo institucional qualquer.";
     const r = responderExtrativo(prompt(contexto, "xyzabc"));
-    expect(r).toContain("Conteúdo institucional");
+    expect(r).toBe(SEM_RESPOSTA_LOCAL);
   });
 
   it("a resposta nunca inventa conteúdo fora do contexto", () => {

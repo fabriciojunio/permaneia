@@ -3,8 +3,9 @@
 // O fluxo tem sete passos, e a ordem importa:
 //
 //   1. gera o vetor da pergunta
-//   2. busca os trechos mais próximos DENTRO da disciplina
-//   3. descarta o que não passa do limiar de relevância
+//   2. busca em dois braços DENTRO da disciplina: vizinhança vetorial e
+//      casamento de termos, fundidos por posição
+//   3. descarta o que não passa do limiar de relevância nem do piso de cobertura
 //   4. se não sobrou nada, responde que não sabe e para aqui
 //   5. remove trechos redundantes e monta o prompt com o contexto
 //   6. chama o provedor de IA, com fallback para o modo extrativo
@@ -16,7 +17,11 @@
 
 import { gerarEmbeddingComFallback, gerarTextoComFallback } from "@/lib/ia";
 import type { OrigemResposta } from "@/lib/ia/provedor";
-import { buscarTrechosDoDocumento, buscarTrechosSimilares } from "@/lib/repositorios/documento";
+import {
+  buscarTrechosDoDocumento,
+  buscarTrechosSimilares,
+  listarTrechosDaDisciplina,
+} from "@/lib/repositorios/documento";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import {
@@ -27,6 +32,8 @@ import {
   montarPrompt,
 } from "./prompt";
 import { avaliarPergunta, type CategoriaBloqueio } from "./guardrails";
+import { acertosConfiaveis, buscarPorTermos } from "./lexico";
+import { fundir, type OrigemRecuperacao, type TrechoFundido } from "./fusao";
 import { perguntaAbrangente } from "./abrangencia";
 import {
   filtrarRelevantes,
@@ -45,16 +52,32 @@ export const K_RECUPERACAO = 8;
  * oito trechos do contrato didático e o cronograma ficava de fora.
  */
 export const K_RECUPERACAO_ABRANGENTE = 20;
-/** Quantos trechos, no máximo, entram no contexto enviado ao modelo. */
-export const K_CONTEXTO = 4;
-/** Teto de trechos quando a pergunta abre o documento inteiro. */
-export const K_DOCUMENTO_INTEIRO = 30;
+/**
+ * Quantos trechos, no máximo, entram no contexto enviado ao modelo.
+ *
+ * Subiu de quatro para seis quando o cronograma passou a ter uma aula por
+ * trecho: "quando vai ser a prova" tem quatro respostas certas no calendário
+ * (P1, P2, substitutiva e exame) e um contexto de quatro trechos não cabia as
+ * quatro mais o que a busca trouxe junto.
+ */
+export const K_CONTEXTO = 6;
+/**
+ * Teto de trechos quando a pergunta abre o documento inteiro.
+ *
+ * Subiu para 45 quando os documentos passaram a ter um trecho por parágrafo: o
+ * cronograma sozinho tem 21, e com o teto anterior a última aula do semestre
+ * caía fora do contexto sempre que outro documento entrava na frente. A
+ * resposta parecia completa e terminava em 10 de dezembro.
+ */
+export const K_DOCUMENTO_INTEIRO = 45;
 
 export type FonteCitada = {
   titulo: string;
   referencia: string | null;
   similaridade: number;
   trecho: string;
+  /** Por qual braço da busca o trecho chegou. A tela mostra, e a defesa explica. */
+  origemRecuperacao: OrigemRecuperacao;
 };
 
 export type RespostaRag = {
@@ -78,13 +101,16 @@ export type OpcoesConsulta = {
   /** Desliga a gravação em consultas_rag. Usado pelos scripts de avaliação. */
   registrar?: boolean;
   limiar?: number;
+  /** Data de referência da conversa. Injetada nos testes para não depender do relógio. */
+  hoje?: Date;
 };
 
-function paraFonte(t: TrechoRecuperado): FonteCitada {
+function paraFonte(t: TrechoRecuperado & { origemRecuperacao?: OrigemRecuperacao }): FonteCitada {
   return {
     titulo: t.titulo,
     referencia: t.referencia,
     similaridade: t.similaridade,
+    origemRecuperacao: t.origemRecuperacao ?? "vetorial",
     // Prévia curta: a tela mostra de onde veio a informação, não o documento inteiro.
     trecho: t.texto.length > 400 ? `${t.texto.slice(0, 400).trimEnd()}…` : t.texto,
   };
@@ -103,29 +129,93 @@ function paraFonte(t: TrechoRecuperado): FonteCitada {
  * pontuou, porque é ela que a tela mostra e o registro guarda.
  */
 async function documentosRelevantesInteiros(
-  relevantes: TrechoRecuperado[]
-): Promise<TrechoRecuperado[]> {
+  relevantes: TrechoFundido[]
+): Promise<Array<TrechoRecuperado & { origemRecuperacao?: OrigemRecuperacao }>> {
   const medidas = new Map(relevantes.map((t) => [t.chunkId, t.similaridade]));
+  const origens = new Map(relevantes.map((t) => [t.chunkId, t.origemRecuperacao]));
 
-  const ordemDosDocumentos: string[] = [];
-  for (const t of relevantes) {
-    if (!ordemDosDocumentos.includes(t.documentoId)) ordemDosDocumentos.push(t.documentoId);
-  }
+  // Ordem dos documentos: pela melhor similaridade medida em cada um.
+  //
+  // Duas alternativas foram testadas e descartadas. Ordenar pela posição do
+  // trecho campeão deixava o cronograma para trás por centésimos numa pergunta
+  // de enumeração. Ordenar pelo NÚMERO de trechos relevantes foi pior: um
+  // documento longo e genericamente parecido com a pergunta, como a lista de
+  // materiais, casa com nove trechos e passa à frente do cronograma, que casa
+  // com dois porque a pergunta não repete o texto de cada aula. A similaridade
+  // do melhor trecho é o sinal que resistiu aos dois casos.
+  const melhorSimilaridade = new Map<string, number>();
+  const melhorPosicao = new Map<string, number>();
+  relevantes.forEach((t, posicao) => {
+    const atual = melhorSimilaridade.get(t.documentoId) ?? -1;
+    if (t.similaridade > atual) melhorSimilaridade.set(t.documentoId, t.similaridade);
+    if (!melhorPosicao.has(t.documentoId)) melhorPosicao.set(t.documentoId, posicao);
+  });
 
-  const saida: TrechoRecuperado[] = [];
+  const ordemDosDocumentos = [...melhorSimilaridade.keys()].sort((a, b) => {
+    const diferenca = melhorSimilaridade.get(b)! - melhorSimilaridade.get(a)!;
+    if (diferenca !== 0) return diferenca;
+    return melhorPosicao.get(a)! - melhorPosicao.get(b)!;
+  });
+
+  const saida: Array<TrechoRecuperado & { origemRecuperacao?: OrigemRecuperacao }> = [];
   for (const documentoId of ordemDosDocumentos) {
-    if (saida.length >= K_DOCUMENTO_INTEIRO) break;
+    const restante = K_DOCUMENTO_INTEIRO - saida.length;
+    if (restante <= 0) break;
 
-    const trechos = await buscarTrechosDoDocumento(
-      documentoId,
-      K_DOCUMENTO_INTEIRO - saida.length
-    );
-    for (const t of trechos) {
-      saida.push({ ...t, similaridade: medidas.get(t.chunkId) ?? t.similaridade });
+    const trechos = await buscarTrechosDoDocumento(documentoId, K_DOCUMENTO_INTEIRO);
+
+    // Documento que não cabe inteiro fica de fora, a menos que seja o primeiro.
+    // Entrar pela metade é o pior dos mundos numa enumeração: a resposta sai
+    // com cara de lista completa e para no meio do semestre, e quem lê não tem
+    // como saber que faltou.
+    if (trechos.length > restante && saida.length > 0) continue;
+
+    for (const t of trechos.slice(0, restante)) {
+      saida.push({
+        ...t,
+        similaridade: medidas.get(t.chunkId) ?? t.similaridade,
+        ...(origens.has(t.chunkId) ? { origemRecuperacao: origens.get(t.chunkId) } : {}),
+      });
     }
   }
 
   return saida.length > 0 ? saida : relevantes.slice(0, K_CONTEXTO);
+}
+
+/**
+ * Uma fonte por documento, e só então as sobras.
+ *
+ * A lista de fontes é da tela, não do modelo: ela existe para o aluno conferir
+ * de onde saiu a resposta. Cortar os primeiros trechos do contexto não serve a
+ * isso quando a pergunta abre documentos inteiros, porque os seis primeiros
+ * trechos costumam ser todos do mesmo documento, e a resposta que ele está lendo
+ * cita outro. Mostrar um representante de cada documento diz a verdade sobre o
+ * que foi consultado.
+ */
+function fontesRepresentativas(
+  contexto: Array<TrechoRecuperado & { origemRecuperacao?: OrigemRecuperacao }>,
+  maximo: number
+): FonteCitada[] {
+  const vistos = new Set<string>();
+  const escolhidos: Array<TrechoRecuperado & { origemRecuperacao?: OrigemRecuperacao }> = [];
+
+  for (const trecho of contexto) {
+    if (vistos.has(trecho.documentoId)) continue;
+    vistos.add(trecho.documentoId);
+    escolhidos.push(trecho);
+    if (escolhidos.length >= maximo) break;
+  }
+
+  // Sobrou espaço: completa com os melhores trechos ainda não escolhidos.
+  if (escolhidos.length < maximo) {
+    for (const trecho of contexto) {
+      if (escolhidos.includes(trecho)) continue;
+      escolhidos.push(trecho);
+      if (escolhidos.length >= maximo) break;
+    }
+  }
+
+  return escolhidos.map(paraFonte);
 }
 
 export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
@@ -167,18 +257,42 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
   // geometrias diferentes e um número só desligaria o assistente num deles.
   const limiar = opcoes.limiar ?? limiarDoProvedor(embedding.origem);
 
-  // 2. Busca vetorial, restrita à disciplina e ao mesmo espaço de embedding.
-  const candidatos = await buscarTrechosSimilares(
-    opcoes.disciplinaId,
-    embedding.valor,
-    embedding.origem,
-    abrangente ? K_RECUPERACAO_ABRANGENTE : K_RECUPERACAO
-  );
+  // 2. Recuperação em dois braços.
+  //
+  // O vetorial acha o que é PARECIDO com a pergunta; o léxico acha o que
+  // CONTÉM as palavras dela. Os dois erram, e erram de formas diferentes: o
+  // primeiro perde o termo decisivo de uma pergunta curta, o segundo perde a
+  // paráfrase. Rodar os dois e fundir por posição cobre a falha de cada um, e
+  // mantém o assistente de pé quando o provedor externo cai e os vetores da
+  // pergunta deixam de conversar com os do índice.
+  const k = abrangente ? K_RECUPERACAO_ABRANGENTE : K_RECUPERACAO;
+
+  const [candidatos, catalogo] = await Promise.all([
+    buscarTrechosSimilares(opcoes.disciplinaId, embedding.valor, embedding.origem, k),
+    listarTrechosDaDisciplina(opcoes.disciplinaId),
+  ]);
 
   const maxSimilaridade = similaridadeMaxima(candidatos);
 
   // 3 e 4. Filtro de relevância e recusa honesta.
-  const relevantes = filtrarRelevantes(candidatos, limiar);
+  //
+  // Cada braço tem seu próprio critério de corte, e nenhum deles é opcional: é
+  // o par deles que impede o assistente de responder com material que não fala
+  // do assunto perguntado.
+  const vetoriais = filtrarRelevantes(candidatos, limiar);
+
+  const medidos = new Map(candidatos.map((c) => [c.chunkId, c.similaridade]));
+  const porChunk = new Map(catalogo.map((t) => [t.chunkId, t]));
+  const lexicos = acertosConfiaveis(buscarPorTermos(opcoes.pergunta, catalogo))
+    .slice(0, k)
+    .map((acerto) => {
+      const trecho = porChunk.get(acerto.chunkId)!;
+      // Preserva a similaridade medida quando a busca vetorial também viu o
+      // trecho, ainda que abaixo do limiar: é o número que a tela mostra.
+      return { ...trecho, similaridade: medidos.get(acerto.chunkId) ?? trecho.similaridade };
+    });
+
+  const relevantes = fundir({ vetoriais, lexicos, maximo: k });
   if (relevantes.length === 0) {
     const resultado: RespostaRag = {
       resposta: RESPOSTA_SEM_CONTEXTO,
@@ -204,7 +318,7 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
     ? await documentosRelevantesInteiros(relevantes)
     : removerRedundantes(relevantes).slice(0, K_CONTEXTO);
 
-  const prompt = montarPrompt(opcoes.pergunta, contexto);
+  const prompt = montarPrompt(opcoes.pergunta, contexto, opcoes.hoje);
 
   // 6. Geração, com degradação para o modo extrativo.
   const geracao = await gerarTextoComFallback(prompt, {
@@ -240,9 +354,7 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
 
   const resultado: RespostaRag = {
     resposta: textoFinal,
-    // A lista de fontes é da tela, não do modelo: trinta trechos do mesmo
-    // documento não ajudam o aluno a conferir nada.
-    fontes: contexto.slice(0, K_CONTEXTO).map(paraFonte),
+    fontes: fontesRepresentativas(contexto, K_CONTEXTO),
     origemIa: geracao.origem,
     similaridadeMaxima: maxSimilaridade,
     // Reflete o texto EFETIVAMENTE devolvido, e não o que o modelo produziu:

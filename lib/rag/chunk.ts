@@ -130,3 +130,104 @@ export function recortarCauda(texto: string, n: number): string {
   const espaco = bruto.indexOf(" ");
   return espaco === -1 ? bruto : bruto.slice(espaco + 1);
 }
+
+/**
+ * Divisão por unidade de informação, para documento que é lista de fatos.
+ *
+ * Existe por um defeito real, e não por gosto de configuração. O cronograma tem
+ * uma aula por parágrafo, no formato "24 de setembro de 2026, quinta-feira.
+ * Avaliação. Prova P1.". A divisão por tamanho empacotava duas aulas por trecho
+ * e, pior, começava o trecho seguinte no meio de uma entrada por causa da
+ * sobreposição: o trecho abria em "Aula normal. Finalização das médias." e a
+ * data dessa aula tinha ficado no trecho anterior. Quem lesse aquele trecho
+ * sozinho, modelo ou aluno, casava o tema com a data errada.
+ *
+ * Aqui cada parágrafo vira um trecho, sem sobreposição, e cada trecho carrega o
+ * título do documento e a seção em que está. O custo é ter mais vetores; o
+ * ganho é que todo trecho responde sozinho, que é o que a busca precisa.
+ */
+/**
+ * Piso de tamanho da unidade, bem abaixo do usado na divisão por tamanho.
+ *
+ * Uma linha do cronograma como "10 de setembro de 2026, quinta-feira. Aula
+ * normal. Tira-dúvidas pontuais." tem 72 caracteres e é uma unidade completa de
+ * informação. Com o piso de 80 ela era colada na aula seguinte, e duas aulas
+ * voltavam a dividir o mesmo vetor.
+ */
+export const MINIMO_UNIDADE = 45;
+
+export function dividirPorUnidade(bruto: string, maximo = 1200, minimo = MINIMO_UNIDADE): Trecho[] {
+  const texto = limparTexto(bruto);
+  if (texto.length === 0) return [];
+
+  const blocos = texto.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+
+  let titulo = "";
+  let secao = "";
+  const partes: string[] = [];
+  // Acumula parágrafo curto demais para valer sozinho: linhas de metadado como
+  // "Professor: Fulano" não são unidade de informação, são cabeçalho da que vem.
+  let pendente = "";
+
+  const contexto = (): string => [titulo, secao].filter(Boolean).join(" — ");
+
+  const emitir = (corpo: string): void => {
+    const prefixo = contexto();
+    for (const parte of partirSeGrande(corpo, maximo)) {
+      partes.push(prefixo ? `${prefixo}\n${parte}` : parte);
+    }
+  };
+
+  for (const bloco of blocos) {
+    const cabecalho = bloco.match(/^(#{1,6})\s+(.+)$/);
+    if (cabecalho) {
+      if (pendente) {
+        emitir(pendente);
+        pendente = "";
+      }
+      const nivel = cabecalho[1]!.length;
+      const rotulo = cabecalho[2]!.trim();
+      if (nivel === 1) {
+        titulo = rotulo;
+        secao = "";
+      } else {
+        secao = rotulo;
+      }
+      continue;
+    }
+
+    const junto = pendente ? `${pendente} ${bloco}` : bloco;
+    if (junto.length < minimo) {
+      pendente = junto;
+      continue;
+    }
+    emitir(junto);
+    pendente = "";
+  }
+
+  if (pendente) emitir(pendente);
+
+  return partes.map((texto, indice) => ({ indice, texto: texto.trim() })).filter((t) => t.texto.length > 0);
+}
+
+/** Parágrafo maior que o teto cai por fronteira de frase, nunca no meio dela. */
+function partirSeGrande(paragrafo: string, maximo: number): string[] {
+  if (paragrafo.length <= maximo) return [paragrafo];
+
+  const frases = paragrafo.split(/(?<=[.!?])\s+/).map((f) => f.trim()).filter(Boolean);
+  const saida: string[] = [];
+  let atual = "";
+
+  for (const frase of frases) {
+    const candidato = atual ? `${atual} ${frase}` : frase;
+    if (candidato.length <= maximo) {
+      atual = candidato;
+      continue;
+    }
+    if (atual) saida.push(atual);
+    atual = frase.length <= maximo ? frase : frase.slice(0, maximo);
+  }
+  if (atual) saida.push(atual);
+
+  return saida;
+}

@@ -174,6 +174,90 @@ export async function buscarTrechosDoDocumento(
   }));
 }
 
+/**
+ * Todos os trechos indexados de uma disciplina, para a busca léxica.
+ *
+ * A busca por termos roda em memória, e não no banco, por uma razão de escala:
+ * uma disciplina tem dezenas de trechos, não milhões. O que se ganha com isso é
+ * usar a MESMA tokenização do resto do sistema, com o mesmo tratamento de
+ * acento e de plural, em vez de depender da configuração `portuguese` do
+ * servidor, que difere entre a máquina de quem desenvolve e o Postgres gerido.
+ *
+ * O teto existe para que a decisão continue válida quando a base crescer: acima
+ * dele, o braço léxico passa a ver só parte do material, e é hora de levá-lo
+ * para dentro do banco com índice de texto.
+ */
+export async function listarTrechosDaDisciplina(
+  disciplinaId: string,
+  limite = 500
+): Promise<TrechoRecuperado[]> {
+  const k = Math.min(2000, Math.max(1, Math.trunc(limite)));
+
+  const linhas = await prisma.$queryRaw<LinhaTrecho[]>`
+    SELECT
+      c.id            AS chunk_id,
+      c.documento_id  AS documento_id,
+      d.titulo        AS titulo,
+      d.referencia    AS referencia,
+      c.indice        AS indice,
+      c.texto         AS texto
+    FROM documento_chunks c
+    JOIN documentos d ON d.id = c.documento_id
+    WHERE c.disciplina_id = ${disciplinaId}::uuid
+    ORDER BY d.criado_em ASC, c.indice ASC
+    LIMIT ${k}
+  `;
+
+  return linhas.map((l) => ({
+    chunkId: l.chunk_id,
+    documentoId: l.documento_id,
+    titulo: l.titulo,
+    referencia: l.referencia,
+    indice: l.indice,
+    texto: l.texto,
+    similaridade: 0,
+  }));
+}
+
+/** Trechos cujo vetor NÃO pertence ao espaço informado. Alimenta o reparo do índice. */
+export async function listarTrechosDeOutraOrigem(
+  origemDesejada: OrigemResposta,
+  limite = 500
+): Promise<Array<{ chunkId: string; texto: string; titulo: string }>> {
+  const k = Math.min(2000, Math.max(1, Math.trunc(limite)));
+
+  const linhas = await prisma.$queryRaw<Array<{ chunk_id: string; texto: string; titulo: string }>>`
+    SELECT c.id AS chunk_id, c.texto AS texto, d.titulo AS titulo
+    FROM documento_chunks c
+    JOIN documentos d ON d.id = c.documento_id
+    WHERE c.origem_embedding <> ${origemDesejada}
+    ORDER BY d.criado_em ASC, c.indice ASC
+    LIMIT ${k}
+  `;
+
+  return linhas.map((l) => ({ chunkId: l.chunk_id, texto: l.texto, titulo: l.titulo }));
+}
+
+/**
+ * Regrava o vetor de um trecho já indexado.
+ *
+ * Reindexar a partir do texto guardado, e não do arquivo original, é o que
+ * permite consertar o índice de um documento que veio por upload e cujo PDF
+ * ninguém tem mais.
+ */
+export async function atualizarEmbeddingDoTrecho(
+  chunkId: string,
+  embedding: number[],
+  origemEmbedding: OrigemResposta
+): Promise<void> {
+  await prisma.$executeRaw`
+    UPDATE documento_chunks
+    SET embedding = ${literalVetor(embedding)}::vector,
+        origem_embedding = ${origemEmbedding}
+    WHERE id = ${chunkId}::uuid
+  `;
+}
+
 export async function listarDocumentosDaDisciplina(disciplinaId: string) {
   return prisma.documento.findMany({
     where: { disciplinaId },
