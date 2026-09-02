@@ -5,6 +5,8 @@ Assistente de estudos com RAG e painel de risco de evasão por lógica fuzzy.
 Projeto prático da disciplina de Inteligência Artificial, turma de quinta-feira,
 período 2026-2. Entrega em 19 de novembro de 2026.
 
+**No ar:** [permaneia.vercel.app](https://permaneia.vercel.app)
+
 ---
 
 ## O problema
