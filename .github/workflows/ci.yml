@@ -259,6 +259,19 @@ jobs:
             --build-arg APP_RAMO="${{ github.ref_name }}" \
             -t permaneia:ci .
 
+      - name: Construir a imagem de manutenção
+        # Ela aplica o esquema e semeia, e não tem quem a exercite fora daqui.
+        # Sem este passo, ela quebra na primeira mudança de dependência e só se
+        # descobre no dia em que alguém precisa aplicar um esquema.
+        run: docker build --target ferramentas -t permaneia-ferramentas:ci .
+
+      - name: Conferir que a imagem de manutenção tem as ferramentas
+        run: |
+          # O que se quer provar é que o CLI do Prisma existe e roda ali dentro.
+          # Ele é o motivo de esta imagem ser separada da de execução, onde o
+          # pacote autocontido do Next não o leva.
+          docker run --rm permaneia-ferramentas:ci node_modules/.bin/prisma --version
+
       - name: Conferir que a imagem sobe e responde
         run: |
           # Sem banco, o health responde 503 com "banco": "indisponivel", e é

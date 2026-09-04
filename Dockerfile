@@ -41,15 +41,42 @@ ARG APP_RAMO=desconhecido
 ENV APP_COMMIT=${APP_COMMIT}
 ENV APP_RAMO=${APP_RAMO}
 
-# A construção do Next precisa de um valor para as variáveis obrigatórias, e
-# nenhum deles é usado: não há conexão com banco nem chamada ao provedor de IA
-# durante o build. Os valores de verdade chegam no arranque do contêiner.
 ENV NODE_ENV=production
-ENV DATABASE_URL="postgresql://construcao:construcao@localhost:5432/construcao"
-ENV DIRECT_URL="postgresql://construcao:construcao@localhost:5432/construcao"
-ENV SESSION_SECRET="apenas-para-a-construcao-nao-vale-em-execucao-nenhuma"
 
-RUN npm run build
+# A construção do Next precisa de um valor para as variáveis obrigatórias, que
+# a aplicação valida ao carregar. Nenhum deles é usado: não há conexão com
+# banco nem chamada ao provedor de IA durante o build, e os valores de verdade
+# chegam no arranque do contêiner.
+#
+# Passados no próprio RUN, e não como ENV ou ARG: assim eles não ficam gravados
+# em camada nenhuma da imagem. Vale mesmo sendo valor de mentira, porque a
+# forma é o que alguém vai copiar no dia em que o valor for de verdade.
+RUN DATABASE_URL="postgresql://construcao:construcao@localhost:5432/construcao" \
+    DIRECT_URL="postgresql://construcao:construcao@localhost:5432/construcao" \
+    SESSION_SECRET="apenas-para-a-construcao-nao-vale-em-execucao-nenhuma" \
+    npm run build
+
+# --------------------------------------------------------------- ferramentas
+# Imagem de manutenção: aplicar esquema, semear, ingerir documento, reparar
+# índice.
+#
+# Existe porque a imagem de execução NÃO serve para isso. A saída autocontida
+# do Next traz apenas o que o servidor usa em tempo de execução, e o CLI do
+# Prisma e o tsx não estão entre eles: um `prisma db push` ali dentro falha
+# com "comando não encontrado". Levar as ferramentas para a imagem de execução
+# resolveria e desfaria o motivo de ela existir, que é não carregar nada além
+# do necessário para atender.
+#
+# É o estágio de construção com outro nome, e o nome importa: quem lê o
+# compose ou o Job precisa ver que aquilo é outra coisa.
+FROM construcao AS ferramentas
+WORKDIR /construcao
+# A imagem base já traz o usuário `node`, de identificador 1000. A posse é
+# passada porque a construção rodou como root, e um comando de manutenção que
+# precise escrever, como a semeadura, falharia sem isso.
+RUN chown -R node:node /construcao
+USER node
+CMD ["node_modules/.bin/prisma", "db", "push", "--skip-generate"]
 
 # -------------------------------------------------------------------- imagem
 FROM node:22-alpine AS execucao
@@ -64,10 +91,13 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
 # A saída autocontida do Next já traz o servidor e as dependências que ele usa
-# de fato. O estático e o público vêm à parte porque ficam fora dela.
+# de fato. O estático vem à parte porque fica fora dela.
+#
+# Não há `public/` para copiar: o ícone e o robots.txt são rotas do App Router
+# (app/icon.svg e app/robots.ts), e entram no pacote. Um COPY de uma pasta
+# inexistente não é ignorado, ele quebra a construção.
 COPY --from=construcao --chown=permaneia:permaneia /construcao/.next/standalone ./
 COPY --from=construcao --chown=permaneia:permaneia /construcao/.next/static ./.next/static
-COPY --from=construcao --chown=permaneia:permaneia /construcao/public ./public
 
 # O schema e as migrações entram para que dê para aplicar o esquema a partir do
 # próprio contêiner, sem precisar de uma segunda imagem só para isso.

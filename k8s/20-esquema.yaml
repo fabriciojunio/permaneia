@@ -19,10 +19,16 @@ spec:
       restartPolicy: Never
       securityContext:
         runAsNonRoot: true
-        runAsUser: 1001
+        # 1000, e não 1001: é o usuário `node` da imagem base, que é dono dos
+        # arquivos na imagem de manutenção. A de execução usa 1001, que é o
+        # usuário criado lá.
+        runAsUser: 1000
       containers:
         - name: esquema
-          image: ghcr.io/fabriciojunio/permaneia:v1.0.0
+          # A imagem de MANUTENÇÃO, construída do estágio `ferramentas`. A de
+          # execução não tem o CLI do Prisma: o pacote autocontido do Next só
+          # leva o que o servidor usa para atender.
+          image: ghcr.io/fabriciojunio/permaneia-ferramentas:v1.0.0
           # `db push` e não `migrate deploy`: a extensão vector precisa existir
           # antes, e este é o mesmo caminho que o CI e o compose usam.
           command: ["node_modules/.bin/prisma", "db", "push", "--skip-generate"]
