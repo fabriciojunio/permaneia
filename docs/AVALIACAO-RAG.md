@@ -420,7 +420,8 @@ Duas causas se somaram:
 1. A remoção de acento usava uma classe de caracteres com as marcas combinantes
    escritas **literalmente** no código. Os bytes no arquivo estavam corretos, mas
    é um literal frágil de atravessar empacotamento e minificação. Passou a usar
-   os escapes `̀-ͯ`, que nenhuma ferramenta reescreve.
+   os escapes `\u0300-\u036f`, escritos em ASCII, que
+   nenhuma ferramenta reescreve.
 2. O deploy reaproveitou **cache de build**. A rota de saúde havia sido alterada
    e foi reconstruída; a rota do assistente não, e continuou servindo o pacote
    antigo. Por isso as duas rotas, no mesmo domínio e no mesmo instante,

@@ -27,10 +27,16 @@ import { describe, expect, it } from "vitest";
 const RAIZ = path.resolve(__dirname, "..");
 
 /** Onde procurar. O que é gerado ou baixado fica de fora. */
-const PASTAS = ["lib", "app", "components", "scripts", "e2e", "__tests__"];
-const ARQUIVOS_SOLTOS = ["middleware.ts"];
+const PASTAS = ["lib", "app", "components", "scripts", "e2e", "__tests__", "docs"];
+const ARQUIVOS_SOLTOS = ["middleware.ts", "README.md", "CONTRIBUTING.md", "SECURITY.md", "LGPD.md"];
 
-const EXTENSOES = new Set([".ts", ".tsx", ".mjs", ".js"]);
+/**
+ * O Markdown entra junto de propósito. O defeito nasceu no código, mas a
+ * explicação dele foi escrita três vezes usando as próprias marcas literais que
+ * ela manda evitar, em dois documentos e num comentário de teste. Documentação
+ * errada é de onde alguém copia.
+ */
+const EXTENSOES = new Set([".ts", ".tsx", ".mjs", ".js", ".md"]);
 
 /**
  * O bloco Unicode das marcas combinantes, montado por código de propósito.
