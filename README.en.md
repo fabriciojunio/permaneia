@@ -79,7 +79,7 @@ different guarantees.
 
 | | |
 |---|---|
-| Unit tests | 2040 |
+| Unit tests | 2041 |
 | Integration tests (real Postgres) | 77 |
 | End-to-end tests (real browser) | 81 |
 | Domain logic coverage | 97.4% |

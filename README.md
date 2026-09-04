@@ -136,7 +136,7 @@ duas o aluno está lendo seria desonesto.
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Build de produção |
-| `npm test` | 2040 testes unitários |
+| `npm test` | 2041 testes unitários |
 | `npm run test:coverage` | Testes com gate de cobertura em 90% |
 | `npm run test:integration` | 77 testes contra Postgres real |
 | `npm run test:e2e` | 81 testes de ponta a ponta, incluindo a verificação de celular |
@@ -223,10 +223,10 @@ o roteiro está em [docs/DEMONSTRACAO.md](docs/DEMONSTRACAO.md).
 
 | Métrica | Valor |
 |---|---|
-| Testes unitários | 2040 |
+| Testes unitários | 2041 |
 | Testes de integração | 77 |
 | Testes de ponta a ponta | 81 |
-| **Total** | **2198** |
+| **Total** | **2199** |
 | Cobertura da lógica de domínio | 97,4% |
 | Cobertura do assistente | 100% das 41 perguntas respondíveis da bateria |
 | Recusa correta | 100% das 8 perguntas fora do material |
