@@ -46,6 +46,31 @@ const EXTENSOES = new Set([".ts", ".tsx", ".mjs", ".js", ".md"]);
  */
 const MARCAS = new RegExp("[" + String.fromCharCode(0x0300) + "-" + String.fromCharCode(0x036f) + "]");
 
+/**
+ * Caractere de controle escrito à mão, pelo mesmo motivo.
+ *
+ * Havia um byte nulo LITERAL em lib/validacoes.ts, usado como sentinela que
+ * nunca casa. Funcionava, e fazia o git tratar o arquivo inteiro como binário:
+ * `grep` respondia "Binary file matches" em vez da linha, e o diff da revisão
+ * mostrava o arquivo como bloco opaco. Escrito como escape, o comportamento é o
+ * mesmo e o arquivo volta a ser texto.
+ *
+ * Quebra de linha e tabulação ficam de fora, que são texto normal.
+ *
+ * A regex é montada por código, e não escrita com escapes, porque este arquivo
+ * é varrido por ele mesmo: um escape mal escrito aqui vira o próprio caractere
+ * literal que a trava proíbe. Aconteceu na primeira tentativa, e o teste se
+ * pegou.
+ */
+const CONTROLE = new RegExp(
+  "[" +
+    String.fromCharCode(0x00) + "-" + String.fromCharCode(0x08) +
+    String.fromCharCode(0x0b) + String.fromCharCode(0x0c) +
+    String.fromCharCode(0x0e) + "-" + String.fromCharCode(0x1f) +
+    String.fromCharCode(0x7f) +
+  "]"
+);
+
 function arquivos(diretorio: string): string[] {
   return readdirSync(diretorio).flatMap((nome) => {
     const caminho = path.join(diretorio, nome);
@@ -64,6 +89,17 @@ function candidatos(): string[] {
 describe("marca combinante nunca literal no código", () => {
   it("encontra arquivos para conferir, senão este teste passa sempre e não vale nada", () => {
     expect(candidatos().length).toBeGreaterThan(20);
+  });
+
+  it("nenhum arquivo do sistema traz caractere de controle escrito à mão", () => {
+    const problemas = candidatos()
+      .filter((caminho) => CONTROLE.test(readFileSync(caminho, "utf-8")))
+      .map((caminho) => path.relative(RAIZ, caminho));
+
+    expect(
+      problemas,
+      "Caractere de controle literal no código. Funciona, e faz o git tratar o arquivo como binário: o diff da revisão vira um bloco opaco. Escreva como escape."
+    ).toEqual([]);
   });
 
   it("nenhum arquivo do sistema traz marca combinante escrita à mão", () => {
