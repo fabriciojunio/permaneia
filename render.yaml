@@ -7,7 +7,7 @@
 # O banco NÃO está aqui de propósito. O Postgres gratuito do Render expira em
 # trinta dias, o que mataria a demonstração no meio do semestre, e ele não traz
 # a extensão pgvector, sem a qual metade da recuperação não funciona. O projeto
-# usa o Supabase, cuja camada gratuita não expira e já vem com a extensão. Ver
+# usa o Neon, cuja camada gratuita não expira e traz a extensão. Ver
 # docs/IMPLANTACAO.md.
 #
 # O que muda em relação à Vercel: aqui o serviço hiberna depois de quinze
@@ -28,8 +28,8 @@ services:
     autoDeployTrigger: commit
 
     envVars:
-      # Colados à mão, do painel do Supabase. A do pooler para a aplicação, a
-      # direta para aplicar o esquema.
+      # Colados à mão, do painel do Neon. A do pooler com o papel da aplicação,
+      # a direta com o papel dono, que é quem pode aplicar esquema.
       - key: DATABASE_URL
         sync: false
       - key: DIRECT_URL

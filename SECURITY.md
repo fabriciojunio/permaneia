@@ -57,14 +57,20 @@ justamente o desligamento que se quer evitar.
 
 ## Banco de dados
 
-- **Papel de aplicação dedicado** (`permaneia_app`), com privilégio mínimo:
-  apenas DML sobre as tabelas do domínio, sem DDL e sem acesso a outros schemas.
-  A aplicação não usa o papel administrativo do projeto
-- **Row Level Security ligada em todas as tabelas**, com política explícita
-  apenas para o papel da aplicação. Isso fecha o acesso pela API REST do
-  Supabase: os papéis `anon` e `authenticated` ficam sem nenhuma política e,
-  portanto, sem nenhuma linha visível, mesmo que a chave pública do projeto vaze
-- `GRANT` revogado de `anon` e `authenticated`, como defesa em profundidade
+- **Papel de aplicação dedicado** (`permaneia_web`), com privilégio mínimo:
+  apenas leitura e escrita de linha nas tabelas do domínio. Ele não pode criar,
+  alterar nem apagar tabela, e isso é verificado, não presumido: `CREATE TABLE`
+  responde "permission denied for schema public" e `DROP TABLE usuarios`
+  responde "must be owner of table". O papel dono do banco é usado só para
+  aplicar esquema, pela conexão direta
+- **A Row Level Security saiu com a troca de banco, e o motivo dela também.**
+  Enquanto o banco era o Supabase, a RLS fechava uma superfície específica: a
+  API REST que o Supabase publica sobre as tabelas, alcançável com a chave
+  pública do projeto. O Neon não publica API sobre o banco, então a única porta
+  é uma conexão Postgres autenticada, e uma política que libera tudo para o
+  papel da aplicação não acrescentaria nada além de cerimônia. O que continua
+  valendo é o privilégio mínimo acima. Ver
+  [ADR 013](docs/adr/013-banco-no-neon.md)
 - Busca vetorial por **SQL parametrizado**, nunca por interpolação de string
 
 ## Cabeçalhos HTTP

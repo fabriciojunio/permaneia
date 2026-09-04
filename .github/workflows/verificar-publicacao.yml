@@ -79,7 +79,7 @@ jobs:
           banco=$(printf '%s' "$corpo" | sed -n 's/.*"banco":"\([^"]*\)".*/\1/p')
 
           if [ "$banco" != "ok" ]; then
-            echo "::error::O banco respondeu '${banco:-nada}'. A causa mais provável é o projeto do Supabase PAUSADO por inatividade, o que acontece depois de sete dias sem conexão e exige despausar pelo painel. As barreiras do assistente não têm nada com isso. Ver docs/IMPLANTACAO.md."
+            echo "::error::O banco respondeu '${banco:-nada}'. Confira o projeto no painel do Neon e as credenciais na Vercel. As barreiras do assistente não têm nada com isso. Ver docs/IMPLANTACAO.md."
             exit 1
           fi
 

@@ -163,7 +163,7 @@ Next.js (App Router) na Vercel
        └── repositorios/    Prisma e SQL da busca vetorial
    │
    ▼
-Postgres (Supabase) com pgvector
+Postgres (Neon) com pgvector
 ```
 
 ### 3.2 Modelo de dados

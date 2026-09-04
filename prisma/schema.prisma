@@ -1,6 +1,6 @@
 // Modelo de dados do PermaneIA.
 //
-// Banco: Postgres (Supabase) com a extensão pgvector, usada na busca por
+// Banco: Postgres (Neon, em produção) com a extensão pgvector, usada na busca por
 // similaridade do RAG. O Prisma ainda não tem um tipo nativo para `vector`, por
 // isso a coluna é declarada como `Unsupported`: o Prisma cria e migra a coluna
 // normalmente, mas leitura e escrita dela passam por SQL parametrizado nos
@@ -9,6 +9,11 @@
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["postgresqlExtensions"]
+  // "native" cobre a máquina de quem desenvolve e a Vercel. O alvo do Alpine
+  // com OpenSSL 3 entra por causa da imagem Docker: sem ele o Prisma escolhe
+  // "linux-musl", que é o binário ligado ao OpenSSL 1.1, e a carga do engine
+  // falha com um erro de relocação que parece problema de rede.
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {

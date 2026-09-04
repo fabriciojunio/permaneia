@@ -13,6 +13,15 @@
 # ------------------------------------------------------------- dependências
 FROM node:22-alpine AS dependencias
 
+# O Prisma NÃO funciona no Alpine sem isto. Os engines são binários ligados ao
+# OpenSSL, e a imagem base do Node no Alpine não o traz: a falha é um
+# "Error relocating ... SSL_CTX_set_ver" na hora de carregar o engine, e não um
+# erro de conexão, o que manda a investigação para o lado errado.
+#
+# libc6-compat entra junto porque parte dos binários pré-compilados espera a
+# glibc, e o musl sozinho não os satisfaz.
+RUN apk add --no-cache openssl libc6-compat
+
 WORKDIR /construcao
 
 # Só os manifestos primeiro: enquanto nenhuma dependência mudar, esta camada
@@ -27,6 +36,8 @@ RUN npm ci
 
 # ---------------------------------------------------------------- construção
 FROM node:22-alpine AS construcao
+
+RUN apk add --no-cache openssl libc6-compat
 
 WORKDIR /construcao
 
@@ -80,6 +91,12 @@ CMD ["node_modules/.bin/prisma", "db", "push", "--skip-generate"]
 
 # -------------------------------------------------------------------- imagem
 FROM node:22-alpine AS execucao
+
+# Pelo mesmo motivo do estágio de construção: o cliente do Prisma carrega o
+# engine em tempo de execução, e sem o OpenSSL toda consulta falha. O sintoma é
+# traiçoeiro: /api/health captura a exceção e responde 503 com "banco
+# indisponível", que é indistinguível de um banco de fato fora do ar.
+RUN apk add --no-cache openssl libc6-compat
 
 # Usuário sem privilégio: um processo que não precisa de root não roda como
 # root, e um servidor Node é justamente o caso em que isso nunca é necessário.

@@ -14,7 +14,7 @@ apresentação.
 ## Decisão
 
 Um único aplicativo Next.js com App Router, servindo páginas e rotas de API, na
-Vercel, com Postgres no Supabase.
+Vercel, com Postgres gerenciado.
 
 ## Consequências
 

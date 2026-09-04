@@ -175,7 +175,7 @@ Next.js (App Router) na Vercel
        └── repositorios/    Prisma e SQL da busca vetorial
    │
    ▼
-Postgres (Supabase) com pgvector
+Postgres (Neon) com pgvector
 ```
 
 O mapa completo das camadas, com a razão de cada uma, está em
@@ -203,7 +203,7 @@ em toda a suíte local e só existia depois do build.
 
 ## Implantação
 
-Publicado na Vercel, com Supabase como banco. Também roda como contêiner, o que
+Publicado na Vercel, com Neon como banco. Também roda como contêiner, o que
 não é enfeite: um trabalho que só sabe rodar numa plataforma não pode ser
 reproduzido por quem o avalia.
 
@@ -243,8 +243,8 @@ defeitos que ela revelou, está em [docs/AVALIACAO-RAG.md](docs/AVALIACAO-RAG.md
 - Senha com bcrypt de custo 12 e política que prioriza comprimento
 - Anti-CSRF por verificação de origem, além do `SameSite`
 - Limitação de taxa em login, cadastro, ingestão e consultas ao assistente
-- Papel de banco dedicado, com privilégio mínimo, e Row Level Security ligada
-  em todas as tabelas, o que fecha o acesso pela API REST do Supabase
+- Papel de banco dedicado para a aplicação, sem poder criar nem alterar tabela:
+  o papel dono é usado só para aplicar esquema
 - CSP restritiva, HSTS, `X-Frame-Options`, e sem source map em produção
 - `robots.txt` bloqueando buscadores e rastreadores de treinamento de modelos
 
