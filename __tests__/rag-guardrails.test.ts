@@ -66,8 +66,10 @@ describe("detectarInjecao", () => {
     // sobrevivia intacto até o pacote publicado, e em produção "instruções"
     // deixava de virar "instrucoes". O resultado: a barreira bloqueava a forma
     // sem acento e deixava passar a acentuada, que é a que uma pessoa digita.
-    // A classe passou a usar os escapes ̀-ͯ, que nenhum empacotador
-    // reescreve.
+    // A classe passou a usar os escapes \u0300-\u036f, escritos em
+    // ASCII, que nenhum empacotador reescreve. E note a ironia: este
+    // comentário explicava a correção usando as próprias marcas literais que
+    // ele manda evitar.
     expect(detectarInjecao(pergunta)).toBe(true);
   });
 
