@@ -1,0 +1,84 @@
+---
+# Espaço próprio: mantém o PermaneIA separado de qualquer outra coisa que rode
+# no mesmo agrupamento, inclusive nas regras de rede abaixo.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: permaneia
+  labels:
+    app.kubernetes.io/part-of: permaneia
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: permaneia-configuracao
+  namespace: permaneia
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  # Ligado, o Gemini responde; desligado, o provedor local determinístico
+  # assume e o sistema continua respondendo de forma extrativa.
+  IA_EXTERNA: "on"
+  GEMINI_MODELO_TEXTO: "gemini-flash-lite-latest"
+  GEMINI_MODELO_EMBEDDING: "gemini-embedding-001"
+  DEMO_MODE: "off"
+  # Atrás do Ingress há proxy de verdade, e o endereço do cliente chega no
+  # cabeçalho. Sem isto o limite de tentativas de login valeria por endereço do
+  # proxy, o que derrubaria a turma inteira junto com o atacante.
+  RATE_LIMIT_CONFIA_PROXY: "true"
+  RATE_LIMIT_LOGIN: "5"
+  RETENCAO_AUDITORIA_DIAS: "365"
+  LOG_NIVEL: "info"
+  AWS_REGION: "sa-east-1"
+  S3_BUCKET: "permaneia-documentos"
+
+---
+# Modelo do segredo. Os valores reais NUNCA entram no repositório: em produção
+# isto vem de um gerenciador de segredos, e aqui existe só para documentar
+# quais chaves a aplicação espera encontrar.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: permaneia-banco
+  namespace: permaneia
+type: Opaque
+stringData:
+  # A do pooler, usada pela aplicação.
+  database-url: TROCAR
+  # A conexão direta, que o Prisma exige para aplicar o esquema.
+  direct-url: TROCAR
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: permaneia-seguranca
+  namespace: permaneia
+type: Opaque
+stringData:
+  # No mínimo 32 caracteres: a aplicação se recusa a subir com menos.
+  session-secret: TROCAR-POR-UM-SEGREDO-COM-MAIS-DE-32-CARACTERES
+  # Sem chave, o sistema cai no provedor local e continua respondendo.
+  gemini-api-key: TROCAR
+
+---
+# Nenhum pod aceita conexão que não venha do Ingress ou de dentro do namespace.
+# Sem isto, a aplicação fica acessível de qualquer lugar do agrupamento, e a
+# porta de entrada deixa de ser uma só.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: somente-de-dentro
+  namespace: permaneia
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: permaneia
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx

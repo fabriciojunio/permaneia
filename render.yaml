@@ -1,0 +1,76 @@
+# Implantação alternativa, no Render, a partir da imagem do Dockerfile.
+#
+# A publicação de verdade é na Vercel, e este arquivo existe para o sistema não
+# depender de uma plataforma só. No painel do Render, em New > Blueprint,
+# apontando para este repositório, ele lê daqui e cria o serviço sozinho.
+#
+# O banco NÃO está aqui de propósito. O Postgres gratuito do Render expira em
+# trinta dias, o que mataria a demonstração no meio do semestre, e ele não traz
+# a extensão pgvector, sem a qual metade da recuperação não funciona. O projeto
+# usa o Supabase, cuja camada gratuita não expira e já vem com a extensão. Ver
+# docs/IMPLANTACAO.md.
+#
+# O que muda em relação à Vercel: aqui o serviço hiberna depois de quinze
+# minutos sem tráfego, e a primeira visita depois disso espera a subida. Na
+# Vercel, quem dorme é o banco, e o fluxo manter-banco-acordado.yml cuida disso.
+
+services:
+  - type: web
+    name: permaneia
+    runtime: docker
+    plan: free
+    # São Paulo não existe na camada gratuita; Oregon é a mais próxima que
+    # existe, e a latência até o banco em sa-east-1 é o preço.
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+
+    envVars:
+      # Colados à mão, do painel do Supabase. A do pooler para a aplicação, a
+      # direta para aplicar o esquema.
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+
+      # Gerado pelo próprio Render, e nunca commitado. Precisa de no mínimo
+      # 32 caracteres: a aplicação se recusa a subir com menos.
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # Sem a chave, o provedor local determinístico assume e o sistema
+      # continua respondendo de forma extrativa. É modo de degradação
+      # projetado, e não falha.
+      - key: GEMINI_API_KEY
+        sync: false
+
+      - key: NODE_ENV
+        value: production
+      - key: IA_EXTERNA
+        value: "on"
+      - key: GEMINI_MODELO_TEXTO
+        value: gemini-flash-lite-latest
+      - key: GEMINI_MODELO_EMBEDDING
+        value: gemini-embedding-001
+      - key: DEMO_MODE
+        value: "on"
+      # O Render põe um proxy na frente, e o endereço do cliente chega no
+      # cabeçalho. Sem isto o limite de login valeria por endereço do proxy.
+      - key: RATE_LIMIT_CONFIA_PROXY
+        value: "true"
+      - key: RATE_LIMIT_LOGIN
+        value: "5"
+      - key: RETENCAO_AUDITORIA_DIAS
+        value: "365"
+      - key: LOG_NIVEL
+        value: info
+
+      # Sem bucket, o original do documento vai para o disco do contêiner, que
+      # some a cada publicação. Para guardar de verdade, preencher com o bucket
+      # e a região (ver docs/adr/012-armazenamento-de-documentos.md).
+      - key: S3_BUCKET
+        sync: false
+      - key: AWS_REGION
+        value: sa-east-1
