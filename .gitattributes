@@ -1,0 +1,18 @@
+# Fim de linha normalizado para LF no repositório, independentemente do sistema
+# de quem escreveu. Sem isto, o mesmo arquivo tocado no Windows e no Linux
+# aparece como diferença inteira no diff, e a revisão perde o que mudou de fato.
+* text=auto eol=lf
+
+# Binário não recebe conversão nenhuma: normalizar bytes de imagem ou de
+# apresentação corrompe o arquivo.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.pptx binary
+
+# Arquivo gerado, fora da estatística de linguagem e recolhido no diff da
+# plataforma: ninguém revisa lock à mão.
+package-lock.json linguist-generated=true
