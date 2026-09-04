@@ -16,6 +16,7 @@ import { basename, extname, resolve } from "node:path";
 import { prisma } from "../lib/prisma";
 import { ingerir } from "../lib/rag/ingestao";
 import { extrairTextoDePdf } from "../lib/rag/pdf";
+import { chaveDoDocumento, escolherArmazenamento, tipoDoArquivo } from "../lib/armazenamento";
 
 function argumento(nome: string): string | undefined {
   const i = process.argv.indexOf(`--${nome}`);
@@ -54,6 +55,7 @@ async function main(): Promise<void> {
   }
 
   const caminho = resolve(process.cwd(), arquivo);
+  const original = readFileSync(caminho);
   const conteudo = await lerConteudo(caminho);
 
   const resultado = await ingerir({
@@ -66,10 +68,28 @@ async function main(): Promise<void> {
     sobreposicao: argumento("sobreposicao") ? Number(argumento("sobreposicao")) : undefined,
   });
 
+  // O original vai para o armazenamento DEPOIS da indexação, e não antes: só
+  // aqui existe o identificador do documento, e guardar o arquivo de algo que
+  // não chegou a ser indexado deixaria lixo órfão a cada tentativa que falha.
+  //
+  // A falha aqui não desfaz a indexação. O sistema continua respondendo sobre o
+  // documento; o que se perde é poder refatiar o material sem ter o arquivo em
+  // mãos de novo, e isso não justifica jogar fora um trabalho que já deu certo.
+  const armazenamento = escolherArmazenamento();
+  const chave = chaveDoDocumento(disciplina.id, resultado.documentoId, basename(caminho));
+  let guardadoEm: string | null = null;
+  try {
+    await armazenamento.guardar(chave, new Uint8Array(original), tipoDoArquivo(caminho));
+    guardadoEm = `${armazenamento.nome}:${chave}`;
+  } catch (e) {
+    console.warn(`  Aviso: o original não foi guardado (${(e as Error).message}).`);
+  }
+
   console.log(`\nIndexado em "${disciplina.nome}":`);
   console.log(`  Título:   ${resultado.titulo}`);
   console.log(`  Trechos:  ${resultado.trechos}`);
   console.log(`  Provedor: ${resultado.origemEmbedding}`);
+  if (guardadoEm) console.log(`  Original: ${guardadoEm}`);
   if (resultado.motivoFallback) {
     console.log(`  Atenção:  caiu no provedor local porque ${resultado.motivoFallback}`);
   }

@@ -1,0 +1,28 @@
+# O que NÃO entra no contexto de construção.
+#
+# Não é só tamanho: node_modules da máquina de quem desenvolve traz binário
+# compilado para outro sistema operacional, e .env traz segredo de verdade para
+# dentro de uma camada da imagem, de onde ele não sai mais.
+
+.git
+.github
+node_modules
+.next
+out
+coverage
+test-results
+playwright-report
+.vercel
+
+# Segredo de verdade nunca entra na imagem. O exemplo entra, que é documentação.
+.env
+.env.*
+!.env.example
+
+# Material de apresentação e vistoria, que não fazem parte do que roda.
+vistoria
+docs
+*.pptx
+
+*.log
+.DS_Store

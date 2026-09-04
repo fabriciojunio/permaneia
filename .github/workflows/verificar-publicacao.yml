@@ -1,0 +1,76 @@
+name: Conferir a publicação
+
+# Confere que a versão nova ENTROU NO AR, e não apenas que o endereço responde.
+#
+# Esperar por HTTP 200 não prova nada: a Vercel só direciona o tráfego para a
+# construção nova quando ela termina, e a antiga continua atendendo o tempo
+# inteiro enquanto isso. Um passo que só olha o código de resposta fica verde em
+# segundos sem ter conferido coisa alguma, e alerta que erra é alerta que
+# ninguém lê.
+#
+# O que prova é o commit publicado em /api/health bater com o commit deste
+# fluxo. Depois disso, e só depois, a bateria adversarial roda pela rede: ela
+# existe porque as barreiras já funcionaram no código-fonte e falharam no pacote
+# publicado, para entrada com acento (ver o canário em app/api/health/route.ts).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: conferir-publicacao
+  cancel-in-progress: false
+
+jobs:
+  conferir:
+    name: Esperar a versão nova e validar pela rede
+    runs-on: ubuntu-latest
+    # A construção de um app Next na camada gratuita, com fila, passa de cinco
+    # minutos em dia ruim. Quinze cobre isso com folga sem segurar um executor
+    # à toa quando algo trava de vez.
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Esperar a versão nova entrar no ar
+        env:
+          PRODUCAO_URL: ${{ vars.PRODUCAO_URL || 'https://permaneia.vercel.app' }}
+        run: |
+          esperado=$(printf '%s' "${{ github.sha }}" | cut -c1-7)
+          echo "Esperando o commit $esperado responder em $PRODUCAO_URL"
+
+          for tentativa in $(seq 1 60); do
+            # O health é a rota certa para isto: é pública, não depende de
+            # sessão e já consulta o banco de verdade, então uma resposta dela
+            # com o commit certo prova mais que a página inicial responder.
+            corpo=$(curl -s --max-time 30 "$PRODUCAO_URL/api/health" || true)
+            publicado=$(printf '%s' "$corpo" | sed -n 's/.*"commit":"\([^"]*\)".*/\1/p')
+
+            if [ "$publicado" = "$esperado" ]; then
+              echo "Versão nova no ar na tentativa $tentativa."
+              echo "$corpo" | head -c 800
+              exit 0
+            fi
+
+            echo "Tentativa $tentativa: no ar ainda está ${publicado:-desconhecido}."
+            sleep 15
+          done
+
+          echo "::error::A versão nova não entrou no ar em quinze minutos. Confira a construção no painel da Vercel."
+          exit 1
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Conferir as barreiras no pacote publicado
+        # Roda contra o que está no ar, e não contra o código-fonte: o defeito
+        # que motivou este passo passava em toda a suíte local e só aparecia
+        # depois de publicado. O script recebe o endereço como argumento.
+        run: npx tsx scripts/validar-producao.ts "${{ vars.PRODUCAO_URL || 'https://permaneia.vercel.app' }}"

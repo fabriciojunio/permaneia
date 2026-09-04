@@ -1,0 +1,140 @@
+# Ambiente local completo: banco com pgvector, a aplicação e o esquema aplicado.
+#
+#   docker compose up -d
+#   docker compose logs -f aplicacao
+#   http://localhost:3000
+#
+# Para desenvolver com o Next rodando na máquina, suba só o banco:
+#   docker compose up -d banco
+#   DATABASE_URL=postgresql://permaneia:permaneia@localhost:5432/permaneia npm run dev
+#
+# Para exercitar o armazenamento de documentos em S3 sem conta na AWS:
+#   docker compose --profile aws up -d localstack
+#   ver docs/adr/012-armazenamento-de-documentos.md
+#
+# O que este arquivo NÃO reproduz: o Gemini. Sem GEMINI_API_KEY o sistema cai no
+# provedor local determinístico e continua respondendo de forma extrativa, que é
+# o modo de degradação projetado, e não uma limitação do compose.
+
+name: permaneia
+
+services:
+  # A imagem oficial do Postgres não traz o pgvector, e a busca vetorial é
+  # metade da recuperação. A imagem do próprio projeto pgvector é a mesma que o
+  # CI usa, para o que roda aqui e o que roda lá serem a mesma coisa.
+  banco:
+    image: pgvector/pgvector:pg16
+    container_name: permaneia-banco
+    environment:
+      POSTGRES_USER: permaneia
+      POSTGRES_PASSWORD: permaneia
+      POSTGRES_DB: permaneia
+      # O locale importa: ordenação e comparação de texto com acento mudam de
+      # comportamento, e é sobre texto em português que o sistema trabalha.
+      LANG: pt_BR.UTF-8
+    ports:
+      - "5432:5432"
+    volumes:
+      - dados-do-banco:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U permaneia -d permaneia"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  # Aplica o esquema e semeia, uma vez, antes da aplicação subir. Separado do
+  # arranque da aplicação de propósito: migração disparada por réplica que sobe
+  # é migração disparada N vezes em paralelo no dia em que houver mais de uma.
+  esquema:
+    build:
+      context: .
+      args:
+        APP_COMMIT: ${APP_COMMIT:-local}
+        APP_RAMO: ${APP_RAMO:-local}
+    container_name: permaneia-esquema
+    depends_on:
+      banco:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://permaneia:permaneia@banco:5432/permaneia
+      DIRECT_URL: postgresql://permaneia:permaneia@banco:5432/permaneia
+      SESSION_SECRET: segredo-local-com-mais-de-32-caracteres-ok
+    # `db push` e não `migrate deploy`: a extensão vector precisa existir antes,
+    # e este é o mesmo caminho que o CI usa para preparar o banco.
+    command: >-
+      sh -c "node_modules/.bin/prisma db push --skip-generate &&
+             node_modules/.bin/tsx prisma/seed.ts"
+    restart: "no"
+
+  aplicacao:
+    build:
+      context: .
+      args:
+        APP_COMMIT: ${APP_COMMIT:-local}
+        APP_RAMO: ${APP_RAMO:-local}
+    container_name: permaneia-aplicacao
+    depends_on:
+      banco:
+        condition: service_healthy
+      esquema:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://permaneia:permaneia@banco:5432/permaneia
+      DIRECT_URL: postgresql://permaneia:permaneia@banco:5432/permaneia
+      SESSION_SECRET: ${SESSION_SECRET:-segredo-local-com-mais-de-32-caracteres-ok}
+      # Sem chave, o provedor local responde. Com chave, o Gemini.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      IA_EXTERNA: ${IA_EXTERNA:-on}
+      DEMO_MODE: "on"
+      # Atrás do proxy do compose não há endereço de cliente confiável, e
+      # confiar no cabeçalho aqui faria o limite de tentativas de login valer
+      # por endereço forjado, que é pior que não valer por endereço nenhum.
+      RATE_LIMIT_CONFIA_PROXY: "false"
+      LOG_NIVEL: ${LOG_NIVEL:-info}
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  # ------------------------------------------------------------------- AWS
+  # LocalStack no lugar de uma conta de verdade: o mesmo protocolo do S3, num
+  # contêiner, sem cartão de crédito e sem risco de esquecer um bucket ligado.
+  # Fica atrás de um perfil porque a maioria das sessões não precisa dele.
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: permaneia-localstack
+    profiles: ["aws"]
+    environment:
+      SERVICES: s3
+      DEBUG: "0"
+      # Sem persistência: o conteúdo é reconstruído pela ingestão, e um volume
+      # aqui só guardaria estado velho que ninguém lembra de limpar.
+      PERSISTENCE: "0"
+    ports:
+      - "4566:4566"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # Cria o bucket e sai. Sem isto, a primeira gravação falharia com um erro que
+  # parece de credencial e é só de bucket inexistente.
+  bucket:
+    image: amazon/aws-cli:2.17.0
+    container_name: permaneia-bucket
+    profiles: ["aws"]
+    depends_on:
+      localstack:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: teste
+      AWS_SECRET_ACCESS_KEY: teste
+      AWS_DEFAULT_REGION: sa-east-1
+    entrypoint: >-
+      sh -c "aws --endpoint-url=http://localstack:4566 s3 mb s3://permaneia-documentos || true"
+    restart: "no"
+
+volumes:
+  dados-do-banco:
