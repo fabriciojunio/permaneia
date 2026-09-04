@@ -101,7 +101,7 @@ desonesto.
 
 ## Onde roda
 
-Vercel em produção, com Supabase como banco. Também há imagem Docker, compose,
+Vercel em produção, com Neon como banco. Também há imagem Docker, compose,
 manifestos de Kubernetes e blueprint do Render, descritos em
 [IMPLANTACAO.md](IMPLANTACAO.md). Isso não é enfeite: um trabalho que só sabe
 rodar numa plataforma não pode ser reproduzido por quem o avalia.

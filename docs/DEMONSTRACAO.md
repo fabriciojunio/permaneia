@@ -13,10 +13,10 @@ nada instalado na máquina de quem assiste.
 
 ## Antes de começar
 
-Se o sistema ficou semanas sem uso, abra `/api/health` primeiro. O projeto do
-Supabase pausa depois de sete dias sem conexão, e a primeira visita depois disso
-pode encontrar erro de banco. A resposta esperada tem `"estado": "saudavel"` e
-`"banco": "ok"`.
+Abra `/api/health` primeiro. A resposta esperada tem `"estado": "saudavel"` e
+`"banco": "ok"`. Se o sistema ficou semanas sem uso, o compute do banco está
+suspenso e a primeira consulta o acorda, o que custa cerca de meio segundo: essa
+chamada resolve, e a demonstração começa com tudo quente.
 
 Também vale conferir `indice.misturado`. Se vier `true`, o índice está partido e
 o assistente vai negar documentos que existem. `scripts/reparar-indice.ts`

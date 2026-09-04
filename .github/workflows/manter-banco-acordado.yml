@@ -1,11 +1,16 @@
 name: Manter o banco acordado
 
-# O Supabase na camada gratuita PAUSA o projeto depois de sete dias sem nenhuma
-# conexão, e despausar é manual, pelo painel. Num sistema que fica semanas sem
-# ninguém abrir, entre uma aula e outra, isso significa o professor clicando no
-# link da entrega e encontrando erro de banco.
+# Existe por causa de uma perda real: o projeto do Supabase, onde este sistema
+# morava, PAUSOU sozinho depois de sete dias sem conexão e sumiu do DNS, e
+# despausar era manual, pelo painel. O sintoma foi a página inicial respondendo
+# 200 com o assistente e o painel quebrados, porque página respondendo não prova
+# banco.
 #
-# A visita diária custa uma consulta e reinicia a contagem dos sete dias.
+# O banco hoje é o Neon, que não pausa: o compute suspende e acorda sozinho na
+# conexão seguinte, em cerca de meio segundo. Esta visita diária continua
+# valendo por dois motivos menores e reais: mantém o compute quente, para quem
+# abrir o link não pagar nem essa espera, e é um monitor de fumaça diário que
+# avisa quando alguma coisa do caminho até o banco quebrou.
 #
 # Não é o mesmo problema do plano gratuito da Vercel: a função serverless não
 # hiberna, ela sobe a frio em milissegundos. Quem dorme aqui é o banco.
@@ -47,5 +52,5 @@ jobs:
             # Aviso, e não falha: este fluxo é conveniência, e e-mail de erro
             # todo dia vira ruído que ninguém lê. Quem cobra a saúde do sistema
             # é o fluxo de conferência da publicação.
-            echo "::warning::O banco respondeu '${estado:-nada}'. Se repetir, confira se o projeto do Supabase foi pausado."
+            echo "::warning::O banco respondeu '${estado:-nada}'. Confira o projeto no painel do Neon e a validade das credenciais na Vercel."
           fi
