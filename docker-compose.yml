@@ -49,9 +49,10 @@ services:
   esquema:
     build:
       context: .
-      args:
-        APP_COMMIT: ${APP_COMMIT:-local}
-        APP_RAMO: ${APP_RAMO:-local}
+      # A imagem de manutenção, e não a de execução: o CLI do Prisma e o tsx
+      # não entram no pacote autocontido do Next, e lá dentro este comando
+      # falharia com "não encontrado".
+      target: ferramentas
     container_name: permaneia-esquema
     depends_on:
       banco:
