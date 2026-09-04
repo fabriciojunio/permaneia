@@ -66,6 +66,25 @@ jobs:
           echo "::error::A versão nova não entrou no ar em quinze minutos. Confira a construção no painel da Vercel."
           exit 1
 
+      - name: Separar produção degradada de barreira quebrada
+        env:
+          PRODUCAO_URL: ${{ vars.PRODUCAO_URL || 'https://permaneia.vercel.app' }}
+        # A validação por rede faz login, e login precisa de banco. Sem este
+        # passo, o banco pausado derruba o fluxo com "validação falhou", e a
+        # investigação vai procurar regressão nas barreiras, que estão
+        # intactas. Alerta que aponta para o lugar errado custa mais caro que
+        # alerta nenhum.
+        run: |
+          corpo=$(curl -s --max-time 30 "$PRODUCAO_URL/api/health" || true)
+          banco=$(printf '%s' "$corpo" | sed -n 's/.*"banco":"\([^"]*\)".*/\1/p')
+
+          if [ "$banco" != "ok" ]; then
+            echo "::error::O banco respondeu '${banco:-nada}'. A causa mais provável é o projeto do Supabase PAUSADO por inatividade, o que acontece depois de sete dias sem conexão e exige despausar pelo painel. As barreiras do assistente não têm nada com isso. Ver docs/IMPLANTACAO.md."
+            exit 1
+          fi
+
+          echo "Banco respondendo. A validação abaixo mede o pacote publicado."
+
       - name: Instalar dependências
         run: npm ci
 
