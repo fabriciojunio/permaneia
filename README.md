@@ -77,6 +77,27 @@ npm run dev
 
 Abra <http://localhost:3000>.
 
+### Ou com Docker, sem instalar nada além dele
+
+O `docker-compose` sobe o Postgres com `pgvector`, aplica o esquema, semeia e
+sobe a aplicação:
+
+```bash
+docker compose up -d
+docker compose logs -f aplicacao
+```
+
+Abra <http://localhost:3000>. Para desenvolver com o Next rodando na máquina e
+só o banco no contêiner:
+
+```bash
+docker compose up -d banco
+```
+
+Sem `GEMINI_API_KEY` o sistema sobe do mesmo jeito, no provedor local. O que o
+compose não reproduz é o Gemini, e isso é modo de degradação projetado, não
+limitação do arquivo.
+
 ### Contas da base sintética
 
 Senha de todas: `permanencia2026`.
@@ -113,7 +134,7 @@ duas o aluno está lendo seria desonesto.
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Build de produção |
-| `npm test` | 1935 testes unitários |
+| `npm test` | 2040 testes unitários |
 | `npm run test:coverage` | Testes com gate de cobertura em 90% |
 | `npm run test:integration` | 77 testes contra Postgres real |
 | `npm run test:e2e` | 81 testes de ponta a ponta, incluindo a verificação de celular |
@@ -123,6 +144,8 @@ duas o aluno está lendo seria desonesto.
 | `npx tsx scripts/reparar-indice.ts` | Reindexa trechos gravados no espaço vetorial errado |
 | `npx tsx scripts/historico-consultas.ts exportar` | Salva as perguntas já feitas antes de resemear a base |
 | `npx tsx scripts/diagnostico-fuzzy.ts` | Verifica a monotonicidade da base de regras |
+| `python k8s/conferir-manifestos.py` | Confere os manifestos do Kubernetes sem precisar de cluster |
+| `docker compose up -d` | Sistema inteiro em contêiner, com banco e esquema |
 | `npm run gerar:apresentacao` | Gera a apresentação em PPTX |
 
 ## Arquitetura
@@ -159,10 +182,10 @@ Decisões de arquitetura estão registradas em [docs/adr](docs/adr).
 
 | Métrica | Valor |
 |---|---|
-| Testes unitários | 1935 |
+| Testes unitários | 2040 |
 | Testes de integração | 77 |
 | Testes de ponta a ponta | 81 |
-| **Total** | **2093** |
+| **Total** | **2198** |
 | Cobertura da lógica de domínio | 97,4% |
 | Cobertura do assistente | 100% das 41 perguntas respondíveis da bateria |
 | Recusa correta | 100% das 8 perguntas fora do material |
