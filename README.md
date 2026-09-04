@@ -1,5 +1,7 @@
 # PermaneIA
 
+*[Read in English](README.en.md)*
+
 Assistente de estudos com RAG e painel de risco de evasão por lógica fuzzy.
 
 Projeto prático da disciplina de Inteligência Artificial, turma de quinta-feira,
@@ -176,7 +178,46 @@ Next.js (App Router) na Vercel
 Postgres (Supabase) com pgvector
 ```
 
-Decisões de arquitetura estão registradas em [docs/adr](docs/adr).
+O mapa completo das camadas, com a razão de cada uma, está em
+[docs/ARQUITETURA.md](docs/ARQUITETURA.md). As decisões que exigiram argumento
+estão em [docs/adr](docs/adr).
+
+## Observabilidade
+
+Cada requisição abre um rastro no formato `traceparent` do W3C, continuando o
+do cliente quando ele manda um. Sobre esse rastro, o sistema publica um trecho
+por etapa medida e **um trecho por consulta ao banco**, todos correlacionados
+pelo mesmo `traceId`, que é também o identificador que aparece no envelope de
+erro. Com um número só, o que a pessoa leu na tela e o que o log guardou são a
+mesma coisa.
+
+O valor dos parâmetros nunca entra num trecho: telemetria sai da aplicação, e
+nome e matrícula de aluno não têm por que ir junto. O raciocínio inteiro está na
+[ADR 010](docs/adr/010-rastro-distribuido.md).
+
+`/api/health` consulta o banco de verdade, e não apenas confirma que o processo
+subiu. Ele responde o commit publicado, o provedor de IA em vigor, o estado do
+índice, onde os documentos são guardados e se as barreiras continuam íntegras
+**dentro do pacote publicado** — este último por causa de um defeito que passava
+em toda a suíte local e só existia depois do build.
+
+## Implantação
+
+Publicado na Vercel, com Supabase como banco. Também roda como contêiner, o que
+não é enfeite: um trabalho que só sabe rodar numa plataforma não pode ser
+reproduzido por quem o avalia.
+
+| Destino | Arquivo |
+|---|---|
+| Local e desenvolvimento | `docker-compose.yml` |
+| Imagem | `Dockerfile`, três etapas, usuário sem privilégio, raiz só de leitura |
+| Kubernetes | [`k8s`](k8s), com conferidor que roda sem cluster |
+| Render | `render.yaml` |
+| Documentos em S3 | [ADR 012](docs/adr/012-armazenamento-de-documentos.md) |
+
+O passo a passo, as armadilhas conhecidas e o que fazer quando algo dá errado
+estão em [docs/IMPLANTACAO.md](docs/IMPLANTACAO.md). Para apresentar o sistema,
+o roteiro está em [docs/DEMONSTRACAO.md](docs/DEMONSTRACAO.md).
 
 ## Qualidade
 
@@ -207,7 +248,8 @@ defeitos que ela revelou, está em [docs/AVALIACAO-RAG.md](docs/AVALIACAO-RAG.md
 - CSP restritiva, HSTS, `X-Frame-Options`, e sem source map em produção
 - `robots.txt` bloqueando buscadores e rastreadores de treinamento de modelos
 
-Detalhes em [SECURITY.md](SECURITY.md).
+Detalhes em [SECURITY.md](SECURITY.md). Como mexer no projeto, o que ele cobra
+e por quê: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Privacidade
 
