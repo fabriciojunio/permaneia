@@ -1,0 +1,169 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: permaneia
+  namespace: permaneia
+  labels:
+    app.kubernetes.io/name: permaneia
+    app.kubernetes.io/part-of: permaneia
+spec:
+  # Duas réplicas para a publicação não ter janela sem ninguém atendendo. É a
+  # mesma situação que a trava de migração assume: as duas versões convivem
+  # enquanto o tráfego migra (ver docs/adr/011-migracao-sem-parada.md).
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: permaneia
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: permaneia
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: aplicacao
+          # Etiqueta fixa, e nunca "latest": com latest não dá para saber o que
+          # está rodando nem para voltar à versão anterior, porque o nome não
+          # muda. A publicação troca esta linha.
+          image: ghcr.io/fabriciojunio/permaneia:v1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: permaneia-configuracao
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: permaneia-banco
+                  key: database-url
+            - name: DIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: permaneia-banco
+                  key: direct-url
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: permaneia-seguranca
+                  key: session-secret
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: permaneia-seguranca
+                  key: gemini-api-key
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            # A raiz é só de leitura, e o Next precisa de um lugar para o cache
+            # de imagem. Um volume efêmero resolve sem reabrir o resto.
+            - name: cache
+              mountPath: /app/.next/cache
+            - name: temporario
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              # Sem limite de CPU de propósito: estrangular CPU num servidor
+              # Node transforma pico de latência em erro de tempo esgotado. A
+              # memória tem teto, porque vazamento aqui derruba o nó inteiro.
+              memory: 512Mi
+          # A prontidão passa pelo health, que consulta o banco de verdade: um
+          # pod vivo com o banco fora do ar não deve receber tráfego.
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          # A vivacidade é folgada de propósito. Se o banco cair, o health passa
+          # a responder 503, e reiniciar todos os pods em laço não traz o banco
+          # de volta: tira o sistema do ar de vez. Seis falhas seguidas, com
+          # trinta segundos entre elas, é o que separa banco instável de
+          # processo travado.
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 6
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+      volumes:
+        - name: cache
+          emptyDir: {}
+        - name: temporario
+          emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: permaneia
+  namespace: permaneia
+spec:
+  selector:
+    app.kubernetes.io/name: permaneia
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+
+---
+# Impede que a publicação, ou o despejo de um nó, deixe zero pod atendendo.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: permaneia
+  namespace: permaneia
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: permaneia
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: permaneia
+  namespace: permaneia
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: permaneia
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

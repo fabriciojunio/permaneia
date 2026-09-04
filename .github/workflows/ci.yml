@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   qualidade:
-    name: Qualidade de codigo
+    name: Qualidade de código
     runs-on: ubuntu-latest
     env:
       NODE_ENV: test
@@ -21,14 +21,14 @@ jobs:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       DIRECT_URL: postgresql://ci:ci@localhost:5432/ci
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         run: npm ci
 
       - name: Verificar tipos
@@ -37,19 +37,19 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Testes unitarios com gate de cobertura
+      - name: Testes unitários, com piso de cobertura
         run: npm run test:coverage
 
-      - name: Diagnostico do sistema fuzzy
-        # Falha se a base de regras deixar de ser monotona, ou se o artefato de
-        # inversao do centroide passar do limite documentado.
+      - name: Diagnóstico do sistema fuzzy
+        # Falha se a base de regras deixar de ser monótona, ou se o artefato de
+        # inversão do centroide passar do limite documentado.
         run: npx tsx scripts/diagnostico-fuzzy.ts
 
-      - name: Build de producao
+      - name: Construção de produção
         run: npm run build
 
   integracao:
-    name: Testes de integracao (Postgres com pgvector)
+    name: Testes de integração (Postgres com pgvector)
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -72,22 +72,22 @@ jobs:
       DIRECT_URL: postgresql://ci:ci@localhost:5432/permaneia_test
       IA_EXTERNA: "off"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         run: npm ci
 
-      - name: Aplicar o schema
+      - name: Aplicar o esquema
         run: |
           npx prisma generate
           npx prisma db push --skip-generate
 
-      - name: Testes de integracao
+      - name: Testes de integração
         run: npm run test:integration
 
   e2e:
@@ -115,41 +115,41 @@ jobs:
       IA_EXTERNA: "off"
       E2E_PORTA: "3100"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
-      - name: Instalar dependencias
+      - name: Instalar dependências
         run: npm ci
 
-      - name: Preparar o banco com dados sinteticos
+      - name: Preparar o banco com dados sintéticos
         run: |
           npx prisma generate
           npx prisma db push --skip-generate
           npm run db:seed
 
-      - name: Build de producao
+      - name: Construção de produção
         run: npm run build
 
-      - name: Instalar navegador
+      - name: Instalar o navegador
         run: npx playwright install --with-deps chromium
 
       - name: Testes E2E
         run: npm run test:e2e
 
-      - name: Publicar relatorio em caso de falha
+      - name: Publicar o relatório em caso de falha
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
 
   avaliacao-rag:
-    name: Avaliacao de qualidade do RAG
+    name: Avaliação de qualidade do RAG
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -171,11 +171,11 @@ jobs:
       DIRECT_URL: postgresql://ci:ci@localhost:5432/permaneia_rag
       IA_EXTERNA: "off"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - run: npm ci
@@ -187,34 +187,34 @@ jobs:
           npm run db:seed
 
       - name: Medir cobertura e recusa do assistente
-        # Informativo: publica os numeros a cada commit para que uma queda de
-        # qualidade do RAG apareca no historico. O gate de merge sao os outros
-        # jobs. Ver docs/AVALIACAO-RAG.md.
+        # Informativo: publica os números a cada commit para que uma queda de
+        # qualidade do RAG apareça no histórico. Quem barra a integração são os
+        # outros trabalhos. Ver docs/AVALIACAO-RAG.md.
         continue-on-error: true
         run: npx tsx scripts/avaliar-rag.ts
 
   seguranca:
-    name: Analise de seguranca
+    name: Análise de segurança
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - run: npm ci
 
-      - name: Auditoria de dependencias de producao
-        # Falha apenas em vulnerabilidade de producao de severidade alta. As de
-        # desenvolvimento nao embarcam no artefato publicado.
+      - name: Auditoria de dependências de produção
+        # Falha apenas em vulnerabilidade de produção de severidade alta. As de
+        # desenvolvimento não embarcam no artefato publicado.
         run: npm run audit:prod -- --audit-level=high
 
-      - name: Analise estatica
+      - name: Análise estática
         uses: semgrep/semgrep-action@v1
         with:
           config: >-
@@ -227,3 +227,62 @@ jobs:
         env:
           SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
         continue-on-error: true
+
+  manifestos:
+    name: Conferência dos manifestos e da imagem
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar o leitor de YAML
+        run: pip install pyyaml
+
+      - name: Conferir os manifestos do Kubernetes
+        # Pega o que nenhuma validação de esquema pega: alvo de escala que não
+        # existe, seletor que não acha pod, chave de segredo não declarada,
+        # volume montado sem ter sido criado. Tudo isso passa no apply sem uma
+        # linha de erro, e o sintoma aparece como "não tem nada respondendo".
+        run: python k8s/conferir-manifestos.py
+
+      - name: Construir a imagem
+        # A imagem existe para o sistema não depender de uma plataforma só, e
+        # imagem que ninguém constrói apodrece em silêncio: o Dockerfile
+        # quebra numa mudança de dependência e só se descobre no dia em que
+        # alguém precisa dele.
+        run: |
+          docker build \
+            --build-arg APP_COMMIT="${{ github.sha }}" \
+            --build-arg APP_RAMO="${{ github.ref_name }}" \
+            -t permaneia:ci .
+
+      - name: Conferir que a imagem sobe e responde
+        run: |
+          # Sem banco, o health responde 503 com "banco": "indisponivel", e é
+          # exatamente o que se quer conferir aqui: que o processo subiu, que a
+          # rota existe e que a degradação é a projetada. Um 200 aqui seria
+          # notícia ruim, porque significaria health que não olha o banco.
+          docker run -d --name permaneia-ci -p 3000:3000 \
+            -e DATABASE_URL="postgresql://ninguem:ninguem@127.0.0.1:1/vazio" \
+            -e DIRECT_URL="postgresql://ninguem:ninguem@127.0.0.1:1/vazio" \
+            -e SESSION_SECRET="segredo-de-ci-com-mais-de-32-caracteres-ok" \
+            permaneia:ci
+
+          for tentativa in $(seq 1 30); do
+            codigo=$(curl -s -o /tmp/saude.json -w "%{http_code}" http://localhost:3000/api/health || true)
+            if [ "$codigo" = "200" ] || [ "$codigo" = "503" ]; then
+              echo "A imagem respondeu $codigo na tentativa $tentativa."
+              cat /tmp/saude.json
+              docker rm -f permaneia-ci > /dev/null
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error::A imagem não respondeu em sessenta segundos."
+          docker logs permaneia-ci
+          docker rm -f permaneia-ci > /dev/null
+          exit 1

@@ -1,0 +1,52 @@
+---
+# Aplica o esquema uma vez, antes da aplicação subir.
+#
+# Separado do arranque da aplicação de propósito: migração disparada por réplica
+# que sobe é migração disparada N vezes em paralelo, e o resultado depende de
+# quem chegou primeiro. Um Job roda uma vez e falha visivelmente quando falha.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: permaneia-esquema
+  namespace: permaneia
+spec:
+  backoffLimit: 3
+  # Sai da lista sozinho um dia depois. Sem isto, cada publicação deixa um Job
+  # concluído para trás e a listagem vira um cemitério.
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+      containers:
+        - name: esquema
+          image: ghcr.io/fabriciojunio/permaneia:v1.0.0
+          # `db push` e não `migrate deploy`: a extensão vector precisa existir
+          # antes, e este é o mesmo caminho que o CI e o compose usam.
+          command: ["node_modules/.bin/prisma", "db", "push", "--skip-generate"]
+          env:
+            # A conexão direta nas duas: aplicar esquema pelo pooler falha em
+            # comando que precisa de sessão, e o erro que aparece fala de
+            # transação preparada, que não ajuda ninguém a achar a causa.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: permaneia-banco
+                  key: direct-url
+            - name: DIRECT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: permaneia-banco
+                  key: direct-url
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
