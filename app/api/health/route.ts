@@ -4,6 +4,8 @@ import { origemAtual } from "@/lib/ia";
 import { BASE_DE_REGRAS } from "@/lib/fuzzy/regras";
 import { comTratamentoDeErro, respostaOk } from "@/lib/observabilidade";
 import { avaliarPergunta } from "@/lib/rag/guardrails";
+import { versaoAtual } from "@/lib/versao";
+import { destinoConfigurado } from "@/lib/armazenamento";
 import { NextResponse } from "next/server";
 
 /**
@@ -41,7 +43,10 @@ export const dynamic = "force-dynamic";
  * respondendo 200 num health check superficial, e o monitor não veria nada.
  *
  * A rota é pública de propósito, mas não devolve nada que ajude um atacante:
- * sem versão de biblioteca, sem host de banco, sem contagem de usuários.
+ * sem versão de biblioteca, sem host de banco, sem contagem de usuários. O
+ * commit publicado aparece porque o repositório é público e porque é ele que
+ * deixa o fluxo de publicação distinguir a versão nova da antiga, que continua
+ * atendendo enquanto a nova sobe.
  */
 export const GET = comTratamentoDeErro(async () => {
   const inicio = Date.now();
@@ -82,6 +87,11 @@ export const GET = comTratamentoDeErro(async () => {
     barreiras: barreirasOk ? "ok" : "degradadas",
     // Qual provedor responderia agora. Não expõe a chave, só o modo de operação.
     provedorIa: origemAtual(),
+    versao: versaoAtual(),
+    // Onde o original de um documento seria guardado agora. Aparece aqui para
+    // a configuração errada ser vista antes da primeira ingestão, e não no
+    // meio dela. Só o nome do destino: nem credencial, nem endereço.
+    documentos: destinoConfigurado(),
     regrasFuzzy: BASE_DE_REGRAS.length,
     indice: {
       trechos,

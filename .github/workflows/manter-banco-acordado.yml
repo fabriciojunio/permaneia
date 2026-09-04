@@ -1,0 +1,51 @@
+name: Manter o banco acordado
+
+# O Supabase na camada gratuita PAUSA o projeto depois de sete dias sem nenhuma
+# conexão, e despausar é manual, pelo painel. Num sistema que fica semanas sem
+# ninguém abrir, entre uma aula e outra, isso significa o professor clicando no
+# link da entrega e encontrando erro de banco.
+#
+# A visita diária custa uma consulta e reinicia a contagem dos sete dias.
+#
+# Não é o mesmo problema do plano gratuito da Vercel: a função serverless não
+# hiberna, ela sobe a frio em milissegundos. Quem dorme aqui é o banco.
+#
+# Agendamento na camada gratuita do GitHub é promessa, não garantia: já medimos
+# atraso de horas em outro repositório. Uma vez por dia contra uma janela de
+# sete dias tem margem de sobra para aguentar isso.
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # 06:00 em Brasília
+  workflow_dispatch:
+
+concurrency:
+  group: manter-banco-acordado
+  cancel-in-progress: false
+
+jobs:
+  visitar:
+    name: Uma consulta por dia
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Acordar o banco pelo health
+        env:
+          PRODUCAO_URL: ${{ vars.PRODUCAO_URL || 'https://permaneia.vercel.app' }}
+        run: |
+          # O /api/health é o caminho certo porque ele CONSULTA o banco de
+          # verdade, e não só confirma que o processo subiu. Bater na página
+          # inicial não abriria conexão nenhuma, e o banco dormiria do mesmo
+          # jeito enquanto o fluxo ficava verde todo dia.
+          corpo=$(curl -s --max-time 60 "$PRODUCAO_URL/api/health" || true)
+          estado=$(printf '%s' "$corpo" | sed -n 's/.*"banco":"\([^"]*\)".*/\1/p')
+
+          echo "Banco: ${estado:-sem resposta}"
+
+          if [ "$estado" != "ok" ]; then
+            # Aviso, e não falha: este fluxo é conveniência, e e-mail de erro
+            # todo dia vira ruído que ninguém lê. Quem cobra a saúde do sistema
+            # é o fluxo de conferência da publicação.
+            echo "::warning::O banco respondeu '${estado:-nada}'. Se repetir, confira se o projeto do Supabase foi pausado."
+          fi

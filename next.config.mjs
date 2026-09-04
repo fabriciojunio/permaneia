@@ -7,6 +7,18 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   reactStrictMode: true,
 
+  // Empacota o servidor com só as dependências que ele usa de fato, para a
+  // imagem levar cerca de 150 MB em vez do node_modules inteiro. Fica desligado
+  // na Vercel, que faz o próprio rastreamento de arquivos e não usa esta saída.
+  output: process.env.VERCEL ? undefined : "standalone",
+
+  env: {
+    // Congelado no momento do build. Esta é a marca que o fluxo de publicação
+    // compara para saber se quem está respondendo é a versão nova ou a antiga
+    // que continua atendendo enquanto a nova sobe (ver lib/versao.ts).
+    APP_CONSTRUIDO_EM: new Date().toISOString(),
+  },
+
   images: {
     formats: ["image/avif", "image/webp"],
     // O app não carrega imagem de domínio externo. Manter a lista vazia impede
