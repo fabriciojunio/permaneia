@@ -23,3 +23,7 @@ vistoria/
 # Backup operacional do histórico de perguntas. Sai da máquina de quem opera,
 # não do repositório: são perguntas que pessoas digitaram.
 data/historico-consultas.json
+
+# O .webm e o bruto que o Playwright grava; o .mp4 derivado dele e que vai para
+# a apresentacao, porque projetor engasga menos com ele.
+demonstracao/*.webm

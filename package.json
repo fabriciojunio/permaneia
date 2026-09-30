@@ -27,7 +27,8 @@
     "fuzzy:comparar": "npx tsx scripts/exportar-casos-fuzzy.ts",
     "test:vistoria": "playwright test --config playwright.producao.config.ts",
     "validar:producao": "npx tsx scripts/validar-producao.ts",
-    "testar:barreiras": "npx tsx scripts/testar-barreiras.ts"
+    "testar:barreiras": "npx tsx scripts/testar-barreiras.ts",
+    "gravar:demonstracao": "node scripts/gravar-demonstracao.mjs"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
