@@ -110,8 +110,9 @@ Retomar a frase plantada no bloco 2:
 
 > "RAG não deixa a IA mais inteligente. Deixa ela mais honesta."
 
-Créditos: Camila Pereira Raimundo, Fabrício Júnio Almeida Dias, Kauã Limão
-Nunes e Luan Padilha Miranda. Disciplina, professor e data.
+Créditos: Camila Pereira Raimundo, Fabrício Júnio Almeida Dias, Ian Felipe
+Amaral Oliveira Silva, Kauã Limão Nunes, Luan Padilha Miranda e Lucas Massamiti
+Tsuji. Disciplina, professor e data.
 
 ---
 
