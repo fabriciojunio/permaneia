@@ -5,8 +5,9 @@
 **Disciplina:** Inteligência Artificial, turma de quinta-feira, 2026-2
 **Professor:** Patrick Pedreira Silva
 **Instituição:** Unisagrado
-**Grupo:** Camila Pereira Raimundo, Fabrício Júnio Almeida Dias, Kauã Limão Nunes,
-Luan Padilha Miranda
+**Grupo 1:** Camila Pereira Raimundo, Fabrício Júnio Almeida Dias, Ian Felipe
+Amaral Oliveira Silva, Kauã Limão Nunes, Luan Padilha Miranda, Lucas Massamiti
+Tsuji
 **Entrega:** 19 de novembro de 2026
 
 **Aplicação em produção:** <https://permaneia.vercel.app>
