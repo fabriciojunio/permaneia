@@ -12,11 +12,32 @@ import { CONTAS, SENHA_DEMO } from "./ajudantes";
 
 const PASTA = "vistoria";
 
-async function entrar(page: import("@playwright/test").Page, email: string) {
+// O login aceita 5 tentativas por minuto (REGRA_LOGIN em lib/rate-limit.ts), e
+// esta vistoria entra sete vezes. Bater no limite é o sistema funcionando, não
+// defeito: quem tem que ceder é a vistoria, esperando a janela virar.
+const JANELA_DO_LIMITE_MS = 62_000;
+
+async function tentarEntrar(page: import("@playwright/test").Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Senha").fill(SENHA_DEMO);
   await page.getByRole("button", { name: "Entrar" }).click();
+
+  const limitado = page.getByText("Muitas tentativas seguidas");
+  await Promise.race([
+    page.waitForURL("**/inicio", { timeout: 30_000 }).catch(() => null),
+    limitado.waitFor({ timeout: 30_000 }).catch(() => null),
+  ]);
+  return !(await limitado.isVisible().catch(() => false));
+}
+
+async function entrar(page: import("@playwright/test").Page, email: string) {
+  if (await tentarEntrar(page, email)) {
+    await page.waitForURL("**/inicio", { timeout: 30_000 });
+    return;
+  }
+  await page.waitForTimeout(JANELA_DO_LIMITE_MS);
+  await tentarEntrar(page, email);
   await page.waitForURL("**/inicio", { timeout: 30_000 });
 }
 
