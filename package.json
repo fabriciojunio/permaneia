@@ -23,6 +23,7 @@
     "db:recalcular": "npx tsx scripts/recalcular-riscos.ts",
     "audit:prod": "npm audit --omit=dev",
     "gerar:apresentacao": "node scripts/gerar-apresentacao.mjs",
+    "validar:apresentacao": "python scripts/validar-apresentacao.py",
     "fuzzy:comparar": "npx tsx scripts/exportar-casos-fuzzy.ts",
     "test:vistoria": "playwright test --config playwright.producao.config.ts",
     "validar:producao": "npx tsx scripts/validar-producao.ts",
