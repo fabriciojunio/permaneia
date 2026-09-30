@@ -25,6 +25,13 @@ const VERMELHO = "D0473F";
 
 const FONTE = "Verdana";
 
+// Os seis integrantes do Grupo 1, na ordem do portal da disciplina. Em duas
+// linhas de proposito: numa linha so, seis nomes estouram a caixa do slide.
+const EQUIPE = [
+  { text: "Camila Pereira Raimundo · Fabrício Júnio Almeida Dias · Ian Felipe Amaral Oliveira Silva", options: { breakLine: true } },
+  { text: "Kauã Limão Nunes · Luan Padilha Miranda · Lucas Massamiti Tsuji" },
+];
+
 const p = new pptxgen();
 p.defineLayout({ name: "LARGA", width: 13.333, height: 7.5 });
 p.layout = "LARGA";
@@ -45,12 +52,15 @@ function slide(cor = FUNDO) {
   return s;
 }
 
+// O rodape encosta no fim do slide de proposito: a 0,5 da base ele ocupava a
+// mesma faixa das notas de fecho dos slides 5, 7 e 8, e o texto de 12 pt caia
+// em cima dele.
 function rodape(s) {
   s.addText("PermaneIA · Inteligência Artificial · 2026-2", {
-    x: 0.6, y: A - 0.5, w: 8, h: 0.3, fontSize: 9, color: FRACO, fontFace: FONTE,
+    x: 0.6, y: A - 0.38, w: 8, h: 0.28, fontSize: 9, color: FRACO, fontFace: FONTE,
   });
   s.addText(String(numero), {
-    x: L - 1.1, y: A - 0.5, w: 0.5, h: 0.3, fontSize: 9, color: FRACO, align: "right", fontFace: FONTE,
+    x: L - 1.1, y: A - 0.38, w: 0.5, h: 0.28, fontSize: 9, color: FRACO, align: "right", fontFace: FONTE,
   });
 }
 
@@ -61,8 +71,12 @@ function titulo(s, chapeu, texto) {
       charSpacing: 2, bold: true, fontFace: FONTE,
     });
   }
+  // Titulo longo quebra em duas linhas, e duas linhas de 28 pt nao cabem em
+  // 0,9 polegada: o texto vazava para fora da caixa em dois slides.
+  const linhas = Math.max(1, Math.ceil(texto.length / 52));
   s.addText(texto, {
-    x: 0.7, y: 0.85, w: 12, h: 0.9, fontSize: 28, color: BRANCO, bold: true, fontFace: FONTE,
+    x: 0.7, y: 0.85, w: 12, h: linhas > 1 ? 1.1 : 0.9,
+    fontSize: 28, color: BRANCO, bold: true, fontFace: FONTE,
   });
 }
 
@@ -100,8 +114,8 @@ s.addText("Assistente de estudo e alerta de risco de evasão", {
 s.addText("IA generativa com RAG e lógica fuzzy contra a evasão no ensino superior", {
   x: 0.7, y: 4.1, w: 11, h: 0.5, fontSize: 14, color: SUAVE, fontFace: FONTE,
 });
-s.addText("Camila Pereira Raimundo · Fabrício Júnio Almeida Dias · Kauã Limão Nunes · Luan Padilha Miranda", {
-  x: 0.7, y: A - 1.35, w: 12, h: 0.4, fontSize: 13, color: SUAVE, fontFace: FONTE,
+s.addText(EQUIPE, {
+  x: 0.7, y: A - 1.5, w: 12, h: 0.52, fontSize: 11.5, color: SUAVE, fontFace: FONTE,
 });
 s.addText("Projeto Prático de IA Generativa · Prof. Patrick Pedreira Silva · 19 de novembro de 2026", {
   x: 0.7, y: A - 0.9, w: 11, h: 0.4, fontSize: 12, color: FRACO, fontFace: FONTE,
@@ -200,7 +214,7 @@ for (const [nome, texto] of etapas) {
 }
 
 s.addText("Base fatorial completa: 3 x 3 x 3 = 27 regras. Nenhuma entrada cai num vazio da base.", {
-  x: 0.7, y: 6.85, w: 12, h: 0.35, fontSize: 12, color: TEXTO, fontFace: FONTE,
+  x: 0.7, y: 6.62, w: 12, h: 0.35, fontSize: 12, color: TEXTO, fontFace: FONTE,
 });
 rodape(s);
 
@@ -250,7 +264,7 @@ for (const [nome, impacto, texto] of defeitos) {
 }
 
 s.addText("Nenhum destes seria visível testando à mão com meia dúzia de perguntas. Todos pareciam código correto.", {
-  x: 0.7, y: 6.85, w: 12, h: 0.35, fontSize: 12, color: TEXTO, bold: true, fontFace: FONTE,
+  x: 0.7, y: 6.60, w: 12, h: 0.35, fontSize: 12, color: TEXTO, bold: true, fontFace: FONTE,
 });
 rodape(s);
 
@@ -274,7 +288,7 @@ for (const [nome, impacto, texto] of defeitosTardios) {
 }
 
 s.addText("Os dois primeiros a medição revelou. O terceiro só o uso revelou, e quem o encontrou foi o registro de perguntas.", {
-  x: 0.7, y: 6.9, w: 12, h: 0.35, fontSize: 12, color: TEXTO, bold: true, fontFace: FONTE,
+  x: 0.7, y: 6.78, w: 12, h: 0.35, fontSize: 12, color: TEXTO, bold: true, fontFace: FONTE,
 });
 rodape(s);
 
@@ -390,8 +404,8 @@ s.addText("E a lógica fuzzy não prevê o futuro. Ela só recusa a fingir que o
 s.addText("Obrigado. Perguntas?", {
   x: 0.7, y: 5.5, w: 11, h: 0.5, fontSize: 18, color: TEXTO, bold: true, fontFace: FONTE,
 });
-s.addText("Camila Pereira Raimundo · Fabrício Júnio Almeida Dias · Kauã Limão Nunes · Luan Padilha Miranda", {
-  x: 0.7, y: A - 1.35, w: 12, h: 0.4, fontSize: 12.5, color: SUAVE, fontFace: FONTE,
+s.addText(EQUIPE, {
+  x: 0.7, y: A - 1.5, w: 12, h: 0.52, fontSize: 11.5, color: SUAVE, fontFace: FONTE,
 });
 s.addText("github.com/fabriciojunio/permaneia · permaneia.vercel.app", {
   x: 0.7, y: A - 0.9, w: 11, h: 0.4, fontSize: 12, color: FRACO, fontFace: FONTE,
@@ -399,4 +413,6 @@ s.addText("github.com/fabriciojunio/permaneia · permaneia.vercel.app", {
 
 const arquivo = process.argv[2] ?? "PermaneIA-Apresentacao.pptx";
 await p.writeFile({ fileName: arquivo });
-console.log(`Apresentação gerada: ${arquivo} (${numero + 2} slides)`);
+// numero ja conta todo slide, porque quem incrementa e a fabrica slide().
+// O "+ 2" que estava aqui anunciava 15 num arquivo de 13.
+console.log(`Apresentação gerada: ${arquivo} (${numero} slides)`);
