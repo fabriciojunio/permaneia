@@ -31,6 +31,20 @@ describe("rastro de LLM", () => {
     expect(ligado()).toBe(true);
   });
 
+  it("valor em branco conta como ausente, e marca de byte nao atrapalha", () => {
+    // Os dois casos vieram do incidente de 06/10/2026. Variavel criada vazia
+    // na plataforma chega como string em branco, e tratar isso como configurado
+    // faria o SDK subir sem credencial. Ja a marca de ordem de byte, invisivel,
+    // vinha colada no valor e derrubou a aplicacao inteira.
+    process.env.LANGFUSE_PUBLIC_KEY = "   ";
+    process.env.LANGFUSE_SECRET_KEY = "\n";
+    expect(ligado()).toBe(false);
+
+    process.env.LANGFUSE_PUBLIC_KEY = "﻿pk-exemplo";
+    process.env.LANGFUSE_SECRET_KEY = "﻿sk-exemplo\n";
+    expect(ligado()).toBe(true);
+  });
+
   it("desligado, nao tenta importar o SDK nem lanca", async () => {
     await expect(
       registrarConsulta({
