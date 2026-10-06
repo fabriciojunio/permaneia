@@ -201,6 +201,34 @@ subiu. Ele responde o commit publicado, o provedor de IA em vigor, o estado do
 **dentro do pacote publicado** — este último por causa de um defeito que passava
 em toda a suíte local e só existia depois do build.
 
+### O que custa manter o assistente no ar
+
+Cada consulta grava a **versão do modelo que respondeu**, os **tokens de entrada
+e saída** contados pela própria API e o **custo estimado**. O agregado sai em
+`/api/observabilidade`, atrás da permissão de auditoria: latência por percentil,
+taxa de recusa, taxa de degradação para o modo extrativo, tokens e custo.
+
+Medido em produção: 96% dos tokens são de **entrada**. A conta é do material que
+acompanha a pergunta, não da resposta. O raciocínio e as três decisões difíceis
+estão na [ADR 014](docs/adr/014-telemetria-de-custo-e-degradacao.md), entre elas
+por que modelo fora da tabela de preço devolve custo **nulo** e não zero.
+
+### E o rastro, que responde outra pergunta
+
+A telemetria do banco diz **como está o sistema**. Ela não diz **por que esta
+resposta saiu assim**, porque guarda o resultado e não o caminho.
+
+Com as chaves configuradas, cada consulta também vai para o **Langfuse**: o que a
+recuperação trouxe e com que similaridade, a geração com modelo, tokens e custo,
+e o veredicto da verificação. Os dois convivem de propósito, e o banco não
+depende de serviço externo nenhum ([ADR 015](docs/adr/015-rastro-de-llm-com-langfuse.md)).
+
+Duas cicatrizes desse trabalho ficaram em teste. O envio é **explícito**, porque
+em função sem servidor o processo congela quando a resposta sai e o que estiver
+na fila morre com ele. E o valor das variáveis é limpo antes de usar: uma chave
+gravada com marca de ordem de byte derrubou a aplicação inteira, não só a
+telemetria, porque a exceção subiu pelo gancho de instrumentação do Next.
+
 ## Implantação
 
 Publicado na Vercel, com Neon como banco. Também roda como contêiner, o que

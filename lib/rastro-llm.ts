@@ -32,7 +32,10 @@ export type GeracaoRastreada = {
 };
 
 export function ligado(): boolean {
-  return Boolean(process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY);
+  // Limpa antes de testar: variável gravada com marca de ordem de byte chega
+  // com um caractere invisível e já derrubou a aplicação uma vez (ADR 015).
+  const limpar = (v: string | undefined) => v?.replace(/^﻿/, "").trim();
+  return Boolean(limpar(process.env.LANGFUSE_PUBLIC_KEY) && limpar(process.env.LANGFUSE_SECRET_KEY));
 }
 
 /**
@@ -98,8 +101,12 @@ export async function registrarConsulta(entrada: {
     // processo congela assim que a resposta sai, e o que estiver na fila morre
     // com ele. Sem esta linha, nada falha e o painel fica vazio, que é o modo
     // de falha mais caro de observabilidade.
-    const { enviarPendentes } = await import("./otel");
-    await enviarPendentes();
+    //
+    // O processador vem de `instrumentation`, e não de um módulo auxiliar,
+    // porque o Next empacota o gancho separado das rotas: um módulo importado
+    // pelos dois viraria duas instâncias, e esta linha esvaziaria a fila errada.
+    const { processadorLangfuse } = await import("@/instrumentation");
+    await processadorLangfuse?.forceFlush();
   } catch (e) {
     // Telemetria nunca derruba a resposta de quem perguntou. Mas o erro VAI
     // para o log: foi exatamente um erro engolido em silencio que fez o rastro
