@@ -17,6 +17,7 @@
 
 import { gerarEmbeddingComFallback, gerarTextoComFallback } from "@/lib/ia";
 import { custoEstimadoUsd } from "@/lib/ia/custo";
+import { registrarConsulta } from "@/lib/rastro-llm";
 import type { OrigemResposta } from "@/lib/ia/provedor";
 import {
   buscarTrechosDoDocumento,
@@ -511,7 +512,45 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
     : null;
 
   const resultado = geral ?? comMaterial;
-  if (opcoes.registrar !== false) await gravarConsulta(opcoes, resultado);
+  if (opcoes.registrar !== false) {
+    await gravarConsulta(opcoes, resultado);
+    // O banco guarda o resultado; o rastro guarda o caminho. Os dois existem
+    // porque respondem perguntas diferentes, e o rastro e opcional: sem chave
+    // configurada esta chamada retorna sem fazer nada.
+    await registrarConsulta({
+      pergunta: opcoes.pergunta,
+      etapas: [
+        {
+          nome: "recuperar",
+          entrada: { pergunta: opcoes.pergunta },
+          saida: {
+            trechos: contexto.length,
+            similaridadeMaxima: maxSimilaridade,
+            abrangente,
+            documentos: fontesRepresentativas(contexto, K_CONTEXTO).map((f) => f.titulo),
+          },
+        },
+        {
+          nome: "verificar",
+          saida: {
+            fundamentada: comMaterial.respostaFundamentada,
+            admitiuNaoSaber: resultado.admitiuNaoSaber,
+            foraDoMaterial: resultado.foraDoMaterial ?? null,
+          },
+        },
+      ],
+      geracao: {
+        modelo: resultado.telemetria?.modelo ?? null,
+        prompt,
+        saida: geracao.valor,
+        tokensEntrada: resultado.telemetria?.tokensEntrada ?? null,
+        tokensSaida: resultado.telemetria?.tokensSaida ?? null,
+        custoUsd: resultado.telemetria?.custoUsd ?? null,
+      },
+      veredicto: comMaterial.respostaFundamentada ? "aprovada" : "substituida por falta de apoio",
+      resposta: resultado.resposta,
+    });
+  }
   return resultado;
 }
 

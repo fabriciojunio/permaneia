@@ -480,6 +480,23 @@ pontos, um único pico fica acima do 95º percentil por definição e não apare
 Nas primeiras semanas, com poucas dezenas de perguntas, quem detecta pico
 isolado é a duração máxima.
 
+### E o rastro, que é outra coisa
+
+A telemetria do banco responde **como está o sistema**. Ela não responde **por
+que esta resposta saiu assim**, porque guarda o resultado e não o caminho.
+
+Desde 06/10/2026 cada consulta também vai para o **Langfuse**, com uma etapa por
+fase: o que a recuperação trouxe e com que similaridade, a geração com modelo,
+tokens e custo, e o veredicto da verificação. Detalhe e motivo na
+[ADR 015](adr/015-rastro-de-llm-com-langfuse.md).
+
+Os dois convivem de propósito: o banco é a fonte do agregado e não depende de
+serviço externo; o Langfuse é a lupa para uma execução. Sem as chaves
+configuradas, nada é enviado e a aplicação roda igual.
+
+Uma armadilha que vale para quem for conferir: a ingestão atrasa alguns minutos.
+Consultar logo depois de rodar e não achar nada não prova que nada foi enviado.
+
 ## Limitações honestas desta avaliação
 
 - **52 perguntas é pouco.** O intervalo de confiança em cima disso é largo. O
