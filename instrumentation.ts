@@ -44,9 +44,16 @@ export async function register(): Promise<void> {
   // saúde. Foi o que aconteceu em 06/10/2026, por causa de uma variável de
   // ambiente gravada com marca de ordem de byte.
   try {
-    const { NodeTracerProvider } = await import("@opentelemetry/sdk-trace-node");
-    const provedor = new NodeTracerProvider({ spanProcessors: [processadorLangfuse] });
-    provedor.register();
+    // `registerOTel` da Vercel, e não o registro direto do provedor do SDK.
+    // O motivo é empacotamento, de novo: registrar à mão deixava o provedor
+    // numa cópia da API de OpenTelemetry e as rotas noutra, então a span era
+    // criada contra um provedor que não existia. Sem erro, sem dado, painel
+    // vazio. Este pacote existe justamente para resolver isso no Next.
+    const { registerOTel } = await import("@vercel/otel");
+    registerOTel({
+      serviceName: "permaneia",
+      spanProcessors: [processadorLangfuse],
+    });
   } catch (e) {
     console.error("Rastro de LLM não pôde ser registrado:", (e as Error).message);
   }
