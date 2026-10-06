@@ -17,9 +17,31 @@ export const DIMENSAO_EMBEDDING = 768;
 
 export type OrigemResposta = "gemini" | "local";
 
+/**
+ * Consumo de uma chamada de geração.
+ *
+ * Existe porque sem isso não há como responder três perguntas que aparecem no
+ * dia em que o sistema sai do laboratório: quanto custou, qual pergunta custou
+ * mais caro, e se a conta cresce com o uso ou com o tamanho do contexto. A
+ * duração sozinha não responde nenhuma delas, porque o preço é por token e não
+ * por segundo.
+ *
+ * Vem do próprio provedor, nunca estimado por contagem de palavras: a
+ * tokenização é do modelo, e aproximar por caractere erra entre 10% e 30% em
+ * português.
+ */
+export type UsoDeTokens = {
+  entrada: number;
+  saida: number;
+  total: number;
+};
+
 export type RespostaGeracao = {
   texto: string;
   origem: OrigemResposta;
+  /** Nome do modelo que de fato respondeu. Com alias `-latest`, ele muda sem aviso, e saber qual era é o que permite explicar uma mudança de comportamento. */
+  modelo?: string;
+  uso?: UsoDeTokens;
 };
 
 export type OpcoesGeracao = {

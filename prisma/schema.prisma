@@ -173,6 +173,14 @@ model ConsultaRag {
   /// Verdadeiro quando o sistema respondeu que não sabe, por falta de contexto.
   admitiuNaoSaber   Boolean     @default(false) @map("admitiu_nao_saber")
   duracaoMs         Int?        @map("duracao_ms")
+  /// Versão do modelo que respondeu, já resolvida quando o nome configurado é um alias.
+  modelo            String?
+  /// Tokens cobrados como entrada, pela contagem da própria API.
+  tokensEntrada     Int?        @map("tokens_entrada")
+  /// Tokens de saída, incluindo os de raciocínio, que são cobrados e não aparecem no texto.
+  tokensSaida       Int?        @map("tokens_saida")
+  /// Custo estimado pela tabela de preço declarada em lib/ia/custo.ts. Nulo quando o modelo não está na tabela.
+  custoUsd          Decimal?    @map("custo_usd") @db.Decimal(12, 8)
   criadoEm          DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
 
   @@index([disciplinaId, criadoEm(sort: Desc)])

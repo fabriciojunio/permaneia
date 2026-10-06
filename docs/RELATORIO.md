@@ -564,13 +564,17 @@ registrada como teste que documenta o comportamento atual.
 
 ### 4.10 Limitações honestas da própria avaliação
 
-- **26 perguntas é pouco.** O conjunto serve para comparar configurações entre
+- **52 perguntas é pouco.** O conjunto serve para comparar configurações entre
   si, que é para o que foi usado, e não para afirmar uma taxa absoluta.
 - **As perguntas foram escritas por quem construiu o sistema.** Há viés de
-  vocabulário. Uma avaliação melhor coletaria perguntas reais de alunos.
-- **Os números são do modo degradado.** O modo com Gemini não foi medido no mesmo
-  conjunto porque não dispomos de chave configurada em caráter permanente. O
-  script aceita a chave e roda igual.
+  vocabulário. Uma avaliação melhor coletaria perguntas reais de alunos, e o
+  registro de consultas existe para isso: quatro dos nove defeitos saíram dele.
+- **O modo generativo não é determinístico**, então a tabela dele traz faixa e
+  não número exato. A calibração se apoiou no modo de leitura direta, que é
+  determinístico.
+- **O custo registrado é estimativa, não fatura.** Os tokens vêm da contagem da
+  própria API; o preço vem de tabela declarada em código, com data de
+  conferência. O projeto roda no tier gratuito e não há fatura para comparar.
 - **Os dados de aluno são sintéticos.** O sistema fuzzy nunca foi validado contra
   evasão real. Não sabemos se o score prevê alguma coisa; sabemos que ele captura
   o padrão que a literatura descreve.

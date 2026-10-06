@@ -16,6 +16,7 @@
 // diferencia de confiar cegamente na instrução dada ao modelo.
 
 import { gerarEmbeddingComFallback, gerarTextoComFallback } from "@/lib/ia";
+import { custoEstimadoUsd } from "@/lib/ia/custo";
 import type { OrigemResposta } from "@/lib/ia/provedor";
 import {
   buscarTrechosDoDocumento,
@@ -102,6 +103,22 @@ export type RespostaRag = {
   foraDoMaterial?: EscopoGeral;
   duracaoMs: number;
   motivoFallback?: string;
+  /**
+   * Telemetria da chamada ao modelo. Fica aqui, e não só no log, porque é o que
+   * responde quanto custa manter o assistente no ar e qual tipo de pergunta
+   * puxa a conta para cima. Vazia quando a resposta não passou por modelo
+   * externo, que é o caso da recusa por barreira e do modo extrativo.
+   */
+  telemetria?: TelemetriaDaGeracao;
+};
+
+export type TelemetriaDaGeracao = {
+  /** Nome resolvido do modelo. Com alias, é a versão que de fato respondeu. */
+  modelo: string | null;
+  tokensEntrada: number | null;
+  tokensSaida: number | null;
+  /** Estimativa em dólares pela tabela de preço declarada, ou nulo se o modelo não está nela. */
+  custoUsd: number | null;
 };
 
 export type OpcoesConsulta = {
@@ -300,6 +317,23 @@ async function responderComConhecimentoGeral(
     respostaFundamentada: false,
     foraDoMaterial: escopo,
     duracaoMs: Date.now() - inicio,
+    // A resposta fora do material é uma SEGUNDA chamada ao modelo, e é ela que
+    // aparece para o aluno. Somar as duas aqui esconderia que a pergunta sem
+    // resposta no acervo custa o dobro, que é exatamente o que vale saber.
+    telemetria: telemetriaDe(geracao),
+  };
+}
+
+/** Converte o resultado do provedor na telemetria que vai para o banco. */
+function telemetriaDe(geracao: {
+  modelo?: string;
+  uso?: { entrada: number; saida: number; total: number };
+}): TelemetriaDaGeracao {
+  return {
+    modelo: geracao.modelo ?? null,
+    tokensEntrada: geracao.uso?.entrada ?? null,
+    tokensSaida: geracao.uso?.saida ?? null,
+    custoUsd: custoEstimadoUsd(geracao.modelo, geracao.uso),
   };
 }
 
@@ -465,6 +499,7 @@ export async function responder(opcoes: OpcoesConsulta): Promise<RespostaRag> {
     admitiuNaoSaber: admitiuNaoSaber(textoFinal),
     respostaFundamentada: fundamentada,
     duracaoMs: Date.now() - inicio,
+    telemetria: telemetriaDe(geracao),
     ...(geracao.motivoFallback ? { motivoFallback: geracao.motivoFallback } : {}),
   };
 
@@ -497,6 +532,10 @@ async function gravarConsulta(opcoes: OpcoesConsulta, resultado: RespostaRag): P
         similaridadeMaxima: resultado.similaridadeMaxima,
         admitiuNaoSaber: resultado.admitiuNaoSaber,
         duracaoMs: resultado.duracaoMs,
+        modelo: resultado.telemetria?.modelo ?? null,
+        tokensEntrada: resultado.telemetria?.tokensEntrada ?? null,
+        tokensSaida: resultado.telemetria?.tokensSaida ?? null,
+        custoUsd: resultado.telemetria?.custoUsd ?? null,
       },
     });
   } catch (e) {

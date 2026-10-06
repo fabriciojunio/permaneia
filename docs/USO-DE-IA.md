@@ -31,8 +31,8 @@ relatório, os ADRs e este arquivo, teve apoio de IA na organização e na reda�
 - A decisão de ter um **provedor local** como modo de degradação projetado, e não
   como remendo
 - A decisão de **não mostrar o score ao aluno**, e a razão pedagógica por trás
-- O conjunto de 26 perguntas de avaliação e a separação entre respondíveis e não
-  respondíveis
+- O conjunto de 52 perguntas de avaliação e a separação entre respondíveis, não
+  respondíveis e fora do material
 - A interpretação dos resultados e toda a seção de visão crítica do relatório
 
 ## O que foi verificado independentemente
@@ -75,9 +75,13 @@ quem assina o trabalho.
 
 Distinto do acima. O sistema em execução usa:
 
-- **Google Gemini** (`gemini-2.0-flash` e `text-embedding-004`), tier gratuito,
-  para geração de texto e embeddings, quando há chave configurada
+- **Google Gemini** (`gemini-flash-lite-latest` e `gemini-embedding-001`), tier
+  gratuito, para geração de texto e embeddings, quando há chave configurada. Os
+  nomes fixos que a especificação original indicava foram aposentados e passaram
+  a responder 404, e é por isso que o código usa alias
 - **Provedor local**, escrito por nós, sem rede e sem dependência, que assume
   quando não há chave ou quando o Gemini falha
 
-A interface declara qual dos dois respondeu, a cada resposta.
+A interface declara qual dos dois respondeu, a cada resposta. Desde 06/10/2026 o
+sistema também grava, por consulta, qual versão do modelo atendeu, quantos
+tokens gastou e quanto isso custou pela tabela de preço declarada.

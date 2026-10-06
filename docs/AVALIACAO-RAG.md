@@ -349,11 +349,11 @@ cronograma, exige trechos pequenos, porque o vizinho só atrapalha.
 
 ## Por que o limiar é por provedor
 
-`lib/rag/similaridade.ts` define limiares diferentes para o Gemini (0,62) e para
+`lib/rag/similaridade.ts` define limiares diferentes para o Gemini (0,65) e para
 o provedor local (0,15). Não é ajuste arbitrário: os dois espaços de embedding
 têm geometrias diferentes.
 
-O `text-embedding-004` é treinado com objetivo de recuperação, aproximando
+O `gemini-embedding-001` é treinado com objetivo de recuperação, aproximando
 deliberadamente a pergunta do trecho que a responde; ali um par relevante fica
 entre 0,6 e 0,8. O provedor local é um saco de palavras projetado por hashing,
 sem treino: a similaridade entre uma pergunta de cinco palavras e um trecho de
@@ -460,21 +460,45 @@ faz a linha lite responder **400 invalid argument**. E, com teto de tokens
 apertado, os modelos que raciocinam devolvem texto **vazio sem finishReason**,
 que parece falha de rede e é falta de orçamento.
 
+## Telemetria em produção: o que a bateria não vê
+
+A bateria é offline e roda quando alguém a roda. Três coisas só aparecem com o
+sistema em uso, e desde 06/10/2026 cada consulta grava também o **modelo
+resolvido**, os **tokens de entrada e saída** contados pela própria API e o
+**custo estimado**. O agregado sai em `/api/observabilidade`, atrás da permissão
+de auditoria. Detalhe e motivo em [ADR 014](adr/014-telemetria-de-custo-e-degradacao.md).
+
+| O que a telemetria responde | Por que a bateria não responde |
+|---|---|
+| Quanto custou a semana | A bateria não mede token, e duração não é preço |
+| Com que frequência o sistema degradou para o modo extrativo | Quando a cota acaba nada falha: a resposta fica mais pobre em silêncio |
+| Qual versão do modelo respondeu | O nome configurado é um alias, e ele muda sozinho |
+| Como foi a latência de quem teve azar | p95, e não média: a média é dominada pelo caso comum |
+
+Um limite do p95 que apareceu ao escrever o teste e vale registrar: com 20
+pontos, um único pico fica acima do 95º percentil por definição e não aparece.
+Nas primeiras semanas, com poucas dezenas de perguntas, quem detecta pico
+isolado é a duração máxima.
+
 ## Limitações honestas desta avaliação
 
-- **26 perguntas é pouco.** O intervalo de confiança em cima disso é largo. O
+- **52 perguntas é pouco.** O intervalo de confiança em cima disso é largo. O
   conjunto serve para comparar configurações entre si, que é para o que foi
   usado, e não para afirmar uma taxa de acerto absoluta.
 - **As perguntas foram escritas por quem construiu o sistema.** Há viés
   inevitável de vocabulário. Uma avaliação melhor coletaria perguntas reais de
-  alunos, o que só é possível depois de colocar o sistema em uso.
-- **Os números acima são do modo degradado.** O modo com Gemini não foi medido
-  no mesmo conjunto porque o projeto não dispõe de chave configurada de forma
-  permanente. O script aceita a chave e roda igual; a tabela precisa ser
-  refeita antes de afirmar qualquer coisa sobre o modo generativo.
-- **A recusa correta de 75% significa que uma pergunta fora do material em cada
-  quatro recebe um trecho irrelevante.** No modo de leitura direta isso é menos
-  grave do que parece, porque o sistema transcreve o documento em vez de redigir:
-  o aluno vê que o trecho não responde. No modo generativo o mesmo erro seria
-  mais perigoso, porque o modelo tentaria costurar uma resposta em cima de um
-  contexto ruim, e é por isso que o limiar do Gemini é bem mais alto.
+  alunos. O registro de consultas existe justamente para isso, e já foi de onde
+  saíram quatro dos nove defeitos descritos acima.
+- **O modo generativo não é determinístico**, então a tabela dele traz faixa e
+  não número exato. O modo de leitura direta é determinístico e foi nele que a
+  calibração se apoiou.
+- **O custo é estimativa, não fatura.** Os tokens são contados pela API do
+  provedor, mas o preço vem de uma tabela declarada em `lib/ia/custo.ts`, com a
+  data da conferência. O projeto roda no tier gratuito e não há fatura para
+  comparar.
+- **Recusa correta abaixo de 100% significa que alguma pergunta fora do material
+  recebe um trecho irrelevante.** No modo de leitura direta isso é menos grave do
+  que parece, porque o sistema transcreve o documento em vez de redigir: o aluno
+  vê que o trecho não responde. No modo generativo o mesmo erro seria mais
+  perigoso, porque o modelo tentaria costurar uma resposta em cima de um contexto
+  ruim, e é por isso que o limiar do Gemini é bem mais alto.

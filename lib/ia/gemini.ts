@@ -12,6 +12,7 @@ import {
   type OpcoesGeracao,
   type ProvedorIA,
   type RespostaGeracao,
+  type UsoDeTokens,
 } from "./provedor";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
@@ -86,10 +87,44 @@ async function requisitar(url: string, corpo: unknown, chave: string): Promise<u
 
 type RespostaTexto = {
   candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>;
+  /**
+   * Contagem de tokens que a própria API devolve. O campo
+   * `thoughtsTokenCount` aparece nos modelos que raciocinam e NÃO está incluído
+   * em `candidatesTokenCount`, embora seja cobrado: somá-lo é o que impede a
+   * conta de custo de sair menor do que a fatura.
+   */
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    thoughtsTokenCount?: number;
+    totalTokenCount?: number;
+  };
+  /**
+   * Versão que de fato atendeu. É o campo que resolve o alias `-latest` para um
+   * nome concreto, e sem ele não dá para dizer qual modelo respondeu nem a que
+   * preço. Guardar isso é o que permite explicar, meses depois, por que a
+   * resposta mudou sem ninguém ter mexido no código.
+   */
+  modelVersion?: string;
 };
 
 type RespostaEmbedding = { embedding?: { values?: number[] } };
 type RespostaEmbeddingLote = { embeddings?: Array<{ values?: number[] }> };
+
+/**
+ * Traduz o bloco de consumo da API para o formato do sistema.
+ *
+ * Devolve `undefined` quando a API não mandou o bloco, em vez de zero: zero
+ * seria indistinguível de uma chamada que de fato não gastou nada, e a conta de
+ * custo passaria a subestimar sem ninguém notar.
+ */
+function usoDaResposta(dados: RespostaTexto): UsoDeTokens | undefined {
+  const u = dados.usageMetadata;
+  if (!u) return undefined;
+  const entrada = u.promptTokenCount ?? 0;
+  const saida = (u.candidatesTokenCount ?? 0) + (u.thoughtsTokenCount ?? 0);
+  return { entrada, saida, total: u.totalTokenCount ?? entrada + saida };
+}
 
 export class ProvedorGemini implements ProvedorIA {
   readonly nome = "gemini" as const;
@@ -144,7 +179,12 @@ export class ProvedorGemini implements ProvedorIA {
       const motivo = dados.candidates?.[0]?.finishReason ?? "resposta vazia";
       throw new ErroProvedorIA("gemini", `Gemini não devolveu texto (${motivo}).`);
     }
-    return { texto, origem: "gemini" };
+    return {
+      texto,
+      origem: "gemini",
+      modelo: dados.modelVersion || modeloTexto(),
+      uso: usoDaResposta(dados),
+    };
   }
 
   async gerarEmbedding(texto: string): Promise<number[]> {
