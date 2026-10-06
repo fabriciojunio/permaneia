@@ -93,6 +93,13 @@ export async function registrarConsulta(entrada: {
 
     raiz.update({ output: { veredicto: entrada.veredicto, resposta: entrada.resposta } });
     raiz.end();
+
+    // Envio explícito, e não em segundo plano: em função sem servidor o
+    // processo congela assim que a resposta sai, e o que estiver na fila morre
+    // com ele. Sem esta linha, nada falha e o painel fica vazio, que é o modo
+    // de falha mais caro de observabilidade.
+    const { enviarPendentes } = await import("./otel");
+    await enviarPendentes();
   } catch (e) {
     // Telemetria nunca derruba a resposta de quem perguntou. Mas o erro VAI
     // para o log: foi exatamente um erro engolido em silencio que fez o rastro
