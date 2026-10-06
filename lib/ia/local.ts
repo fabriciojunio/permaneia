@@ -225,7 +225,10 @@ export class ProvedorLocal implements ProvedorIA {
   }
 
   async gerarTexto(prompt: string, _opcoes?: OpcoesGeracao): Promise<RespostaGeracao> {
-    return { texto: responderExtrativo(prompt), origem: "local" };
+    // Sem `uso`: este provedor não gasta token nenhum, e inventar um número
+    // zerado aqui misturaria "não consumiu" com "não foi medido" na mesma
+    // coluna da telemetria.
+    return { texto: responderExtrativo(prompt), origem: "local", modelo: "extrativo-local" };
   }
 
   async gerarEmbedding(texto: string): Promise<number[]> {

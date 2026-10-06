@@ -8,7 +8,13 @@
 
 import { ProvedorGemini } from "./gemini";
 import { ProvedorLocal } from "./local";
-import { ErroProvedorIA, type OpcoesGeracao, type OrigemResposta, type ProvedorIA } from "./provedor";
+import {
+  ErroProvedorIA,
+  type OpcoesGeracao,
+  type OrigemResposta,
+  type ProvedorIA,
+  type UsoDeTokens,
+} from "./provedor";
 
 export type { ProvedorIA, OrigemResposta } from "./provedor";
 export { DIMENSAO_EMBEDDING, ErroProvedorIA } from "./provedor";
@@ -25,6 +31,9 @@ export type ResultadoComFallback<T> = {
   origem: OrigemResposta;
   /** Preenchido quando o provedor externo falhou e o local assumiu. */
   motivoFallback?: string;
+  /** Modelo que respondeu, já resolvido quando o nome configurado é um alias. */
+  modelo?: string;
+  uso?: UsoDeTokens;
 };
 
 /**
@@ -42,15 +51,20 @@ export async function gerarTextoComFallback(
   if (provedor.disponivel()) {
     try {
       const r = await provedor.gerarTexto(prompt, opcoes);
-      return { valor: r.texto, origem: r.origem };
+      return { valor: r.texto, origem: r.origem, modelo: r.modelo, uso: r.uso };
     } catch (e) {
       const motivo = e instanceof ErroProvedorIA ? e.message : (e as Error).message;
       const r = await local.gerarTexto(prompt, opcoes);
-      return { valor: r.texto, origem: "local", motivoFallback: motivo };
+      return { valor: r.texto, origem: "local", modelo: r.modelo, motivoFallback: motivo };
     }
   }
   const r = await local.gerarTexto(prompt, opcoes);
-  return { valor: r.texto, origem: "local", motivoFallback: "Provedor externo não configurado." };
+  return {
+    valor: r.texto,
+    origem: "local",
+    modelo: r.modelo,
+    motivoFallback: "Provedor externo não configurado.",
+  };
 }
 
 /**
