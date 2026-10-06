@@ -43,8 +43,6 @@ console.log(
     [0, 1, 3, 5, 10, 20, 30, 40, 60, 100].map((a) => `${a} -> ${normalizarEngajamento(a)}`).join("   ")
 );
 
-const score = (f: number, n: number, e: number) => inferir({ frequencia: f, notas: n, engajamento: e }).score;
-
 const ORDEM_FAIXA = { baixo: 0, medio: 1, alto: 2, critico: 3 } as const;
 
 let violacoes = 0;

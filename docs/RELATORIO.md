@@ -308,6 +308,48 @@ Instrução de sistema (íntegra em `lib/rag/prompt.ts`):
 > Nunca invente uma data de prova. Um aluno que perde uma avaliação por causa de
 > uma data errada é o pior resultado possível deste sistema.
 
+### 3.8 Observabilidade: duas perguntas diferentes
+
+Um sistema que chama modelo de linguagem em produção tem duas perguntas que não
+se respondem com o mesmo dado:
+
+**"Como está o sistema?"** é agregada. Quantas consultas, quanto tempo, quantas
+recusas, quanto custou, quantas caíram no modo degradado. Isso está no próprio
+banco: cada consulta grava `modelo`, `tokensEntrada`, `tokensSaida`, `custoUsd` e
+`duracaoMs`, e `/api/observabilidade` resume em percentis. Fica atrás da
+permissão `auditoria.ver`, porque pergunta de aluno é dado de aluno.
+
+**"Por que ESTA resposta saiu assim?"** é individual, e a linha do banco não
+responde: ela guarda o resultado, não o caminho. Para isso existe o rastro no
+Langfuse (`lib/rastro-llm.ts`): cada consulta vira um `agent` com uma etapa por
+fase, `recuperar`, `gerar` e `verificar`, com entrada e saída de cada uma. A
+etapa `gerar` é do tipo `generation`, e não `span` comum, porque é isso que faz
+o painel somar token e custo em vez de só guardar texto.
+
+Três decisões que valem registro:
+
+**O custo é calculado, não estimado por contagem própria.** Os tokens vêm do
+`usageMetadata` que a própria API do Gemini devolve, e não de uma contagem
+local de palavras. O campo `thoughtsTokenCount` entra na conta de saída: é
+token cobrado, e ignorá-lo subestimaria a fatura. Quando o modelo não está na
+tabela de preço, `custoEstimadoUsd` devolve **nulo**, e não zero. Nulo é
+"não sei"; zero seria uma afirmação falsa sobre dinheiro.
+
+**O modelo registrado é o que respondeu, não o que foi pedido.** O código pede
+`gemini-flash-lite-latest`, que é um apelido. A resposta traz `modelVersion` com
+o modelo concreto que atendeu, e é esse que vai para o banco. Sem isso, o
+histórico de custo não sobreviveria à primeira troca de modelo por trás do
+apelido.
+
+**O envio é explícito.** Em função sem servidor o processo congela assim que a
+resposta sai, e o que estiver na fila de telemetria morre com ele. Por isso há um
+`forceFlush()` ao fim do registro. Sem essa linha nada falha e o painel fica
+vazio, que é o modo de falha mais caro de observabilidade: o sistema parece
+instrumentado e não está.
+
+Toda a telemetria é opcional. Sem as chaves, o rastro desliga e o assistente
+responde igual. Falha de telemetria nunca derruba a resposta de quem perguntou.
+
 ---
 
 ## 4. Visão crítica
@@ -317,13 +359,45 @@ scripts executáveis que estão no repositório.
 
 ### 4.1 Qualidade do assistente, medida
 
-Conjunto de avaliação: 31 perguntas escritas à mão sobre os três documentos
-indexados. 23 respondíveis, cada uma com o trecho que precisa aparecer na
-resposta; 8 **não** respondíveis, escritas de propósito no mesmo vocabulário das
-outras. Cinco das respondíveis são de enumeração, e nelas o trecho esperado é
-sempre o último item do documento: resposta que para no meio falha o teste.
+Conjunto de avaliação: 52 perguntas escritas à mão sobre os sete documentos
+indexados, em `scripts/avaliar-rag.ts`. São três grupos:
 
-Duas métricas que puxam em direções opostas:
+- **41 respondíveis**, cada uma com o trecho que precisa aparecer na resposta.
+  Cinco são de enumeração, e nelas o trecho esperado é sempre o último item do
+  documento: resposta que para no meio falha o teste.
+- **8 não respondíveis**, sobre informação que não está em documento nenhum,
+  escritas de propósito no mesmo vocabulário das outras.
+- **3 de conhecimento geral**, que o material não responde e o assistente ainda
+  deve atender, avisando que a resposta não tem fonte no material (§4.4).
+
+Duas métricas que puxam em direções opostas, e **dois limiares**, porque os dois
+modos de operação trabalham em escalas diferentes de similaridade:
+
+Modo generativo, que é o padrão:
+
+| Limiar | Cobertura | Recusa correta |
+|---|---|---|
+| 0,55 | 88,9% (16/18) | 87,5% (7/8) |
+| 0,60 | 88,9% (16/18) | 12,5% (1/8) |
+| **0,65** | **83,3% a 88,9%** | **75,0% a 100,0%** |
+| 0,70 | 72,2% (13/18) | 100,0% (8/8) |
+| 0,75 | 22,2% (4/18) | 100,0% (8/8) |
+
+Duas ressalvas que esta tabela obriga a fazer, e que não dá para esconder:
+
+A linha adotada traz faixa, e não número único, porque execuções sucessivas da
+mesma bateria no mesmo limiar devolveram 15/18 e 16/18 de cobertura, e 6/8 e 8/8
+de recusa. O modelo reformula a resposta a cada chamada, e uma reformulação pode
+deixar de conter a palavra que o teste procura. A faixa é o número honesto; um
+valor único seria uma rodada escolhida.
+
+E a linha de 0,60 é **ruído, não sinal**: recusa de 87,5% em 0,55 caindo para
+12,5% em 0,60 é impossível como comportamento real, porque limiar maior não pode
+recusar menos. São 8 casos, cada um vale 12,5 pontos, e a oscilação do modelo
+cabe inteira nessa resolução. A conclusão correta não é "0,60 é ruim", é que
+**a bateria de recusa é pequena demais para distinguir limiares vizinhos**.
+
+Modo de leitura direta, que é determinístico:
 
 | Limiar | Cobertura | Recusa correta |
 |---|---|---|
@@ -331,8 +405,11 @@ Duas métricas que puxam em direções opostas:
 | **0,15** | **83,3% (15/18)** | **75,0% (6/8)** |
 | 0,18 | 55,6% (10/18) | 75,0% (6/8) |
 
-Valor adotado: 0,15. É o ponto em que a recusa sobe de 50% para 75% sem custo
-nenhum de cobertura.
+Valores adotados: **0,65** no modo generativo e **0,15** no de leitura direta.
+No segundo, é o ponto em que a recusa sobe de 50% para 75% sem custo nenhum de
+cobertura. Confundir os dois foi um defeito real, e está em §4.3.
+
+A tabela completa, com todos os limiares medidos, está em `docs/AVALIACAO-RAG.md`.
 
 ### 4.2 Cinco defeitos que só a medição revelou
 
@@ -568,7 +645,9 @@ registrada como teste que documenta o comportamento atual.
   si, que é para o que foi usado, e não para afirmar uma taxa absoluta.
 - **As perguntas foram escritas por quem construiu o sistema.** Há viés de
   vocabulário. Uma avaliação melhor coletaria perguntas reais de alunos, e o
-  registro de consultas existe para isso: quatro dos nove defeitos saíram dele.
+  registro de consultas existe para isso: quatro dos nove defeitos de
+  recuperação e resposta saíram dele. Os outros três que o relatório documenta
+  são de instrumentação (§4.12), e esses não vinham de pergunta nenhuma.
 - **O modo generativo não é determinístico**, então a tabela dele traz faixa e
   não número exato. A calibração se apoiou no modo de leitura direta, que é
   determinístico.
@@ -579,7 +658,88 @@ registrada como teste que documenta o comportamento atual.
   evasão real. Não sabemos se o score prevê alguma coisa; sabemos que ele captura
   o padrão que a literatura descreve.
 
-### 4.11 Lições aprendidas
+### 4.11 O que a telemetria revelou: a conta é o contexto, não a resposta
+
+Medição de produção em 06/10/2026, sobre 104 consultas reais acumuladas desde
+04/09/2026, das quais 35 depois da migração que criou os campos de telemetria:
+
+| Medida | Valor |
+|---|---|
+| Consultas registradas | 104 |
+| Recusa (admitiu não saber) | 43 (41,3%) |
+| Caíram no modo degradado | 13 |
+| Latência p50 | 1.392 ms |
+| Latência p95 | 20.534 ms |
+| Chamadas ao Gemini com token contado | 30 |
+| Tokens de entrada | 38.117 |
+| Tokens de saída | 1.701 |
+| Custo acumulado | US$ 0,0157 |
+
+O número que muda a forma de pensar o custo: **95,7% dos tokens são de entrada**,
+uma razão de 22,4 para 1. O gasto não está na resposta que o modelo escreve, está
+no material que viaja junto com a pergunta. A consequência prática é que a
+alavanca de custo num sistema de RAG não é escolher um modelo mais barato para
+gerar: é recuperar menos trecho, ou trecho menor. Isso liga esta seção
+diretamente à §4.5, onde o tamanho do trecho já havia aparecido como o parâmetro
+de maior impacto na qualidade. Ele é também o de maior impacto no custo.
+
+Duas leituras que a tabela obriga:
+
+**O p95 de 20,5 segundos não é o tempo de pensar do modelo.** É a soma de partida
+a frio da função sem servidor e do banco no Neon acordando da suspensão. O p50 de
+1,4 segundo é o sistema quente. Reportar só a média esconderia justamente a
+experiência de quem abre o assistente primeiro no dia.
+
+**O custo de US$ 0,0157 não é a fatura.** É a tabela de preço declarada em
+código multiplicada pelos tokens que a API contou, e o projeto roda no tier
+gratuito. Serve para comparar configurações e projetar escala, não para
+conciliar com cobrança. Projetando: as 104 consultas, se todas tivessem sido
+geradas, custariam cerca de US$ 0,054. Uma turma de 40 alunos com 20 perguntas
+cada no semestre fica na casa de US$ 0,42.
+
+### 4.12 Três defeitos que só a instrumentação revelou
+
+Ironia útil: ligar observabilidade produziu os três defeitos mais caros do
+projeto, e dois deles em produção.
+
+**A variável de ambiente com marca de ordem de byte derrubou a aplicação
+inteira.** As chaves foram gravadas na Vercel por um comando encadeado no
+PowerShell, que acrescenta uma marca invisível no começo do texto. O valor
+chegou como `'﻿https://us.cloud.langfuse.com'`, falhou ao ser lido como
+URL dentro do gancho de instrumentação, e o gancho é carregado antes de
+qualquer rota: **toda** requisição passou a responder 500, inclusive a de
+saúde. A correção tem três camadas, porque uma só não bastava: o valor passa
+por uma função que remove a marca e o espaço em volta, o gancho inteiro está
+dentro de `try`, e o endereço tem padrão no código. A lição é que código de
+telemetria roda antes do sistema e precisa ser mais defensivo que ele, não
+menos.
+
+**Duas cópias da biblioteca de rastro deixaram o painel vazio sem erro
+nenhum.** O Next empacota o gancho de instrumentação separado do código das
+rotas. O processador foi criado num módulo auxiliar importado pelos dois, e o
+resultado foram duas instâncias: a rota esvaziava uma fila vazia enquanto a fila
+que recebeu os dados nunca era enviada. O mesmo problema apareceu de novo um
+nível acima, com a própria API de OpenTelemetry: registrar o provedor à mão o
+deixava numa cópia e as rotas noutra, então a etapa era criada contra um
+provedor que não existia. A solução foi `registerOTel` do pacote `@vercel/otel`,
+que existe justamente para isso no Next. Nos dois casos não houve exceção, log
+nem alerta. Só painel vazio.
+
+**A ferramenta de conferência mentiu por omissão.** Depois de tudo funcionando,
+o script que lê o rastro de volta mostrava a estrutura certa e **toda geração sem
+modelo e sem token**. A conclusão fácil era que os atributos não subiam. O dado
+estava lá: a versão 2 da API devolve grupos de campos, o padrão traz nome, tipo e
+horário, e entrada, saída, modelo, token e custo ficam fora, vindo ausentes e não
+nulos. Quem não pedia era a conferência.
+
+O fio que liga os três é o mesmo: **a verificação também precisa ser
+verificada.** Nos dois primeiros a ferramenta dizia que estava tudo bem e não
+estava; no terceiro dizia que faltava dado e não faltava. A única prova de que
+telemetria funciona é ler de volta, e a única prova de que a leitura funciona é
+plantar um valor conhecido e encontrá-lo. Foi assim que o caso se fechou: uma
+geração de teste com 1.234 tokens de entrada e 56 de saída, procurada e achada.
+
+### 4.13 Lições aprendidas
 
 1. **Medir muda o que se constrói.** Os três defeitos da seção 4.2 estavam no
    sistema e pareciam corretos. Só apareceram quando existiu um número.
@@ -588,7 +748,11 @@ registrada como teste que documenta o comportamento atual.
 3. **O modo degradado precisa ser projetado, não improvisado.** Tratá-lo como
    requisito produziu um modo que é mais estrito quanto a não inventar.
 4. **O parâmetro que mais importa raramente é o modelo.** Foi o tamanho do trecho
-   e a lista de palavras vazias, não a escolha do LLM.
+   e a lista de palavras vazias, não a escolha do LLM. A telemetria mostrou
+   depois que ele também é o parâmetro de maior peso no custo.
+5. **Telemetria falha calada, e é o pior tipo de falha.** Um erro engolido num
+   `try` posto ali para "telemetria não derrubar resposta" produz um sistema que
+   parece instrumentado e não está. Só ler de volta prova o contrário.
 
 ---
 
@@ -606,9 +770,18 @@ risco antes que a nota caia.
    que a coordenação conhece. A calibração atual é defensável, não validada.
 3. **Recalibração da frequência para a linha institucional dos 75%**
    (seção 4.7).
-4. **Avaliação do modo generativo** no mesmo conjunto de perguntas.
+4. **Ampliação da bateria de recusa.** São 8 casos, cada um vale 12,5 pontos, e
+   essa resolução não distingue limiares vizinhos (§4.1). É a limitação que mais
+   atrapalha qualquer calibração futura.
 5. **Coleta de perguntas reais** para substituir o conjunto escrito por nós.
-6. **Acompanhamento longitudinal.** Só com uma coorte real é possível dizer se o
+6. **Redução do contexto enviado, medindo os dois lados.** A telemetria mostrou
+   que 95,7% do custo é contexto (§4.11). Recuperar menos trecho barateia e
+   derruba cobertura, e o par é que diz alguma coisa: a mesma bateria de 52
+   perguntas serve para medir o que se perde.
+7. **Alerta sobre a taxa de recusa.** O dado já é gravado e já tem painel; falta
+   disparar quando o patamar muda. Recusa subindo de repente é o sinal mais cedo
+   de documento desatualizado ou de índice quebrado.
+8. **Acompanhamento longitudinal.** Só com uma coorte real é possível dizer se o
    score prevê evasão, e não apenas se descreve o padrão da literatura.
 
 ---

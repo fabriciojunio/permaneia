@@ -78,13 +78,19 @@ lendo seria desonesto.
 
 - `/api/health`: consulta o banco de verdade, diz o commit publicado, o provedor
   em vigor, o estado do índice e onde os documentos são guardados.
-- `docs/adr`: doze decisões registradas com o argumento e as alternativas
+- `docs/adr`: quinze decisões registradas com o argumento e as alternativas
   descartadas.
-- `docs/AVALIACAO-RAG.md`: a tabela de calibração e os nove defeitos que ela
-  revelou.
+- `docs/AVALIACAO-RAG.md`: a tabela de calibração e os nove defeitos de
+  recuperação e resposta que ela revelou. Outros três, de instrumentação, estão
+  em `docs/RELATORIO.md` §4.12.
 - O rastro: cada pergunta publica um trecho por etapa e um por consulta ao
   banco, correlacionados pelo mesmo `traceId`
   ([ADR 010](adr/010-rastro-distribuido.md)).
+- `/api/observabilidade` (entrando como coordenação, que tem `auditoria.ver`):
+  contagem, percentis de latência, taxa de recusa, taxa de degradação, tokens e
+  custo acumulado. O número que vale mostrar é a proporção de entrada:
+  **95,7% dos tokens são contexto**, não resposta. Num sistema de RAG a conta é
+  o material que acompanha a pergunta.
 
 ## Perguntas que costumam vir, e a resposta curta
 

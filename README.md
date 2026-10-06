@@ -136,7 +136,7 @@ duas o aluno está lendo seria desonesto.
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Build de produção |
-| `npm test` | 2041 testes unitários |
+| `npm test` | 2055 testes unitários |
 | `npm run test:coverage` | Testes com gate de cobertura em 90% |
 | `npm run test:integration` | 77 testes contra Postgres real |
 | `npm run test:e2e` | 81 testes de ponta a ponta, incluindo a verificação de celular |
@@ -208,10 +208,12 @@ e saída** contados pela própria API e o **custo estimado**. O agregado sai em
 `/api/observabilidade`, atrás da permissão de auditoria: latência por percentil,
 taxa de recusa, taxa de degradação para o modo extrativo, tokens e custo.
 
-Medido em produção: 96% dos tokens são de **entrada**. A conta é do material que
-acompanha a pergunta, não da resposta. O raciocínio e as três decisões difíceis
-estão na [ADR 014](docs/adr/014-telemetria-de-custo-e-degradacao.md), entre elas
-por que modelo fora da tabela de preço devolve custo **nulo** e não zero.
+Medido em produção, em 30 chamadas reais: **95,7% dos tokens são de entrada**,
+uma razão de 22,4 para 1. A conta é do material que acompanha a pergunta, não da
+resposta, e isso muda onde se mexe para baratear: não é trocar de modelo, é
+recuperar menos trecho. O raciocínio e as três decisões difíceis estão na
+[ADR 014](docs/adr/014-telemetria-de-custo-e-degradacao.md), entre elas por que
+modelo fora da tabela de preço devolve custo **nulo** e não zero.
 
 ### E o rastro, que responde outra pergunta
 
@@ -262,7 +264,10 @@ o roteiro está em [docs/DEMONSTRACAO.md](docs/DEMONSTRACAO.md).
 | Vulnerabilidades de produção | 0 |
 
 A metodologia de avaliação do assistente, com a tabela de calibração e os nove
-defeitos que ela revelou, está em [docs/AVALIACAO-RAG.md](docs/AVALIACAO-RAG.md).
+defeitos de recuperação e resposta que ela revelou, está em
+[docs/AVALIACAO-RAG.md](docs/AVALIACAO-RAG.md). Outros três, de instrumentação e
+os dois piores em produção, estão em
+[docs/RELATORIO.md](docs/RELATORIO.md) na seção 4.12.
 
 ## Segurança
 
