@@ -13,11 +13,19 @@ export async function register(): Promise<void> {
   // OpenTelemetry não funciona, e tentar carregar lá quebra o deploy inteiro.
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
-  const { obterProcessador } = await import("./lib/otel");
-  const processador = await obterProcessador();
-  if (!processador) return;
+  // Tudo dentro de try: uma exceção aqui não falha só a telemetria, ela impede
+  // o gancho de instrumentação de carregar, e aí TODA requisição responde 500,
+  // inclusive a de saúde. Foi o que aconteceu em 06/10/2026 por causa de uma
+  // variável de ambiente gravada com marca de ordem de byte.
+  try {
+    const { obterProcessador } = await import("./lib/otel");
+    const processador = await obterProcessador();
+    if (!processador) return;
 
-  const { NodeTracerProvider } = await import("@opentelemetry/sdk-trace-node");
-  const provedor = new NodeTracerProvider({ spanProcessors: [processador] });
-  provedor.register();
+    const { NodeTracerProvider } = await import("@opentelemetry/sdk-trace-node");
+    const provedor = new NodeTracerProvider({ spanProcessors: [processador] });
+    provedor.register();
+  } catch (e) {
+    console.error("Rastro de LLM não pôde ser registrado:", (e as Error).message);
+  }
 }
