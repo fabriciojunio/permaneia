@@ -311,7 +311,7 @@ s.addText(
 );
 rodape(s);
 
-// ---------------------------------------------------------------- SLIDE 9
+// ---------------------------------------------------------------- SLIDE 10
 s = slide();
 titulo(s, "Ferramentas de IA generativa", "O que cada uma resolveu, e onde falhou");
 
@@ -343,7 +343,31 @@ s.addText(
 );
 rodape(s);
 
-// ---------------------------------------------------------------- SLIDE 10
+// ---------------------------------------------------------------- SLIDE 11
+s = slide();
+titulo(s, "Observabilidade", "O que a instrumentação revelou sobre o custo");
+
+const medido = [
+  ["95,7% dos tokens são de entrada", "razão de 22,4 para 1", "Em 30 chamadas reais ao Gemini: 38.117 tokens de entrada contra 1.701 de saída. A alavanca de custo num RAG não é trocar por um modelo mais barato para gerar, é recuperar menos trecho."],
+  ["p50 1,4 s · p95 20,5 s", "104 consultas, 41,3% de recusa", "O p95 não é o modelo pensando: é partida a frio da função sem servidor somada ao banco acordando da suspensão. Só a média esconderia quem abre o assistente primeiro no dia."],
+  ["Telemetria falha calada", "3 defeitos, 2 em produção", "Uma chave gravada com marca de ordem de byte derrubou TODA requisição, inclusive a de saúde. Duas cópias da biblioteca de rastro deixaram o painel vazio sem erro nenhum."],
+];
+
+y = 2.0;
+for (const [nome, impacto, texto] of medido) {
+  cartao(s, 0.7, y, 11.9, 1.5);
+  s.addText(nome, { x: 1.0, y: y + 0.15, w: 4.6, h: 0.35, fontSize: 14, color: BRANCO, bold: true, fontFace: FONTE });
+  s.addText(impacto, { x: 1.0, y: y + 0.58, w: 4.6, h: 0.35, fontSize: 12, color: VERDE_CLARO, bold: true, fontFace: FONTE });
+  s.addText(texto, { x: 5.8, y: y + 0.18, w: 6.6, h: 1.1, fontSize: 11.5, color: SUAVE, fontFace: FONTE, lineSpacingMultiple: 1.15 });
+  y += 1.62;
+}
+
+s.addText("A única prova de que a telemetria funciona é ler o dado de volta.", {
+  x: 0.7, y: 6.60, w: 12, h: 0.35, fontSize: 12, color: TEXTO, bold: true, fontFace: FONTE,
+});
+rodape(s);
+
+// ---------------------------------------------------------------- SLIDE 12
 s = slide();
 titulo(s, "Ética", "Sobre o uso de IA neste trabalho");
 
@@ -367,7 +391,7 @@ s.addText(
 );
 rodape(s);
 
-// ---------------------------------------------------------------- SLIDE 11
+// ---------------------------------------------------------------- SLIDE 13
 s = slide();
 titulo(s, "Demonstração", "Ao vivo, em permaneia.vercel.app");
 
@@ -389,7 +413,7 @@ for (const [n, nome, texto] of demo) {
 }
 rodape(s);
 
-// ---------------------------------------------------------------- SLIDE 12
+// ---------------------------------------------------------------- SLIDE 14
 s = slide();
 s.addShape(p.ShapeType.rect, { x: 0, y: 0, w: L, h: 0.14, fill: { color: VERDE } });
 s.addText("RAG não deixa a IA mais inteligente.", {

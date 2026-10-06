@@ -60,6 +60,10 @@ documentos (S3 ou disco).
    provedor local transcreve os trechos com a fonte citada.
 7. Cada etapa cara publica um trecho de rastro, e cada consulta ao banco publica
    o seu ([ADR 010](adr/010-rastro-distribuido.md)).
+8. A consulta é gravada com modelo, tokens contados pela própria API e custo
+   estimado ([ADR 014](adr/014-telemetria-de-custo-e-degradacao.md)), e o
+   caminho inteiro vai para o rastro de LLM
+   ([ADR 015](adr/015-rastro-de-llm-com-langfuse.md)).
 
 ## As duas frentes, e por que elas não se misturam
 
@@ -98,6 +102,37 @@ Três modos, todos exercitados por teste:
 O modo em vigor aparece na tela: uma resposta gerada e uma transcrita têm
 garantias diferentes, e esconder qual das duas o aluno está lendo seria
 desonesto.
+
+## Observabilidade, em dois destinos pela mesma porta
+
+Duas perguntas que não se respondem com o mesmo dado, e por isso dois destinos:
+
+| Destino | Responde | Onde |
+|---|---|---|
+| Banco, resumido em `/api/observabilidade` | "Como está o sistema?": contagem, percentil, taxa de recusa, custo acumulado | `lib/rag/telemetria.ts` |
+| Langfuse | "Por que ESTA resposta saiu assim?": entrada e saída de cada etapa, uma execução por vez | `lib/rastro-llm.ts` |
+
+O agregado fica atrás da permissão `auditoria.ver`, porque pergunta de aluno é
+dado de aluno.
+
+Três restrições que o código respeita, e que são as que mais custaram:
+
+**Telemetria não derruba resposta, mas o erro vai para o log.** Um `try` que
+engole exceção em silêncio produz um sistema que parece instrumentado e não
+está. Foi assim que o rastro de um projeto vizinho não registrou nada por horas.
+
+**O envio é explícito.** Em função sem servidor o processo congela quando a
+resposta sai, e a fila morre com ele. Daí o `forceFlush()`.
+
+**O processador é criado e exportado em `instrumentation.ts`, nunca num módulo
+auxiliar.** O Next empacota o gancho separado das rotas, e um módulo importado
+pelos dois vira duas instâncias: a rota esvazia uma fila vazia enquanto a que
+recebeu os dados nunca é enviada. Pelo mesmo motivo o provedor é registrado por
+`registerOTel` do `@vercel/otel`, e não à mão.
+
+Nenhuma credencial passa pelo código: os SDKs leem as próprias variáveis, e o
+projeto só verifica se existem. Sem as chaves, o rastro desliga e o assistente
+roda igual.
 
 ## Onde roda
 
