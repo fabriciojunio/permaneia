@@ -19,7 +19,7 @@ export function EtiquetaRisco({ faixa, score }: { faixa: Faixa | null; score?: n
   return (
     <span className={`etiqueta ${ESTILOS[faixa]}`}>
       {ROTULO_FAIXA[faixa].replace("Risco ", "")}
-      {typeof score === "number" && <span className="opacity-70">{Math.round(score * 100)}</span>}
+      {typeof score === "number" && <span className="opacity-70" title="Score heurístico de 0 a 1; não é probabilidade">{score.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</span>}
     </span>
   );
 }

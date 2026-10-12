@@ -5,7 +5,8 @@ test.describe("página pública", () => {
   test("a abertura apresenta o problema e as duas técnicas", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("PermaneIA");
-    await expect(page.getByText("57,2%")).toBeVisible();
+    await expect(page.getByText("64,7%", { exact: true })).toBeVisible();
+    await expect(page.getByText("de desistência acumulada na rede privada, no ciclo 2020–2024", { exact: false })).toBeVisible();
     await expect(page.getByRole("heading", { name: "IA generativa com RAG" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Lógica fuzzy" })).toBeVisible();
   });
