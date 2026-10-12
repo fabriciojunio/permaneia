@@ -85,7 +85,7 @@ jobs:
       - name: Aplicar o esquema
         run: |
           npx prisma generate
-          npx prisma db push --skip-generate
+          npx prisma migrate deploy
 
       - name: Testes de integração
         run: npm run test:integration
@@ -128,7 +128,7 @@ jobs:
       - name: Preparar o banco com dados sintéticos
         run: |
           npx prisma generate
-          npx prisma db push --skip-generate
+          npx prisma migrate deploy
           npm run db:seed
 
       - name: Construção de produção
@@ -183,7 +183,7 @@ jobs:
       - name: Preparar o banco e indexar os documentos
         run: |
           npx prisma generate
-          npx prisma db push --skip-generate
+          npx prisma migrate deploy
           npm run db:seed
 
       - name: Medir cobertura e recusa do assistente

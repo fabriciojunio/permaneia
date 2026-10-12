@@ -49,14 +49,12 @@ export const GET = comTratamentoDeErro(async () => {
       })
     : null;
 
-  const consultas = alunoId
-    ? await prisma.consultaRag.findMany({
-        where: { alunoId },
-        select: { pergunta: true, resposta: true, criadoEm: true, disciplina: { select: { nome: true } } },
-        orderBy: { criadoEm: "desc" },
-        take: 500,
-      })
-    : [];
+  const consultas = await prisma.consultaRag.findMany({
+    where: { usuarioId },
+    select: { pergunta: true, resposta: true, criadoEm: true, disciplina: { select: { nome: true } } },
+    orderBy: { criadoEm: "desc" },
+    take: 500,
+  });
 
   await registrar({
     acao: "dados.exportados",
