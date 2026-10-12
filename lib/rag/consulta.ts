@@ -126,6 +126,7 @@ export type OpcoesConsulta = {
   disciplinaId: string;
   pergunta: string;
   alunoId?: string;
+  usuarioId?: string;
   /** Desliga a gravação em consultas_rag. Usado pelos scripts de avaliação. */
   registrar?: boolean;
   limiar?: number;
@@ -563,6 +564,7 @@ async function gravarConsulta(opcoes: OpcoesConsulta, resultado: RespostaRag): P
     await prisma.consultaRag.create({
       data: {
         alunoId: opcoes.alunoId ?? null,
+        usuarioId: opcoes.usuarioId ?? null,
         disciplinaId: opcoes.disciplinaId,
         pergunta: opcoes.pergunta,
         resposta: resultado.resposta,

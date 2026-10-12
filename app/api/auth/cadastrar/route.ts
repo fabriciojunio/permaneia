@@ -81,8 +81,8 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      // E-mail já cadastrado. A resposta é idêntica à de sucesso, sem cookie:
-      // quem realmente é dono do endereço já tem conta e sabe disso.
+      // Mensagem genérica para duplicidade. O login automático do cadastro novo
+      // ainda torna os fluxos distinguíveis; essa limitação está em SECURITY.md.
       await registrar({ acao: "usuario.criado", recurso: "usuario", atorEmail: email, detalhes: { duplicado: true } });
       return NextResponse.json({
         ok: true,

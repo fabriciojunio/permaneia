@@ -30,7 +30,9 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
     where: { id: sessao.usuarioId },
     select: { id: true, nome: true, email: true, papel: true, senhaHash: true, versaoSessao: true, alunoId: true },
   });
-  if (!usuario) return await respostaDeErro(erro("NAO_AUTORIZADO", "Sessão inválida."));
+  if (!usuario || usuario.versaoSessao !== sessao.vs) {
+    return await respostaDeErro(erro("NAO_AUTORIZADO", "Sessão inválida."));
+  }
 
   if (!(await conferirSenha(analisado.data.senhaAtual, usuario.senhaHash))) {
     return await respostaDeErro(erro("NAO_AUTORIZADO", "A senha atual não confere.", { senhaAtual: "Senha incorreta." }));
@@ -40,14 +42,19 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
   // troca, que é o comportamento esperado de quem troca a senha por suspeitar
   // que alguém tenha acesso à conta.
   const novaVersao = usuario.versaoSessao + 1;
-  await prisma.usuario.update({
-    where: { id: usuario.id },
+  const atualizacao = await prisma.usuario.updateMany({
+    // A comparação no UPDATE impede duas trocas concorrentes de sobrescreverem
+    // a senha usando a mesma versão de sessão e as mesmas credenciais antigas.
+    where: { id: usuario.id, versaoSessao: sessao.vs, ativo: true },
     data: {
       senhaHash: await gerarHash(analisado.data.senhaNova),
-      versaoSessao: novaVersao,
+      versaoSessao: { increment: 1 },
       trocarSenha: false,
     },
   });
+  if (atualizacao.count !== 1) {
+    return await respostaDeErro(erro("NAO_AUTORIZADO", "A sessão mudou. Entre novamente."));
+  }
 
   await registrar({
     acao: "senha.trocada",

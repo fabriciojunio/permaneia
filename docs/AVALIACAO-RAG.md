@@ -4,7 +4,11 @@ Este documento registra como a qualidade do assistente foi medida, com que
 números, e o que os números mostraram. Ele é a fonte da seção de visão crítica
 do relatório.
 
-Tudo aqui é reproduzível: `npx tsx scripts/avaliar-rag.ts [limiar]`.
+O procedimento pode ser reexecutado com `npx tsx scripts/avaliar-rag.ts [limiar]`.
+Os números abaixo são registros históricos. As tabelas antigas não incluem logs
+brutos por pergunta, data e versão imutável do modelo suficientes para reproduzir
+cada rodada. A revisão de 11/10/2026 não confirmou essas execuções generativas.
+Não devem ser apresentados como medição da versão atual.
 
 ## O que é medido
 
@@ -75,12 +79,12 @@ conter a palavra que o teste procura, ou deixar de soar como recusa. Isso não �
 defeito do sistema: é a natureza de avaliar saída de modelo de linguagem, e
 qualquer número aqui apresentado como exato seria uma escolha de rodada.
 
-**A não monotonicidade de 0,60 é ruído, não sinal.** Recusa de 87,5% em 0,55 e
-12,5% em 0,60 é fisicamente impossível como comportamento real: limiar maior não
-pode recusar menos. São 8 casos, então **cada caso vale 12,5 pontos**, e uma
-única resposta reformulada move a métrica em um oitavo. A tabela serve para
-comparar ordens de grandeza e localizar a região de trabalho, e não para
-afirmar uma taxa com uma casa decimal.
+**A queda de recusa em 0,60 exige investigação.** Com escores e documentos fixos,
+elevar o limiar só pode reduzir os trechos admitidos. A métrica final também
+depende da geração, dos fallbacks e do avaliador. Sem os registros por pergunta,
+não é possível atribuir a queda de 87,5% para 12,5% apenas à aleatoriedade.
+São 8 casos, então cada caso vale 12,5 pontos percentuais. Essas rodadas não
+sustentam uma relação causal entre o limiar e a qualidade final.
 
 O modo de leitura direta, logo abaixo, é determinístico e não sofre disso. Foi
 nele que a calibração de fato se apoiou.

@@ -14,14 +14,17 @@ and switched off.
 
 ## The problem
 
-Dropout in Brazilian higher education reaches **57.2%** across the system, and
-about **61%** in private institutions. Only one in four young people finishes
-the degree they started.
+The [Semesp 2026 report](https://www.semesp.org.br/mapa/edicao-16/brasil/)
+reports **64.7% cumulative withdrawal in private higher education** and
+**68.1% in private distance education**, for the **2020–2024 cohort cycle**.
+These are trajectory indicators, not annual dropout rates.
 
-The premise the project builds on: dropping out is preceded by disengagement,
-not by bad grades. A student stops opening the platform weeks before the average
-falls, and months before formally quitting. Whoever watches only the grade
-arrives late.
+The [OECD 2025 Brazil note, Table B5.1](https://www.oecd.org/en/publications/education-at-a-glance-2025_1a3543e2-en/brazil_d42263a0-en.html)
+reports that **49% of bachelor's entrants complete within three years after
+the programme's expected duration**. This is not the share of all young adults
+with a degree. The project explores attendance, grades and platform use as
+monitoring signals. Its heuristic score has not been validated against actual
+student dropout outcomes.
 
 ## What the system does
 
@@ -47,7 +50,8 @@ rules that produced each score.
 
 The central argument sits in the overlap: a student with **8.6 out of 10 and 34%
 attendance** comes out as **high** risk. A grade-average criterion, which is
-what most registrars use today, would file them as fine.
+a simplified reference chosen for this project, would not flag them.
+This synthetic example demonstrates rule behaviour, not predictive accuracy.
 
 ## Running it
 
@@ -79,13 +83,16 @@ different guarantees.
 
 | | |
 |---|---|
-| Unit tests | 2041 |
-| Integration tests (real Postgres) | 77 |
-| End-to-end tests (real browser) | 81 |
-| Domain logic coverage | 97.4% |
-| Refusal accuracy on out-of-scope questions | 100% |
-| Risk-band inversions across 26,460 comparisons | 0 |
-| Production vulnerabilities | 0 |
+| Unit tests | 2,076 passed in the October 2026 review |
+| Line coverage in the configured scope | 92.96%; excluded adapters are listed in `vitest.config.ts` |
+| Integration | PostgreSQL with pgvector in a separate CI job |
+| End-to-end | Playwright against an isolated application and database; see the commit's CI run |
+| Assistant evaluation | Historical results and limitations in `docs/AVALIACAO-RAG.md`, not a measurement of the current version |
+| Production dependencies | 0 vulnerabilities reported by `npm audit --omit=dev` on October 11, 2026 |
+
+Session revocation, private chat history, test isolation and migration order are
+documented in [the October review](docs/REVISAO-2026-10.md). Software tests do not
+establish the model's ability to predict student withdrawal.
 
 Things worth a look:
 
