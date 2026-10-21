@@ -15,7 +15,7 @@ name: Conferir a publicação
 
 on:
   push:
-    branches: [main]
+    branches: ["produção", "homologação"]
   workflow_dispatch:
 
 concurrency:
