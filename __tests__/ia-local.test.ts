@@ -290,6 +290,21 @@ describe("responderExtrativo", () => {
     expect(blocos.length).toBeLessThanOrEqual(2);
   });
 
+  it("preserva o fim de uma enumeração com mais de vinte trechos", () => {
+    const contexto = Array.from({ length: 25 }, (_, i) => `[Material]\nAssunto ${i + 1}.`).join("\n\n---\n\n");
+    const r = responderExtrativo(prompt(contexto, "Liste o conteúdo das aulas"));
+    expect(r).toContain("Assunto 25.");
+    expect(r.match(/Assunto \d+\./g)).toHaveLength(25);
+  });
+
+  it("avisa quando uma enumeração ultrapassa o limite de segurança", () => {
+    const contexto = Array.from({ length: 50 }, (_, i) => `[Material]\nAssunto ${i + 1}.`).join("\n\n---\n\n");
+    const r = responderExtrativo(prompt(contexto, "Liste o conteúdo das aulas"));
+    expect(r).toContain("Assunto 45.");
+    expect(r).not.toContain("Assunto 46.");
+    expect(r).toMatch(/lista parcial/i);
+  });
+
   it("sem nenhum termo em comum, admite que não encontrou", () => {
     // A regra mudou depois que a recuperação ganhou o braço léxico. Antes, o
     // contexto só chegava aqui se tivesse passado do limiar vetorial, e

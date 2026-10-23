@@ -4,7 +4,48 @@ Este documento registra como a qualidade do assistente foi medida, com que
 números, e o que os números mostraram. Ele é a fonte da seção de visão crítica
 do relatório.
 
-Tudo aqui é reproduzível: `npx tsx scripts/avaliar-rag.ts [limiar]`.
+O procedimento pode ser reexecutado com `npx tsx scripts/avaliar-rag.ts [limiar]`.
+Os números abaixo são registros históricos. As tabelas antigas não incluem logs
+brutos por pergunta, data e versão imutável do modelo suficientes para reproduzir
+cada rodada. A revisão de 11/10/2026 não confirmou essas execuções generativas.
+Não devem ser apresentados como medição da versão atual.
+
+## Revisão reproduzível de outubro de 2026
+
+O CI do commit `0533db9` (execução `38294625326`) mediu **36/41 (87,8%)**
+de cobertura e **3/8 (37,5%)** de recusa correta no modo local. O status verde
+do trabalho informativo não significa que essas métricas atendam a um piso de
+qualidade. As cinco aceitações indevidas continuam sendo uma limitação relevante:
+recuperar texto relacionado não comprova que ele responda à pergunta.
+
+Essa execução revelou um corte adicional: a recuperação entregava até 45 trechos,
+mas a transcrição local parava em 20. Os limites agora são compartilhados; uma
+entrada que ultrapassa o teto informa que a lista é parcial. Isso corrige a perda
+na transcrição, sem garantir que a recuperação tenha selecionado todo o documento.
+
+Para comparar execuções, fixe a referência temporal:
+
+```sh
+IA_EXTERNA=off RAG_DATA_REFERENCIA=2026-10-13 npx tsx scripts/avaliar-rag.ts
+```
+
+O resultado em `test-results/avaliacao-rag.json` inclui commit, estado da árvore,
+hash do conteúdo indexado e do conjunto de perguntas, modo, data de referência,
+resposta, origem, modelo e critério de aprovação por caso. O CI preserva esse JSON
+como artefato `avaliacao-rag-local`. O hash do corpus identifica textos, ordem dos
+trechos e origem dos embeddings, mas não os valores dos vetores.
+
+Sem provedor externo configurado, as três perguntas de conhecimento geral ficam
+como **não aplicáveis**, fora dos denominadores de cobertura e recusa; o modo local
+transcreve documentos e não gera explicações gerais. Não se atribui esse cenário a
+erro de cota. Os 49 casos de recuperação/recusa continuam sendo avaliados.
+
+A cobertura usa busca de trecho esperado ou ausência de recusa. Esses critérios
+podem aprovar texto incompleto ou irrelevante e não substituem avaliação humana.
+O conjunto foi usado durante o desenvolvimento, portanto não constitui uma amostra
+independente de validação. Uma avaliação externa exige perguntas novas, rubrica de
+correção factual e conferência de fontes. O relatório JSON pode conter conteúdo do
+acervo consultado; publique somente resultados de uma base de avaliação autorizada.
 
 ## O que é medido
 
@@ -75,12 +116,12 @@ conter a palavra que o teste procura, ou deixar de soar como recusa. Isso não �
 defeito do sistema: é a natureza de avaliar saída de modelo de linguagem, e
 qualquer número aqui apresentado como exato seria uma escolha de rodada.
 
-**A não monotonicidade de 0,60 é ruído, não sinal.** Recusa de 87,5% em 0,55 e
-12,5% em 0,60 é fisicamente impossível como comportamento real: limiar maior não
-pode recusar menos. São 8 casos, então **cada caso vale 12,5 pontos**, e uma
-única resposta reformulada move a métrica em um oitavo. A tabela serve para
-comparar ordens de grandeza e localizar a região de trabalho, e não para
-afirmar uma taxa com uma casa decimal.
+**A queda de recusa em 0,60 exige investigação.** Com escores e documentos fixos,
+elevar o limiar só pode reduzir os trechos admitidos. A métrica final também
+depende da geração, dos fallbacks e do avaliador. Sem os registros por pergunta,
+não é possível atribuir a queda de 87,5% para 12,5% apenas à aleatoriedade.
+São 8 casos, então cada caso vale 12,5 pontos percentuais. Essas rodadas não
+sustentam uma relação causal entre o limiar e a qualidade final.
 
 O modo de leitura direta, logo abaixo, é determinístico e não sofre disso. Foi
 nele que a calibração de fato se apoiou.

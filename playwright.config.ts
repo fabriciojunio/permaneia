@@ -1,7 +1,16 @@
 import { defineConfig, devices } from "@playwright/test";
+import { validarBancoDeTeste } from "./scripts/banco-de-teste";
 
 const PORTA = process.env.E2E_PORTA ?? "3100";
 const URL_BASE = `http://127.0.0.1:${PORTA}`;
+const BANCO_TESTE = validarBancoDeTeste(
+  process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ??
+  "postgresql://ci:ci@127.0.0.1:5432/permaneia_e2e"
+);
+// O processo de testes e o servidor usam a mesma base isolada. Um .env local
+// com credenciais de produção não pode escolher o destino da suíte.
+process.env.DATABASE_URL = BANCO_TESTE;
+process.env.DIRECT_URL = BANCO_TESTE;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -33,9 +42,11 @@ export default defineConfig({
     // e o middleware se comportam como em produção.
     command: `npm run start -- --port ${PORTA}`,
     url: `${URL_BASE}/api/health`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 180_000,
     env: {
+      DATABASE_URL: BANCO_TESTE,
+      DIRECT_URL: BANCO_TESTE,
       NODE_ENV: "production",
       DEMO_MODE: "on",
       // IA_EXTERNA NÃO é forçada aqui, e isso é deliberado.

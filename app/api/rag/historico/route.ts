@@ -20,18 +20,16 @@ const LIMITE = 30;
  *
  * O recorte é por autor, e não por disciplina: pergunta de aluno revela dúvida
  * de aluno, e ninguém além dele precisa vê-la para o sistema funcionar. Quem
- * não tem aluno vinculado à conta, caso do papel administrativo, vê apenas as
- * consultas que não pertencem a nenhum aluno, que são as suas próprias.
+ * não tem aluno vinculado à conta também é identificado pelo usuário. Um vínculo
+ * de aluno vazio não identifica o autor de uma consulta.
  */
 export const GET = comTratamentoDeErro(async () => {
   const sessao = await sessaoAtual();
   const permissao = exigir(sessao, "chat.perguntar");
   if (!permissao.ok) return await respostaDeErro(permissao.erro);
 
-  const alunoId = permissao.valor.alunoId ?? null;
-
   const consultas = await prisma.consultaRag.findMany({
-    where: { alunoId },
+    where: { usuarioId: permissao.valor.usuarioId },
     orderBy: { criadoEm: "desc" },
     take: LIMITE,
     select: {

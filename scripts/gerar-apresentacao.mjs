@@ -8,6 +8,9 @@
 // Uso: node scripts/gerar-apresentacao.mjs [arquivo.pptx]
 
 import pptxgen from "pptxgenjs";
+import { readFileSync } from "node:fs";
+
+const indicadoresPublicos = JSON.parse(readFileSync(new URL("../data/indicadores-publicos.json", import.meta.url), "utf8"));
 
 // Paleta do produto: painel institucional escuro, verde de permanência.
 const FUNDO = "0B1018";
@@ -123,15 +126,15 @@ s.addText("Projeto Prático de IA Generativa · Prof. Patrick Pedreira Silva · 
 
 // ---------------------------------------------------------------- SLIDE 2
 s = slide();
-titulo(s, "O ponto de partida", "Mais da metade não termina o que começou");
-corpo(s, "A evasão no ensino superior brasileiro não é um risco distante: é o desfecho mais provável para boa parte de quem entra. E o abandono não começa quando a nota cai. Começa quando o aluno para de aparecer.");
-metrica(s, 0.7, 3.5, 2.8, "57,2%", "de evasão no ensino superior brasileiro", VERMELHO);
-metrica(s, 3.75, 3.5, 2.8, "~61%", "na rede privada, 64% no ensino a distância", LARANJA);
-metrica(s, 6.8, 3.5, 2.8, "1 em 4", "jovens conclui a graduação que iniciou", AMBAR);
-metrica(s, 9.85, 3.5, 2.8, "semanas", "de antecedência entre sumir e a nota cair", VERDE_CLARO);
-s.addText("Fontes: Mapa do Ensino Superior 2024 e 2026, Instituto Semesp; OCDE, Education at a Glance 2025.", {
-  x: 0.7, y: 5.75, w: 12, h: 0.4, fontSize: 10, color: FRACO, italic: true, fontFace: FONTE,
+titulo(s, "O ponto de partida", "Permanência exige acompanhamento");
+corpo(s, "Os indicadores abaixo usam populações e períodos diferentes. Eles contextualizam o problema; não medem a eficácia do PermaneIA. O alerta fuzzy é uma heurística acadêmica, ainda sem validação preditiva com alunos reais.");
+indicadoresPublicos.indicadores.forEach((indicador, indice) => {
+  metrica(s, 0.7 + indice * 4.05, 3.5, 3.8, indicador.valor, indicador.texto, [VERMELHO, LARANJA, VERDE_CLARO][indice]);
 });
+s.addText("Fontes: Semesp, Mapa do Ensino Superior 2026 (trajetória 2020–2024); OCDE, Education at a Glance 2025, Brasil, tabela B5.1.", {
+  x: 0.7, y: 5.75, w: 12, h: 0.65, fontSize: 10, color: FRACO, italic: true, fontFace: FONTE,
+});
+s.addNotes(indicadoresPublicos.indicadores.map((indicador) => `${indicador.valor}: ${indicador.texto}. ${indicador.fonte} ${indicador.url}`).join("\n"));
 rodape(s);
 
 // ---------------------------------------------------------------- SLIDE 3
@@ -157,7 +160,7 @@ rodape(s);
 
 // ---------------------------------------------------------------- SLIDE 4
 s = slide();
-titulo(s, "O caso que justifica o projeto", "O aluno que o critério da secretaria não enxerga");
+titulo(s, "Exemplo sintético", "Um alerta além da média de notas");
 
 s.addTable(
   [
@@ -189,7 +192,7 @@ s.addTable(
 );
 
 s.addText(
-  "A linha do meio é o projeto inteiro. Um critério baseado na média de notas classifica esse aluno como tranquilo. O sistema fuzzy o coloca em risco alto, e a regra 8 explica por quê: bom desempenho não anula a ausência sistemática das aulas, o histórico apenas atrasa o efeito na média.",
+  "A referência simplificada por nota não sinaliza o caso da linha do meio. A regra fuzzy combina baixa frequência e poucos acessos, mesmo com nota alta. O exemplo mostra a diferença entre os critérios; não prova que algum deles prevê evasão real.",
   { x: 0.7, y: 4.7, w: 11.9, h: 1.2, fontSize: 14, color: TEXTO, fontFace: FONTE, lineSpacingMultiple: 1.25 }
 );
 rodape(s);
@@ -294,7 +297,7 @@ rodape(s);
 
 // ---------------------------------------------------------------- SLIDE 9
 s = slide();
-titulo(s, "Visão crítica", "O que medimos, e o que não conseguimos resolver");
+titulo(s, "Resultados históricos da bateria", "Métricas com escopo limitado");
 
 metrica(s, 0.7, 1.95, 2.8, "100%", "das 41 perguntas respondíveis foram respondidas", VERDE_CLARO);
 metrica(s, 3.75, 1.95, 2.8, "100%", "das 8 perguntas fora do material foram recusadas", VERDE_CLARO);
@@ -306,7 +309,7 @@ s.addText("O risco que não conseguimos eliminar", {
   x: 1.0, y: 4.4, w: 11, h: 0.4, fontSize: 16, color: BRANCO, bold: true, fontFace: FONTE,
 });
 s.addText(
-  "O maior risco deste sistema não é inventar uma data. É repetir com confiança a data certa de uma ementa do semestre passado. O RAG resolve alucinação, não desatualização.\n\nA mitigação é parcial: todo documento carrega uma referência de data que aparece em toda citação. Uma solução real exigiria integração com o sistema acadêmico.",
+  "Esses resultados correspondem às configurações registradas em AVALIACAO-RAG.md e não garantem o desempenho de novas versões. O RAG pode gerar respostas incorretas ou usar documentos desatualizados.\n\nA referência de data ajuda a revisão, mas não prova atualidade nem fidelidade de toda a resposta. O score fuzzy ainda exige avaliação com dados reais.",
   { x: 1.0, y: 4.85, w: 11.3, h: 1.3, fontSize: 12.5, color: SUAVE, fontFace: FONTE, lineSpacingMultiple: 1.2 }
 );
 rodape(s);

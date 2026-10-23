@@ -1,20 +1,11 @@
 import Link from "next/link";
 import { MODO_DEMO } from "@/lib/demo";
 import { BASE_DE_REGRAS } from "@/lib/fuzzy/regras";
+import indicadoresPublicos from "@/data/indicadores-publicos.json";
 
 export const dynamic = "force-dynamic";
 
-const INDICADORES = [
-  { valor: "57,2%", texto: "de evasão no ensino superior brasileiro", nota: 1 },
-  { valor: "61%", texto: "na rede privada, chegando a 64% no ensino a distância", nota: 2 },
-  { valor: "1 em 4", texto: "jovens conclui a graduação que começou", nota: 3 },
-];
-
-const NOTAS: Record<number, string> = {
-  1: "Mapa do Ensino Superior no Brasil 2024, Instituto Semesp.",
-  2: "Mapa do Ensino Superior no Brasil 2026, Instituto Semesp.",
-  3: "OCDE, Education at a Glance 2025.",
-};
+const INDICADORES = indicadoresPublicos.indicadores;
 
 export default function Inicio() {
   return (
@@ -43,9 +34,9 @@ export default function Inicio() {
             </p>
 
             <p className="mt-6 max-w-[38rem] text-[17px] leading-[1.7] text-tinta-media">
-              O aluno para de acessar a plataforma semanas antes de a nota cair, e meses antes de
-              formalizar o trancamento. Quem monitora apenas a média chega tarde. Este sistema olha
-              para o intervalo entre uma coisa e outra.
+              Frequência, notas e uso da plataforma podem apoiar o acompanhamento dos estudantes.
+              Este protótipo reúne esses sinais em regras explicáveis e oferece um assistente
+              de estudos baseado nos documentos da disciplina.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3">
@@ -76,7 +67,7 @@ export default function Inicio() {
             </h2>
 
             <dl>
-              {INDICADORES.map((i) => (
+              {INDICADORES.map((i, indice) => (
                 <div
                   key={i.valor}
                   className="grid grid-cols-[7rem_minmax(0,1fr)] items-baseline gap-x-5 border-b border-regua-fraca py-3 first:border-t first:border-regua-fraca"
@@ -84,9 +75,9 @@ export default function Inicio() {
                   <dt className="font-mono text-[22px] font-bold text-sagrado">{i.valor}</dt>
                   <dd className="text-[15px] leading-relaxed text-tinta-media">
                     {i.texto}
-                    <sup className="marcador-nota">{i.nota}</sup>
+                    <sup className="marcador-nota">{indice + 1}</sup>
                     <span className="mt-1 block font-sans text-[12px] leading-snug text-tinta-apagada">
-                      {NOTAS[i.nota]}
+                      <a href={i.url} className="underline">{i.fonte}</a>
                     </span>
                   </dd>
                 </div>
@@ -94,8 +85,8 @@ export default function Inicio() {
             </dl>
 
             <p className="mt-6 max-w-[38rem] text-[15px] leading-relaxed text-tinta-media">
-              A literatura sobre evasão descreve o abandono como precedido por desengajamento, e não
-              por notas ruins. É essa a premissa que organiza o sistema inteiro.
+              Os indicadores têm populações e períodos diferentes. Desistência acumulada acompanha
+              uma coorte ao longo do tempo e não equivale à taxa anual de evasão.
             </p>
           </div>
         </section>
@@ -131,9 +122,9 @@ export default function Inicio() {
               </h3>
               <p className="max-w-[36rem] text-[15px] leading-[1.7] text-tinta-media">
                 Frequência, desempenho e engajamento entram num sistema de Mamdani com{" "}
-                {BASE_DE_REGRAS.length} regras e saem como um score contínuo de risco. Risco de
-                evasão não é uma classe fixa: um aluno com nota boa e presença caindo já está em
-                risco, e é justamente esse caso que um critério baseado só na média deixa passar.
+                {BASE_DE_REGRAS.length} regras e produzem uma pontuação de alerta de 0 a 1.
+                As regras são heurísticas acadêmicas: a pontuação não é uma probabilidade
+                de evasão e ainda não foi validada com desfechos de alunos reais.
               </p>
             </article>
           </div>

@@ -24,19 +24,21 @@ educação do país:
 
 | Indicador | Valor | Fonte |
 |---|---|---|
-| Evasão no ensino superior | 57,2% | Mapa do Ensino Superior 2024, Instituto Semesp |
-| Evasão na rede privada | ~61% | Mapa do Ensino Superior 2026, Semesp |
-| Evasão em cursos a distância | 64% | Mapa do Ensino Superior 2026, Semesp |
-| Jovens que concluem a graduação iniciada | 1 em 4 | OCDE, Education at a Glance 2025 |
+| Desistência acumulada na rede privada, ciclo 2020–2024 | 64,7% | [Mapa do Ensino Superior 2026, Instituto Semesp](https://www.semesp.org.br/mapa/edicao-16/brasil/) |
+| Desistência acumulada no EAD privado, ciclo 2020–2024 | 68,1% | [Mapa do Ensino Superior 2026, Instituto Semesp](https://www.semesp.org.br/mapa/edicao-16/brasil/) |
+| Conclusão de bacharelado no Brasil até três anos após a duração prevista, entre ingressantes | 49% | [OCDE, Education at a Glance 2025, tabela B5.1](https://www.oecd.org/en/publications/education-at-a-glance-2025_1a3543e2-en/brazil_d42263a0-en.html) |
+
+Os indicadores não são diretamente comparáveis: variam a população, a definição
+e a janela de acompanhamento. Desistência acumulada não é evasão anual. A
+proporção de jovens com diploma também não mede a conclusão entre ingressantes.
 
 O grupo escolheu esse problema porque ele é vivido diretamente: somos alunos de
 uma instituição privada, com os fatores de risco que a literatura descreve.
 
-A premissa que organiza todo o projeto vem dessa literatura: **o abandono é
-precedido por desengajamento, e não por notas ruins.** O aluno para de acessar a
-plataforma semanas antes de a média cair, e meses antes de formalizar o
-trancamento. Quem monitora apenas a nota chega tarde, quando a decisão de sair
-já foi tomada.
+A hipótese de trabalho é que frequência, notas e uso da plataforma podem apoiar
+o acompanhamento acadêmico. O projeto não mediu em alunos reais se o uso da
+plataforma antecipa a queda das notas ou a evasão, nem por quanto tempo.
+Não há evidência aqui para afirmar uma sequência universal entre esses eventos.
 
 ### 1.2 Como a solução ataca o problema
 
@@ -71,8 +73,10 @@ regra dominante: 8, "Bom desempenho não anula a ausência sistemática das
 aulas; o histórico apenas atrasa o efeito na média."
 ```
 
-Este é o aluno que o critério da secretaria não enxerga. É o motivo de o projeto
-existir.
+O exemplo sintético mostra uma divergência entre regras escolhidas pelo grupo
+e uma referência simplificada baseada apenas em nota. Não demonstra maior
+acurácia, calibração de probabilidade, impacto na permanência ou validação
+institucional. Veja o [protocolo de validação científica](VALIDACAO-CIENTIFICA.md).
 
 ---
 
@@ -328,7 +332,7 @@ o painel somar token e custo em vez de só guardar texto.
 
 Três decisões que valem registro:
 
-**O custo é calculado, não estimado por contagem própria.** Os tokens vêm do
+**O custo é estimado a partir dos tokens informados pelo provedor.** Os tokens vêm do
 `usageMetadata` que a própria API do Gemini devolve, e não de uma contagem
 local de palavras. O campo `thoughtsTokenCount` entra na conta de saída: é
 token cobrado, e ignorá-lo subestimaria a fatura. Quando o modelo não está na
@@ -354,8 +358,10 @@ responde igual. Falha de telemetria nunca derruba a resposta de quem perguntou.
 
 ## 4. Visão crítica
 
-Esta seção é a mais importante do relatório, e todos os números dela saíram de
-scripts executáveis que estão no repositório.
+Esta seção reúne medições históricas e sua metodologia. As tabelas generativas
+antigas não têm registros brutos suficientes para confirmar cada rodada nesta
+revisão. Os scripts permitem novas execuções, mas não garantem repetir a saída
+de versões anteriores do provedor. Ver [limites da validação](VALIDACAO-CIENTIFICA.md).
 
 ### 4.1 Qualidade do assistente, medida
 
@@ -391,11 +397,11 @@ de recusa. O modelo reformula a resposta a cada chamada, e uma reformulação po
 deixar de conter a palavra que o teste procura. A faixa é o número honesto; um
 valor único seria uma rodada escolhida.
 
-E a linha de 0,60 é **ruído, não sinal**: recusa de 87,5% em 0,55 caindo para
-12,5% em 0,60 é impossível como comportamento real, porque limiar maior não pode
-recusar menos. São 8 casos, cada um vale 12,5 pontos, e a oscilação do modelo
-cabe inteira nessa resolução. A conclusão correta não é "0,60 é ruim", é que
-**a bateria de recusa é pequena demais para distinguir limiares vizinhos**.
+A queda de recusa de 87,5% para 12,5% na linha de 0,60 exige investigação.
+Com escores fixos, o limiar maior admite menos trechos; a resposta final também
+depende da geração, dos fallbacks e do avaliador. Sem registros por pergunta,
+não se pode atribuir a diferença apenas à aleatoriedade. A amostra de oito
+casos é pequena e essas rodadas não isolam o efeito causal do limiar.
 
 Modo de leitura direta, que é determinístico:
 
@@ -598,7 +604,7 @@ Três alunos sintéticos, com o mesmo sistema:
 | Trajetória saudável | 96% | 9,1 | 34 | 0,108 | baixo | sem risco |
 
 A linha do meio é a resposta à pergunta "por que fuzzy e não um classificador
-binário". O critério da secretaria classifica esse aluno como tranquilo. O
+binário". A referência simplificada por nota não sinaliza esse aluno. O
 sistema fuzzy o coloca na faixa alta, e a regra 8 explica por quê em linguagem
 que a coordenação pode repetir numa conversa.
 

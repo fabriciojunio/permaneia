@@ -13,16 +13,19 @@ período 2026-2. Entrega em 19 de novembro de 2026.
 
 ## O problema
 
-A evasão no ensino superior brasileiro chega a **57,2%** no conjunto da rede
-(Mapa do Ensino Superior 2024, Instituto Semesp), sobe para cerca de **61%** na
-rede privada e a **64%** nos cursos a distância (Mapa do Ensino Superior 2026).
-Apenas **um em cada quatro** jovens conclui a graduação que começou (OCDE,
-Education at a Glance 2025).
+O [Mapa do Ensino Superior 2026, do Instituto Semesp](https://www.semesp.org.br/mapa/edicao-16/brasil/)
+informa **64,7% de desistência acumulada na rede privada** e **68,1% no EAD
+privado**, no ciclo **2020–2024**. São indicadores de trajetória de uma coorte,
+não taxas anuais de evasão.
 
-O que a literatura sobre evasão descreve, e que este projeto usa como premissa:
-o abandono é precedido por desengajamento, não por notas ruins. O aluno para de
-acessar a plataforma semanas antes de a média cair, e meses antes de formalizar
-o trancamento. Quem olha só a nota chega tarde.
+A [OCDE, Education at a Glance 2025, tabela B5.1](https://www.oecd.org/en/publications/education-at-a-glance-2025_1a3543e2-en/brazil_d42263a0-en.html)
+informa que **49% dos ingressantes em bacharelados no Brasil concluem até três
+anos após a duração prevista do curso**. Esse recorte não equivale à proporção
+de jovens com diploma nem é diretamente comparável ao indicador do Semesp.
+
+O projeto explora frequência, notas e uso da plataforma como sinais de apoio
+ao acompanhamento. Não demonstrou antecipação de evasão em alunos reais.
+Os recortes, fontes e limites estão em [Validação científica](docs/VALIDACAO-CIENTIFICA.md).
 
 ## O que o sistema faz
 
@@ -55,8 +58,8 @@ contato primeiro, com a explicação das regras que produziram cada score.
 
 O argumento central do projeto está no cruzamento das duas: um aluno com **nota
 8,6 e presença em 34%** é classificado como risco **alto**. Um critério baseado
-na média de notas, que é o usado hoje na maioria das secretarias, o classificaria
-como tranquilo.
+somente na média de notas, adotado como referência simplificada neste projeto,
+não emitiria alerta. O exemplo usa dados sintéticos e não mede acurácia preditiva.
 
 ## Como rodar
 
@@ -136,7 +139,7 @@ duas o aluno está lendo seria desonesto.
 |---|---|
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Build de produção |
-| `npm test` | 2055 testes unitários |
+| `npm test` | Suíte de testes unitários |
 | `npm run test:coverage` | Testes com gate de cobertura em 90% |
 | `npm run test:integration` | 77 testes contra Postgres real |
 | `npm run test:e2e` | 81 testes de ponta a ponta, incluindo a verificação de celular |
@@ -253,15 +256,16 @@ o roteiro está em [docs/DEMONSTRACAO.md](docs/DEMONSTRACAO.md).
 
 | Métrica | Valor |
 |---|---|
-| Testes unitários | 2041 |
-| Testes de integração | 77 |
-| Testes de ponta a ponta | 81 |
-| **Total** | **2199** |
-| Cobertura da lógica de domínio | 97,4% |
-| Cobertura do assistente | 100% das 41 perguntas respondíveis da bateria |
-| Recusa correta | 100% das 8 perguntas fora do material |
-| Inversões de faixa de risco | 0 em 26.460 comparações |
-| Vulnerabilidades de produção | 0 |
+| Testes unitários | 2.076 aprovados na revisão de outubro de 2026 |
+| Cobertura de linhas no escopo configurado | 92,96% (adaptadores excluídos estão listados em `vitest.config.ts`) |
+| Integração | PostgreSQL com pgvector, executada em trabalho separado do CI |
+| Ponta a ponta | Playwright com aplicação e banco isolados; conferir a execução do commit no CI |
+| Avaliação do assistente | Resultados históricos e limitações em `docs/AVALIACAO-RAG.md`; não equivalem à medição da versão atual |
+| Dependências de produção | 0 vulnerabilidades reportadas por `npm audit --omit=dev` em 11/10/2026 |
+
+As correções de sessão, histórico e isolamento dos testes estão em
+[docs/REVISAO-2026-10.md](docs/REVISAO-2026-10.md), incluindo a ordem de aplicação
+da migração. Testes de software não demonstram capacidade de prever evasão.
 
 A metodologia de avaliação do assistente, com a tabela de calibração e os nove
 defeitos de recuperação e resposta que ela revelou, está em
