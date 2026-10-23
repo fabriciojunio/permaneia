@@ -40,6 +40,7 @@ import { avaliarPergunta, type CategoriaBloqueio } from "./guardrails";
 import { acertosConfiaveis, buscarPorTermos } from "./lexico";
 import { fundir, type OrigemRecuperacao, type TrechoFundido } from "./fusao";
 import { perguntaAbrangente, perguntaTemporal } from "./abrangencia";
+import { MAX_TRECHOS_ENUMERACAO } from "./limites";
 import { calendarioDaDisciplina, hojeEmBrasilia, resumirAgenda } from "./calendario";
 import { escopoDaPergunta, type EscopoGeral } from "./escopo";
 import {
@@ -76,7 +77,7 @@ export const K_CONTEXTO = 6;
  * caía fora do contexto sempre que outro documento entrava na frente. A
  * resposta parecia completa e terminava em 10 de dezembro.
  */
-export const K_DOCUMENTO_INTEIRO = 45;
+export const K_DOCUMENTO_INTEIRO = MAX_TRECHOS_ENUMERACAO;
 
 export type FonteCitada = {
   titulo: string;

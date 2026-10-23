@@ -53,3 +53,16 @@ de 0 a 1, sem sinal de porcentagem ou interpretação de probabilidade.
 
 O vídeo de demonstração anterior é um registro histórico; não serve para conferir
 os indicadores ou a interface desta revisão.
+
+## Respostas extrativas e avaliação
+
+O limite de enumeração agora é compartilhado entre recuperação e transcrição,
+evitando que o modo local descarte silenciosamente trechos após o vigésimo.
+As respostas pontuais apresentam os trechos como relacionados à pergunta,
+sem afirmar que a sobreposição lexical comprove uma resposta correta.
+
+O avaliador valida limiar/data antes de consultar o banco e registra evidência por
+pergunta, hash do acervo, commit e modo de execução. A data do CI é fixa; não há
+pausa de cota no modo local. Perguntas de conhecimento geral ficam como não
+aplicáveis quando nenhum provedor generativo está configurado. As métricas e seus
+limites estão em [AVALIACAO-RAG.md](AVALIACAO-RAG.md).

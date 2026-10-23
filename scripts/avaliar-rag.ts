@@ -16,9 +16,15 @@
 // Uso: npx tsx scripts/avaliar-rag.ts [limiar]
 
 import "./_carregar-env";
+import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { prisma } from "../lib/prisma";
 import { responder } from "../lib/rag/consulta";
 import { LIMIAR_RELEVANCIA } from "../lib/rag/similaridade";
+import { origemAtual } from "../lib/ia";
+import { configuracaoAvaliacao } from "./lib/configuracao-avaliacao-rag";
 
 type Caso = {
   pergunta: string;
@@ -121,8 +127,10 @@ async function main(): Promise<void> {
   // local (0,15), que deixa passar contexto irrelevante e derruba a recusa para
   // perto de zero. A tabela de calibração continua válida porque foi levantada
   // varrendo o limiar explicitamente, argumento por argumento.
-  const argumento = process.argv[2];
-  const limiar = argumento === undefined ? undefined : Number(argumento);
+  const modo = origemAtual();
+  const { limiar, hoje, pausaMs } = configuracaoAvaliacao(
+    process.argv[2], process.env.RAG_DATA_REFERENCIA, modo,
+  );
 
   const disciplina = await prisma.disciplina.findFirst({
     where: { nome: { contains: "Inteligência Artificial" } },
@@ -130,7 +138,25 @@ async function main(): Promise<void> {
   });
   if (!disciplina) throw new Error("Disciplina de Inteligência Artificial não encontrada. Rode o seed antes.");
 
+  const documentos = await prisma.documento.findMany({
+    where: { disciplinaId: disciplina.id },
+    select: {
+      titulo: true, referencia: true,
+      chunks: { orderBy: { indice: "asc" }, select: { indice: true, texto: true, origemEmbedding: true } },
+    },
+  });
+  const serializados = documentos.map((d) => JSON.stringify(d)).sort();
+  const corpusSha256 = createHash("sha256").update(JSON.stringify(serializados)).digest("hex");
+  let commit: string | null = null;
+  let arvoreAlterada: boolean | null = null;
+  try {
+    commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
+    arvoreAlterada = execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim() !== "";
+  } catch { /* Um artefato de implantação pode não incluir .git. */ }
+  const resultados: Array<Record<string, unknown>> = [];
+
   console.log(`Disciplina: ${disciplina.nome}`);
+  console.log(`Modo configurado: ${modo}; referência temporal: ${hoje.toISOString()}; corpus: ${corpusSha256}`);
   console.log(
     `Limiar de relevância: ${limiar ?? `automático por provedor (local ${LIMIAR_RELEVANCIA})`}\n`
   );
@@ -147,25 +173,39 @@ async function main(): Promise<void> {
   // quarenta e cinco chamadas seguidas, o provedor recusa da décima em diante e
   // a avaliação mede o modo de degradação em vez do sistema: a cobertura despenca
   // e a culpa parece ser da recuperação.
-  const PAUSA_MS = 4_000;
   let respostasDegradadas = 0;
   let geralTotal = 0;
   let geralAtendidas = 0;
 
   for (const caso of CASOS) {
-    await new Promise((resolve) => setTimeout(resolve, PAUSA_MS));
+    if (caso.geral && modo === "local") {
+      resultados.push({ ...caso, estado: "nao_aplicavel", motivo: "Modo extrativo não gera conhecimento geral." });
+      console.log(`N/A   ${caso.pergunta} — modo local extrativo`);
+      continue;
+    }
+    if (pausaMs > 0) await new Promise((resolve) => setTimeout(resolve, pausaMs));
     const r = await responder({
       disciplinaId: disciplina.id,
       pergunta: caso.pergunta,
       registrar: false,
       limiar,
+      hoje,
     });
+
+    const registro = {
+      ...caso, resposta: r.resposta, origem: r.origemIa,
+      modelo: r.telemetria?.modelo ?? null, motivoFallback: r.motivoFallback ?? null,
+      similaridadeMaxima: r.similaridadeMaxima, admitiuNaoSaber: r.admitiuNaoSaber,
+      fontes: r.fontes.map((f) => ({ titulo: f.titulo, referencia: f.referencia })),
+      duracaoMs: r.duracaoMs,
+    };
 
     if (r.origemIa === "local") respostasDegradadas += 1;
 
     if (caso.geral) {
       geralTotal += 1;
       const respondeuFora = r.foraDoMaterial !== undefined && r.resposta.length > 120;
+      resultados.push({ ...registro, estado: respondeuFora ? "aprovado" : "falhou", criterio: "aviso_e_comprimento" });
       if (respondeuFora) geralAtendidas += 1;
       else falhas.push(`  [geral] "${caso.pergunta}" deveria receber resposta fora do material`);
       console.log(
@@ -180,6 +220,7 @@ async function main(): Promise<void> {
         ? r.resposta.toLowerCase().includes(caso.esperado.toLowerCase())
         : !r.admitiuNaoSaber;
       const acertou = !r.admitiuNaoSaber && contemEsperado;
+      resultados.push({ ...registro, estado: acertou ? "aprovado" : "falhou", criterio: caso.esperado ? "trecho_esperado" : "ausencia_de_recusa" });
       if (acertou) respondiveisAcertadas += 1;
       else falhas.push(`  [cobertura] "${caso.pergunta}" esperava "${caso.esperado}" (sim=${r.similaridadeMaxima})`);
       console.log(
@@ -188,6 +229,7 @@ async function main(): Promise<void> {
     } else {
       naoRespondiveisTotal += 1;
       const recusou = r.admitiuNaoSaber;
+      resultados.push({ ...registro, estado: recusou ? "aprovado" : "falhou", criterio: "recusa" });
       if (recusou) recusasCorretas += 1;
       else falhas.push(`  [recusa] "${caso.pergunta}" deveria recusar (sim=${r.similaridadeMaxima})`);
       console.log(
@@ -206,10 +248,12 @@ async function main(): Promise<void> {
     console.log(`  Fora do material, com aviso: ${geralAtendidas}/${geralTotal}`);
   }
 
-  if (respostasDegradadas > 0) {
+  if (modo === "local") {
+    console.log("  Modo local configurado: conhecimento geral não se aplica. Não houve tentativa de usar um provedor externo.");
+  } else if (respostasDegradadas > 0) {
     console.log(
       `
-  Atenção: ${respostasDegradadas} resposta(s) vieram do modo local. O provedor externo recusou chamadas, provavelmente por limite por minuto, e estes números medem o modo de degradação.`
+  Atenção: ${respostasDegradadas} resposta(s) vieram do modo local. Consulte o motivo registrado por caso; não é possível atribuir a causa apenas à origem da resposta.`
     );
   }
 
@@ -217,6 +261,23 @@ async function main(): Promise<void> {
     console.log("\nCasos que falharam:");
     for (const f of falhas) console.log(f);
   }
+
+  const caminho = process.env.RAG_RESULTADO ?? "test-results/avaliacao-rag.json";
+  await mkdir(dirname(caminho), { recursive: true });
+  await writeFile(caminho, JSON.stringify({
+    protocolo: "rag-substring-v2", executadoEm: new Date().toISOString(), commit, arvoreAlterada,
+    modoConfigurado: modo, dataReferencia: hoje.toISOString(), limiar: limiar ?? "automatico",
+    corpus: { sha256Conteudo: corpusSha256, documentos: documentos.length, trechos: documentos.reduce((n, d) => n + d.chunks.length, 0) },
+    conjuntoSha256: createHash("sha256").update(JSON.stringify(CASOS)).digest("hex"),
+    metricas: {
+      cobertura: { acertos: respondiveisAcertadas, total: respondiveisTotal },
+      recusa: { acertos: recusasCorretas, total: naoRespondiveisTotal },
+      geral: modo === "local" ? null : { acertos: geralAtendidas, total: geralTotal },
+    },
+    limitacoes: "Conjunto de desenvolvimento pequeno; critérios lexicais não comprovam correção factual nem generalização.",
+    resultados,
+  }, null, 2) + "\n", "utf8");
+  console.log(`\nEvidência por pergunta: ${caminho}`);
 }
 
 main()
