@@ -1,0 +1,23 @@
+{
+  "conferidoEm": "2026-10-11",
+  "indicadores": [
+    {
+      "valor": "64,7%",
+      "texto": "de desistência acumulada na rede privada, no ciclo 2020–2024",
+      "fonte": "Instituto Semesp, Mapa do Ensino Superior 2026. Indicadores de trajetória, base Inep.",
+      "url": "https://www.semesp.org.br/mapa/edicao-16/brasil/"
+    },
+    {
+      "valor": "68,1%",
+      "texto": "de desistência acumulada no EAD privado, no ciclo 2020–2024",
+      "fonte": "Instituto Semesp, Mapa do Ensino Superior 2026. Indicadores de trajetória, base Inep.",
+      "url": "https://www.semesp.org.br/mapa/edicao-16/brasil/"
+    },
+    {
+      "valor": "49%",
+      "texto": "dos ingressantes em bacharelados no Brasil concluem até três anos após a duração prevista",
+      "fonte": "OCDE, Education at a Glance 2025, nota do Brasil, tabela B5.1.",
+      "url": "https://www.oecd.org/en/publications/education-at-a-glance-2025_1a3543e2-en/brazil_d42263a0-en.html"
+    }
+  ]
+}

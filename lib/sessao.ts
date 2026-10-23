@@ -1,6 +1,6 @@
-// JWT em cookie HttpOnly. Sessão em banco custaria uma consulta por requisição
-// em ambiente serverless. O preço do JWT é a revogação, resolvida pelo campo
-// `vs`: trocar a senha incrementa a versão e derruba os tokens anteriores.
+// JWT em cookie HttpOnly. O middleware valida assinatura e prazo; lib/auth.ts
+// consulta a conta para conferir a versão `vs` e o estado ativo. Trocar a senha
+// incrementa a versão e invalida os tokens anteriores também nas rotas da API.
 
 import { SignJWT, jwtVerify } from "jose";
 

@@ -59,6 +59,7 @@ export const POST = comTratamentoDeErro(async (requisicao: NextRequest) => {
     disciplinaId,
     pergunta,
     alunoId: permissao.valor.alunoId,
+    usuarioId: permissao.valor.usuarioId,
   });
 
   return await respostaOk({

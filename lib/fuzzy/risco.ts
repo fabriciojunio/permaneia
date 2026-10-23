@@ -93,10 +93,9 @@ export function calcularRiscoEvasao(dados: DadosMatricula): DetalheRisco {
 }
 
 /**
- * Compara o risco fuzzy com o critério ingênuo usado hoje na maioria das
- * instituições: olhar só a média de notas. A diferença entre os dois é o
- * argumento central da visão crítica do relatório, então ela é calculada pelo
- * código, e não estimada no texto.
+ * Compara o índice fuzzy com uma referência simplificada baseada só em nota.
+ * O corte é uma escolha do projeto, não uma medição da prática das instituições.
+ * Divergência entre regras não demonstra superioridade preditiva.
  */
 export function compararComCriterioPorNota(dados: DadosMatricula): {
   scoreFuzzy: number;
@@ -105,7 +104,7 @@ export function compararComCriterioPorNota(dados: DadosMatricula): {
   divergem: boolean;
 } {
   const detalhe = calcularRiscoEvasao(dados);
-  // O critério ingênuo é o da secretaria: abaixo da média de aprovação, em risco.
+  // Referência escolhida: média abaixo de 6 emite alerta.
   const criterioPorNota = dados.mediaNotas < 6 ? "em risco" : "sem risco";
   const fuzzyAlerta = detalhe.faixa === "alto" || detalhe.faixa === "critico";
   const notaAlerta = criterioPorNota === "em risco";
