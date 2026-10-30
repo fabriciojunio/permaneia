@@ -311,7 +311,9 @@ describe("monotonicidade da faixa", () => {
     expect(ORDEM[pior.faixa]).toBeGreaterThanOrEqual(ORDEM[base.faixa]);
   });
 
-  it("em uma grade fina, a faixa nunca inverte", () => {
+  // Varre o espaço de entrada inteiro (dezenas de milhares de inferências); com
+  // a instrumentação de cobertura passa dos 5 s padrão sem estar errado.
+  it("em uma grade fina, a faixa nunca inverte", { timeout: 60_000 }, () => {
     let inversoes = 0;
     for (let f = 0; f <= 100; f += 5) {
       for (let n = 0; n <= 10; n += 1) {
@@ -332,7 +334,9 @@ describe("monotonicidade da faixa", () => {
     expect(inversoes).toBe(0);
   });
 
-  it("o score tem apenas inversões marginais, artefato conhecido do Mamdani", () => {
+  // Varre o espaço de entrada inteiro (dezenas de milhares de inferências); com
+  // a instrumentação de cobertura passa dos 5 s padrão sem estar errado.
+  it("o score tem apenas inversões marginais, artefato conhecido do Mamdani", { timeout: 60_000 }, () => {
     // Perto da fronteira entre dois termos, a massa que cada regra contribui
     // muda de forma descontínua e o centroide pode andar alguns milésimos na
     // direção contrária. O efeito é limitado e não chega a mudar a faixa.

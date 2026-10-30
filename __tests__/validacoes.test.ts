@@ -207,7 +207,8 @@ describe("sinaisSchema", () => {
 
   it("a mensagem de erro dos acessos alerta para falha de importação", () => {
     const r = sinaisSchema.safeParse({ frequenciaPercentual: 50, mediaNotas: 5, acessosPlataforma: 500_000 });
-    if (!r.success) expect(JSON.stringify(r.error.errors)).toMatch(/importação/i);
+    expect(r.success).toBe(false);
+    if (!r.success) expect(JSON.stringify(r.error.issues)).toMatch(/importação/i);
   });
 });
 
@@ -371,5 +372,42 @@ describe("camposComErro", () => {
       const texto = Object.values(camposComErro(r.error)).join(" ");
       expect(texto).toMatch(/não pode passar/);
     }
+  });
+});
+
+describe("mensagens em português de campo ausente e de tipo errado", () => {
+  const primeira = (r: { success: boolean; error?: { issues: { message: string }[] } }) =>
+    r.success ? "" : r.error!.issues[0]!.message;
+
+  it("campo de texto ausente diz que é obrigatório; tipo errado diz que precisa ser texto", () => {
+    expect(primeira(alunoSchema.safeParse({ email: "ana@exemplo.com" }))).toBe("O nome é obrigatório.");
+    expect(primeira(alunoSchema.safeParse({ nome: 42, email: "ana@exemplo.com" }))).toBe("O nome precisa ser texto.");
+  });
+
+  it("e-mail e senha ausentes no login têm mensagem própria", () => {
+    const r = loginSchema.safeParse({});
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      const campos = camposComErro(r.error);
+      expect(campos.email).toBe("O e-mail é obrigatório.");
+      expect(campos.senha).toBe("A senha é obrigatória.");
+    }
+  });
+
+  it("número em texto diz qual sinal precisa ser número", () => {
+    const r = sinaisSchema.safeParse({ frequenciaPercentual: "75", mediaNotas: 6, acessosPlataforma: 1 });
+    expect(primeira(r)).toBe("A frequência precisa ser um número.");
+  });
+
+  it("cadastro sem aceitar o aviso de dados explica o motivo", () => {
+    const r = cadastroSchema.safeParse({
+      nome: "Ana",
+      email: "ana@exemplo.com",
+      senha: "uma-senha-boa",
+      confirmacao: "uma-senha-boa",
+      aceiteTermos: false,
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(camposComErro(r.error).aceiteTermos).toBe("É preciso aceitar o aviso de tratamento de dados.");
   });
 });
