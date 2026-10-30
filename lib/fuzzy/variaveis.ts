@@ -78,8 +78,8 @@ export const NOTAS = montar<TermoNotas>(
 
 /**
  * Engajamento normalizado de 0 a 10, derivado dos acessos à plataforma. É a
- * variável que dá o sinal mais precoce: o aluno para de acessar semanas antes
- * de a nota cair, e meses antes de formalizar o trancamento.
+ * sinal heurístico de uso. Antecipação de evasão e pontos de corte ainda
+ * precisam de avaliação temporal com desfechos de alunos reais.
  */
 export const ENGAJAMENTO = montar<TermoEngajamento>(
   "engajamento",
@@ -100,7 +100,7 @@ export const ENGAJAMENTO = montar<TermoEngajamento>(
  */
 export const RISCO = montar<TermoRisco>(
   "risco_evasao",
-  "Risco de evasão estimado, de 0 (nenhum) a 1 (máximo)",
+  "Índice heurístico de alerta de 0 a 1, sem interpretação probabilística",
   0,
   1,
   [

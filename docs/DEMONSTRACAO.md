@@ -25,8 +25,9 @@ resolve, mas não no meio da apresentação.
 ## O argumento, em um slide
 
 Um aluno com **nota 8,6 e presença em 34%** é classificado como risco **alto**
-pelo motor fuzzy. O critério por média de notas, que é o usado hoje na maioria
-das secretarias, o classificaria como tranquilo.
+pelo motor fuzzy. A referência simplificada por média de notas usada nesta
+comparação não sinalizaria esse caso. O exemplo é sintético e não demonstra
+capacidade de prever evasão real.
 
 É por aí que a demonstração começa, e não pela tecnologia.
 

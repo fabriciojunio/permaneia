@@ -31,9 +31,10 @@ export const REGRA_UPLOAD: Regra = { limite: 10, janelaMs: 300_000 };
 /** Escrita comum na API. */
 export const REGRA_ESCRITA: Regra = { limite: 60, janelaMs: 60_000 };
 
-type Registro = { marcas: number[] };
+type Registro = { marcas: number[]; expiraEm: number };
 
 const memoria = new Map<string, Registro>();
+let proximaLimpeza = Infinity;
 
 /** Teto de chaves, para a memória não crescer sob ataque com IPs variados. */
 const MAXIMO_CHAVES = 10_000;
@@ -48,7 +49,19 @@ export type VeredictoLimite = {
 /** `agora` é parâmetro para o teste controlar o tempo sem relógio falso global. */
 export function consumir(chave: string, regra: Regra, agora = Date.now()): VeredictoLimite {
   const inicioJanela = agora - regra.janelaMs;
-  const registro = memoria.get(chave) ?? { marcas: [] };
+  const existente = memoria.get(chave);
+  if (!existente && memoria.size >= MAXIMO_CHAVES) {
+    if (agora >= proximaLimpeza) limparExpirados(agora);
+    // Não descartamos um contador ativo para dar espaço a uma nova origem:
+    // isso permitiria zerar o limite variando os cabeçalhos de endereço.
+    if (memoria.size >= MAXIMO_CHAVES) {
+      return {
+        permitido: false, restantes: 0,
+        esperarSegundos: Math.max(1, Math.ceil((proximaLimpeza - agora) / 1000)),
+      };
+    }
+  }
+  const registro = existente ?? { marcas: [], expiraEm: agora };
 
   // Descarta o que saiu da janela antes de contar.
   const dentro = registro.marcas.filter((m) => m > inicioJanela);
@@ -56,26 +69,28 @@ export function consumir(chave: string, regra: Regra, agora = Date.now()): Vered
   if (dentro.length >= regra.limite) {
     const maisAntiga = dentro[0]!;
     const esperar = Math.max(1, Math.ceil((maisAntiga + regra.janelaMs - agora) / 1000));
-    memoria.set(chave, { marcas: dentro });
+    memoria.set(chave, { marcas: dentro, expiraEm: registro.expiraEm });
     return { permitido: false, restantes: 0, esperarSegundos: esperar };
   }
 
   dentro.push(agora);
-  memoria.set(chave, { marcas: dentro });
-
-  if (memoria.size > MAXIMO_CHAVES) limparExpirados(agora);
+  const expiraEm = Math.max(registro.expiraEm, agora + regra.janelaMs);
+  memoria.set(chave, { marcas: dentro, expiraEm });
+  proximaLimpeza = Math.min(proximaLimpeza, expiraEm);
 
   return { permitido: true, restantes: regra.limite - dentro.length, esperarSegundos: 0 };
 }
 
-/** Remove chaves cuja marca mais recente já é antiga o bastante para não afetar nenhuma regra. */
-export function limparExpirados(agora = Date.now(), horizonteMs = 600_000): number {
+/** Respeita a janela de cada regra, inclusive o cadastro limitado por hora. */
+export function limparExpirados(agora = Date.now()): number {
   let removidas = 0;
+  proximaLimpeza = Infinity;
   for (const [chave, registro] of memoria) {
-    const ultima = registro.marcas[registro.marcas.length - 1] ?? 0;
-    if (ultima < agora - horizonteMs) {
+    if (registro.expiraEm <= agora) {
       memoria.delete(chave);
       removidas += 1;
+    } else {
+      proximaLimpeza = Math.min(proximaLimpeza, registro.expiraEm);
     }
   }
   return removidas;
@@ -84,6 +99,7 @@ export function limparExpirados(agora = Date.now(), horizonteMs = 600_000): numb
 /** Zera o estado. Existe para os testes; não use em código de produção. */
 export function zerarLimites(): void {
   memoria.clear();
+  proximaLimpeza = Infinity;
 }
 
 /**
@@ -94,6 +110,7 @@ export function zerarLimites(): void {
 export function identificarCliente(cabecalhos: Headers, sufixo = ""): string {
   const confia = process.env.RATE_LIMIT_CONFIA_PROXY !== "false";
   const encaminhado = confia ? cabecalhos.get("x-forwarded-for") : null;
-  const ip = encaminhado?.split(",")[0]?.trim() || cabecalhos.get("x-real-ip") || "desconhecido";
+  const ip = encaminhado?.split(",")[0]?.trim() ||
+    (confia ? cabecalhos.get("x-real-ip") : null) || "desconhecido";
   return sufixo ? `${ip}:${sufixo}` : ip;
 }

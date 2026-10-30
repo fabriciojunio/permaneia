@@ -3,9 +3,8 @@
 // Três papéis, com fronteiras que espelham o mundo real da instituição:
 //
 //   aluno        usa o assistente de estudos e vê os próprios dados. Nunca vê o
-//                painel de risco, nem o próprio score. Mostrar a um aluno que o
-//                sistema o classificou como "risco crítico" é capaz de produzir
-//                exatamente o desligamento que se quer evitar.
+//                painel de risco. A exportação dos próprios dados inclui os
+//                indicadores registrados sobre ele, inclusive o score heurístico.
 //   coordenacao  vê o painel de risco da instituição e mantém as disciplinas e
 //                os documentos. Não usa o assistente e não gerencia contas: o
 //                assistente responde dúvidas de aluno sobre a própria

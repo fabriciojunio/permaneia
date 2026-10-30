@@ -39,6 +39,7 @@ model Usuario {
   aluno         Aluno?   @relation(fields: [alunoId], references: [id], onDelete: SetNull)
   alunoId       String?  @unique @map("aluno_id") @db.Uuid
   criadoEm      DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  consultas     ConsultaRag[]
 
   @@index([papel])
   @@map("usuarios")
@@ -160,6 +161,9 @@ model DocumentoChunk {
 /// relatório e à auditoria exigida pela LGPD.
 model ConsultaRag {
   id                String      @id @default(uuid()) @db.Uuid
+  /// Autor autenticado. Registros antigos sem autor não são compartilhados entre contas.
+  usuario           Usuario?    @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId         String?     @map("usuario_id") @db.Uuid
   aluno             Aluno?      @relation(fields: [alunoId], references: [id], onDelete: SetNull)
   alunoId           String?     @map("aluno_id") @db.Uuid
   disciplina        Disciplina  @relation(fields: [disciplinaId], references: [id], onDelete: Cascade)
@@ -184,6 +188,7 @@ model ConsultaRag {
   criadoEm          DateTime    @default(now()) @map("criado_em") @db.Timestamptz(6)
 
   @@index([disciplinaId, criadoEm(sort: Desc)])
+  @@index([usuarioId, criadoEm(sort: Desc)])
   @@index([criadoEm])
   @@map("consultas_rag")
 }

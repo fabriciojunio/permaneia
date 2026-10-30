@@ -14,6 +14,9 @@ acadêmico de aluno e foi construído como se fosse receber dado real um dia.
 - **Versão de sessão** (`vs`) no token, comparada com a gravada no usuário:
   trocar a senha ou desativar a conta invalida na hora todos os tokens emitidos
   antes, resolvendo a fraqueza clássica do JWT quanto a revogação
+  A verificação ocorre em `lib/auth.ts`, consultando a conta por chave primária
+  em cada leitura de sessão. Mudanças de papel ou vínculo de aluno também
+  exigem novo login. A assinatura validada no middleware não substitui essa consulta.
 - Senha com **bcrypt de custo 12**
 - Comparação de senha executada **mesmo quando o usuário não existe**, contra um
   hash descartável, para que a diferença de tempo não revele quais e-mails estão
@@ -25,8 +28,10 @@ acadêmico de aluno e foi construído como se fosse receber dado real um dia.
 - O **papel nunca vem do formulário**. Toda conta criada pelo cadastro público é
   de aluno. Coordenação e administração são criadas por quem já é administrador,
   porque o painel expõe dado de toda a instituição
-- E-mail já cadastrado recebe **a mesma resposta** que um cadastro novo, sem
-  cookie: um erro "esse e-mail já existe" transformaria o cadastro num oráculo
+- E-mail já cadastrado recebe uma mensagem genérica, sem cookie. O cadastro
+  novo autentica a conta, portanto o fluxo ainda permite distinguir um e-mail
+  existente. A restrição por domínio e os limites reduzem o abuso; não eliminam
+  essa possibilidade. Impedir essa distinção exige confirmação por e-mail antes do login
 - Política de senha que prioriza comprimento sobre variedade de símbolo, com
   bloqueio de senhas óbvias, sequências previsíveis e senha contendo o próprio
   usuário do e-mail
@@ -40,9 +45,13 @@ aplicada em duas camadas:
 - **Middleware**: defesa de borda, impede que a página sequer renderize
 - **Cada rota de API**: a defesa que de fato conta
 
-Um aluno nunca vê o painel de risco nem o próprio score. É decisão de projeto:
-informar a alguém que um sistema o classificou como risco crítico pode produzir
-justamente o desligamento que se quer evitar.
+Um aluno não acessa o painel de risco da instituição. A exportação dos próprios
+dados inclui os indicadores registrados sobre ele, inclusive o score heurístico.
+
+O histórico do assistente e sua exportação são filtrados pelo usuário autenticado.
+Administradores não compartilham histórico. Consultas antigas sem autor conhecido
+ficam fora do histórico pessoal; a migração associa consultas de alunos às contas
+que possuem o vínculo correspondente.
 
 ## Proteção da API
 

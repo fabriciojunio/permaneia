@@ -247,7 +247,7 @@ function DetalheDoScore({ detalhe, calculadoEm }: { detalhe: Detalhe; calculadoE
 
       <div>
         <p className="carimbo mb-2">
-          Regras que mais pesaram no score de {Math.round(detalhe.score * 100)}%
+          Regras que mais pesaram no score de {detalhe.score.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 })} (escala de 0 a 1; não é probabilidade)
         </p>
         <ol className="space-y-2">
           {principais.map((r) => (

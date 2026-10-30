@@ -1,13 +1,14 @@
 // Leitura da sessão dentro das rotas de API e dos componentes de servidor.
 //
-// O middleware já validou a assinatura do token e escreveu os dados da sessão
-// em cabeçalhos da requisição. Reler e verificar o token de novo aqui custaria
-// uma verificação criptográfica por rota sem ganho: nenhum cliente consegue
-// forjar esses cabeçalhos, porque o middleware os sobrescreve incondicionalmente
-// antes de a rota ser chamada.
+// O middleware valida a assinatura e sobrescreve os cabeçalhos das rotas
+// protegidas. Aqui conferimos também o estado atual da conta: a assinatura
+// sozinha continua válida depois de trocar a senha ou desativar um usuário.
+// Esta consulta por chave primária permite revogação imediata nas rotas e nas
+// páginas protegidas, sem manter um cache que prolongue uma sessão revogada.
 
 import { headers } from "next/headers";
 import type { Papel, Sessao } from "./sessao";
+import { prisma } from "./prisma";
 
 // A partir do Next 15, headers() é assíncrona: a requisição pode não estar
 // disponível no momento da chamada, e a API passou a refletir isso.
@@ -26,15 +27,27 @@ export async function sessaoAtual(): Promise<Sessao | null> {
   if (papel !== "aluno" && papel !== "coordenacao" && papel !== "admin") return null;
 
   const alunoId = cabecalhos.get("x-usuario-aluno-id");
-  const nomeCodificado = cabecalhos.get("x-usuario-nome");
+  const vs = Number(cabecalhos.get("x-usuario-vs") ?? 0);
+  if (!Number.isSafeInteger(vs) || vs < 0) return null;
+
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: {
+      id: true, nome: true, email: true, papel: true, alunoId: true,
+      ativo: true, versaoSessao: true,
+    },
+  });
+  if (
+    !usuario?.ativo || usuario.versaoSessao !== vs ||
+    usuario.papel !== papel || (usuario.alunoId ?? null) !== alunoId
+  ) return null;
 
   return {
     usuarioId,
-    email,
-    // Cabeçalho HTTP só aceita ISO-8859-1, então o nome trafega percent-encoded.
-    nome: nomeCodificado ? decodeURIComponent(nomeCodificado) : "",
+    email: usuario.email,
+    nome: usuario.nome,
     papel,
     alunoId: alunoId ?? undefined,
-    vs: Number(cabecalhos.get("x-usuario-vs") ?? 0),
+    vs,
   };
 }

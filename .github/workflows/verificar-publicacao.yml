@@ -15,7 +15,10 @@ name: Conferir a publicação
 
 on:
   push:
-    branches: [main]
+    # Esta checagem compara o commit publicado com a URL de produção. Em
+    # homologação, o preview é validado pelos checks de PR; exigir que a URL de
+    # produção já sirva aquele commit bloquearia a própria promoção.
+    branches: ["produção"]
   workflow_dispatch:
 
 concurrency:

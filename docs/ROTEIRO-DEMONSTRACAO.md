@@ -26,16 +26,16 @@ mudam e o script imprime os novos marcos no final.
 
 **Na tela:** a página de abertura, com a explicação dos dois lados do sistema.
 
-> A evasão no ensino superior brasileiro é de 57,2%, segundo o Mapa do Ensino
-> Superior do Instituto Semesp. Na rede privada passa de 60%, e a OCDE calcula
-> que só um em cada quatro jovens conclui a graduação que começou.
+> O Semesp informa 64,7% de desistência acumulada na rede privada, no ciclo de
+> 2020 a 2024. A OCDE informa 49% de conclusão entre ingressantes em bacharelado
+> no Brasil até três anos após a duração prevista. São recortes diferentes.
 >
 > A gente escolheu esse problema porque vive ele: somos alunos de uma
 > instituição privada.
 >
-> E a literatura diz uma coisa que organizou o projeto inteiro: o abandono vem
-> antes da nota cair. O aluno some da plataforma semanas antes de a média
-> baixar. Quem olha só a nota chega tarde.
+> Nossa hipótese é que frequência, notas e uso da plataforma podem ajudar no
+> acompanhamento. As regras usam dados sintéticos e ainda não foram validadas
+> para prever a evasão de alunos reais.
 >
 > O PermaneIA tem dois lados. Para o aluno, um assistente que responde só com
 > base nos documentos da disciplina. Para a coordenação, um painel de risco

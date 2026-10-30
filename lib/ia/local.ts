@@ -7,6 +7,7 @@
 // determinístico, que é o que os testes precisam.
 
 import { perguntaAbrangente } from "@/lib/rag/abrangencia";
+import { MAX_TRECHOS_ENUMERACAO } from "@/lib/rag/limites";
 import {
   DIMENSAO_EMBEDDING,
   normalizarVetor,
@@ -145,7 +146,7 @@ export const SEM_RESPOSTA_LOCAL =
   "Não encontrei essa informação no material desta disciplina. Vale confirmar diretamente com o professor ou com a coordenação.";
 
 /** Teto de trechos transcritos numa resposta de enumeração. */
-export const LIMITE_BLOCOS_ABRANGENTE = 20;
+export const LIMITE_BLOCOS_ABRANGENTE = MAX_TRECHOS_ENUMERACAO;
 
 /**
  * Devolve o trecho INTEIRO, e não as frases que casam com a pergunta. Selecionar
@@ -188,6 +189,9 @@ export function responderExtrativo(prompt: string): string {
     return [
       "Leitura direta do material, sem geração de texto. Copio abaixo os trechos do documento:",
       ...blocos.slice(0, LIMITE_BLOCOS_ABRANGENTE),
+      ...(blocos.length > LIMITE_BLOCOS_ABRANGENTE
+        ? ["Lista parcial: o limite de trechos foi atingido. Consulte o documento original para conferir os demais itens."]
+        : []),
     ].join("\n\n");
   }
 
@@ -206,12 +210,12 @@ export function responderExtrativo(prompt: string): string {
   // se respondesse uma pergunta que ele não responde.
   if (!pontuados.some((p) => p.acertos > 0)) return SEM_RESPOSTA_LOCAL;
 
-  // Os blocos já chegam ordenados por similaridade; a contagem de termos exatos
-  // só desempata.
+  // Preserva a ordem da recuperação e descarta blocos sem termos em comum.
+  // Sobreposição lexical não comprova que um trecho responde à pergunta.
   const escolhidos = pontuados.filter((p) => p.acertos > 0).slice(0, 2);
 
   return [
-    "Leitura direta do material, sem geração de texto. Copio abaixo os trechos do documento que respondem à sua pergunta:",
+    "Leitura direta do material, sem geração de texto. Encontrei trechos relacionados à sua pergunta; confira se eles trazem a informação procurada:",
     ...escolhidos.map((p) => p.bloco),
   ].join("\n\n");
 }
