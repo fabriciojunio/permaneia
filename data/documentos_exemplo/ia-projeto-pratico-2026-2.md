@@ -1,6 +1,6 @@
 # Projeto Prático de IA Generativa — Inteligência Artificial — 2026-2
 
-Grupo: até 6 pessoas.
+Grupo: 6 pessoas.
 Data de entrega: 19 de novembro de 2026.
 
 ## Objetivo geral

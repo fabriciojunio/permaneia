@@ -186,6 +186,9 @@ function emDias(dias: number): string {
 }
 
 /** Palavras que marcam um encontro de avaliação dentro da descrição. */
+/** Encontro de conteúdo, como o cronograma do professor o descreve. */
+const MARCA_DE_AULA_NORMAL = /^aula\s+normal\b/i;
+
 const MARCAS_DE_AVALIACAO = /(avalia|prova|exame|substitutiva|entrega\s+de\s+trabalho|entrega\s+do\s+trabalho)/i;
 
 /**
@@ -201,7 +204,12 @@ export function resumirAgenda(eventos: EventoCalendario[], hoje = hojeEmBrasilia
   const linhas: string[] = [`Hoje é ${porExtenso(hoje)}.`];
 
   const passados = eventos.filter((e) => diasEntre(hoje, e.data) < 0);
+  const deHoje = eventos.filter((e) => diasEntre(hoje, e.data) === 0);
   const futuros = eventos.filter((e) => diasEntre(hoje, e.data) >= 0);
+  // "Qual é a próxima aula?" perguntada no dia de um encontro quer saber do
+  // seguinte, e não do que está acontecendo agora. O de hoje vai numa linha
+  // própria, e o próximo passa a ser o primeiro depois de hoje.
+  const depoisDeHoje = futuros.filter((e) => diasEntre(hoje, e.data) > 0);
 
   const ultimo = passados[passados.length - 1];
   if (ultimo) {
@@ -210,7 +218,11 @@ export function resumirAgenda(eventos: EventoCalendario[], hoje = hojeEmBrasilia
     );
   }
 
-  const proximo = futuros[0];
+  for (const evento of deHoje) {
+    linhas.push(`Encontro de hoje: ${porExtenso(evento.data)} (hoje). ${resumir(evento.descricao)}`);
+  }
+
+  const proximo = depoisDeHoje[0];
   if (proximo) {
     linhas.push(
       `Próximo encontro: ${porExtenso(proximo.data)} (${emDias(diasEntre(hoje, proximo.data))}). ${resumir(proximo.descricao)}`
@@ -232,6 +244,15 @@ export function resumirAgenda(eventos: EventoCalendario[], hoje = hojeEmBrasilia
       ? `Semana que vem (${janela}): ${naProximaSemana.map((e) => `${porExtenso(e.data)}. ${resumir(e.descricao)}`).join(" | ")}`
       : `Semana que vem (${janela}): nenhum encontro previsto no cronograma.`
   );
+
+  // Encontro de avaliação ou de entrega também é "encontro", mas não é aula:
+  // quem pergunta pela próxima aula quer a próxima aula de conteúdo.
+  const proximaAulaNormal = depoisDeHoje.find((e) => MARCA_DE_AULA_NORMAL.test(e.descricao));
+  if (proximaAulaNormal && proximaAulaNormal !== proximo) {
+    linhas.push(
+      `Próxima aula normal: ${porExtenso(proximaAulaNormal.data)} (${emDias(diasEntre(hoje, proximaAulaNormal.data))}). ${resumir(proximaAulaNormal.descricao)}`
+    );
+  }
 
   const proximaAvaliacao = futuros.find((e) => MARCAS_DE_AVALIACAO.test(e.descricao));
   if (proximaAvaliacao) {

@@ -165,9 +165,21 @@ describe("resumo da agenda", () => {
     expect(agenda).toMatch(/Próxima avaliação ou entrega:[^\n]*24 de setembro de 2026/);
   });
 
-  it("no dia do encontro, ele é o próximo e não o último", () => {
+  it("no dia do encontro, ele é o de hoje, e não o último nem o próximo", () => {
     const agenda = resumirAgenda(eventos, dataUtc(2026, 7, 20))!;
-    expect(agenda).toMatch(/Próximo encontro: quinta-feira, 20 de agosto de 2026 \(hoje\)/);
+    expect(agenda).toMatch(/Encontro de hoje: quinta-feira, 20 de agosto de 2026 \(hoje\)/);
+    expect(agenda).toMatch(/Próximo encontro: quinta-feira, 27 de agosto de 2026/);
+    expect(agenda).not.toMatch(/Último encontro já realizado: quinta-feira, 20 de agosto/);
+  });
+
+  it("aponta a próxima aula normal quando o próximo encontro é avaliação", () => {
+    const comAulaDepoisDaProva = calendarioDaDisciplina([
+      ...AULAS,
+      trecho("01 de outubro de 2026, quinta-feira. Aula normal. Algoritmos genéticos."),
+    ]);
+    const agenda = resumirAgenda(comAulaDepoisDaProva, dataUtc(2026, 8, 20))!;
+    expect(agenda).toMatch(/Próximo encontro: quinta-feira, 24 de setembro de 2026/);
+    expect(agenda).toMatch(/Próxima aula normal: quinta-feira, 01 de outubro de 2026/);
   });
 
   it("avisa quando o semestre acabou, em vez de apontar encontro que não existe", () => {

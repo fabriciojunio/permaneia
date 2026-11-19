@@ -19,6 +19,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 import { gerarHash } from "../lib/senha";
 import { calcularRiscoEvasao } from "../lib/fuzzy/risco";
 import { ingerir } from "../lib/rag/ingestao";
+import { DOCUMENTO_INFORMACOES_GERAIS, DOCUMENTOS_IA_QUINTA } from "./acervo-ia";
 
 const prisma = new PrismaClient();
 
@@ -147,32 +148,7 @@ async function main(): Promise<void> {
   const disciplinas = [ia, iaSegunda, iaSexta, grafosTerca, grafosQuarta];
 
   console.log("Indexando os documentos da disciplina…");
-  const REFERENCIA_QUINTA = "Inteligência Artificial, quinta-feira, 2026-2";
-  const documentos = [
-    { arquivo: "ia-cronograma-2026-2.md", titulo: "Cronograma de aulas", referencia: REFERENCIA_QUINTA },
-    { arquivo: "ia-contrato-didatico-2026-2.md", titulo: "Contrato didático", referencia: REFERENCIA_QUINTA },
-    {
-      arquivo: "ia-projeto-pratico-2026-2.md",
-      titulo: "Enunciado do Projeto Prático de IA Generativa",
-      referencia: "entrega em 19/11/2026",
-    },
-    {
-      arquivo: "ia-desafio-sistema-inteligente.md",
-      titulo: "Desafio: o que torna este sistema inteligente?",
-      referencia: "aula de 06/08/2026",
-    },
-    {
-      arquivo: "ia-atividade-llms.md",
-      titulo: "Atividade prática: avaliando agentes de conversação",
-      referencia: "aula de 13/08/2026",
-    },
-    {
-      arquivo: "ia-atividade-busca-cega.md",
-      titulo: "Atividade: modelagem de problemas e busca cega",
-      referencia: "aula de 20/08/2026",
-    },
-    { arquivo: "ia-materiais-por-aula.md", titulo: "Materiais e links por aula", referencia: REFERENCIA_QUINTA },
-  ];
+  const documentos = DOCUMENTOS_IA_QUINTA;
 
   for (const doc of documentos) {
     const conteudo = readFileSync(resolve(process.cwd(), "data/documentos_exemplo", doc.arquivo), "utf8");
@@ -198,12 +174,15 @@ async function main(): Promise<void> {
   // As informações gerais valem para qualquer turma do professor: quem ele é,
   // como falar com ele, onde ficam os materiais. Sem isso, uma turma sem
   // cronograma divulgado seria uma tela que só sabe dizer que não sabe.
-  const gerais = readFileSync(resolve(process.cwd(), "data/documentos_exemplo", "ia-informacoes-gerais.md"), "utf8");
+  const gerais = readFileSync(
+    resolve(process.cwd(), "data/documentos_exemplo", DOCUMENTO_INFORMACOES_GERAIS.arquivo),
+    "utf8"
+  );
   for (const disciplina of disciplinas) {
     const resultado = await ingerir({
       disciplinaId: disciplina.id,
-      titulo: "Informações gerais da disciplina",
-      referencia: "portal de disciplinas, 2026-2",
+      titulo: DOCUMENTO_INFORMACOES_GERAIS.titulo,
+      referencia: DOCUMENTO_INFORMACOES_GERAIS.referencia,
       conteudo: gerais,
       origem: "seed",
       modo: "unidade",
