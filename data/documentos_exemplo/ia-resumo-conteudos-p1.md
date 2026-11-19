@@ -74,9 +74,9 @@ Em jogos grandes como xadrez a busca é cortada numa profundidade e as posiçõe
 
 Um PSR é definido por variáveis, domínios (os valores possíveis de cada variável) e restrições (combinações de valores permitidas). A solução é uma atribuição completa e consistente. Exemplos: colorir o mapa da Austrália com três cores sem regiões vizinhas iguais, sudoku, n-rainhas, montagem de grade horária.
 
-Busca com retrocesso (backtracking) atribui uma variável por vez e volta quando uma restrição é violada. As heurísticas que melhoram o backtracking: MRV, valores mínimos restantes (escolher a variável com menos valores possíveis); grau (escolher a variável envolvida em mais restrições); e valor menos restritivo (testar primeiro o valor que mais deixa opções para os vizinhos).
+Busca com retrocesso (backtracking) atribui uma variável por vez e volta quando uma restrição é violada. As heurísticas que melhoram o backtracking: MRV, mínimos restantes (escolher a variável de domínio menor); grau (escolher a variável envolvida em mais restrições); e menos restritivo primeiro (testar antes a opção que deixa mais escolhas para as variáveis vizinhas).
 
-Verificação adiante (forward checking) remove do domínio dos vizinhos os valores incompatíveis logo após cada atribuição. Consistência de arco (AC-3) garante que, para cada valor de uma variável, exista valor compatível na variável vizinha, e propaga essas remoções.
+Verificação adiante (forward checking): logo após cada atribuição, corta do domínio das variáveis vizinhas as opções que ficaram incompatíveis. Consistência de arco (AC-3): garante que toda opção de uma variável tenha alguma opção compatível na variável vizinha, e propaga esses cortes pela rede de restrições.
 
 A atividade integradora de 03/09 pediu reconhecer qual técnica serve para cada problema: busca cega quando não há informação sobre a distância ao objetivo; heurística quando há uma boa estimativa; online quando o ambiente é desconhecido; competitiva quando há adversário; PSR quando o problema é atribuir valores respeitando restrições.
 
