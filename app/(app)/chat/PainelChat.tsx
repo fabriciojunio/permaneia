@@ -399,18 +399,19 @@ export function PainelChat({ disciplinas }: { disciplinas: Disciplina[] }) {
                         </details>
                       )}
 
-                      <p className="mt-1.5 font-mono text-[11px] text-tinta-fraca">
+                      {/* O provedor fica só no atributo, para os testes e o diagnóstico: na tela, a resposta. */}
+                      <p
+                        className="mt-1.5 font-mono text-[11px] text-tinta-fraca"
+                        data-testid="diagnostico-resposta"
+                        data-modo={m.diagnostico.bloqueada ? "barrada" : m.diagnostico.origemIa}
+                      >
                         {m.diagnostico.bloqueada ? (
                           <>Barrada antes de consultar a IA · {m.diagnostico.duracaoMs} ms</>
                         ) : (
                           <>
-                            {m.diagnostico.origemIa === "gemini"
-                              ? "Resposta gerada (Gemini)"
-                              : "Leitura direta do material"}
-                            {" · "}
-                            {m.diagnostico.duracaoMs} ms
+                            Respondido em {m.diagnostico.duracaoMs} ms
                             {m.diagnostico.foraDoMaterial
-                              ? " · conhecimento geral do modelo, sem fonte no material indexado"
+                              ? " · conhecimento geral, sem fonte no material indexado"
                               : m.diagnostico.admitiuNaoSaber &&
                                 " · o assistente admitiu não ter a informação"}
                           </>

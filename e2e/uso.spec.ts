@@ -29,14 +29,14 @@ test.describe("assistente de estudos", () => {
     await expect(page.getByText(/similaridade \d/).first()).toBeVisible();
   });
 
-  test("declara o modo de operação de cada resposta", async ({ page }) => {
-    // Uma resposta gerada e uma resposta extraída do documento têm garantias
-    // diferentes, e esconder qual das duas o aluno está lendo seria desonesto.
+  test("registra o modo de operação de cada resposta", async ({ page }) => {
+    // A tela mostra só a resposta e o tempo; o modo (gerada ou extraída do
+    // documento) fica no atributo da linha de diagnóstico, para conferência.
     await page.getByRole("button", { name: "Qual é o limite de faltas da disciplina?" }).click();
-    // A linha de diagnóstico fica logo abaixo da resposta e é a última do bloco.
-    await expect(
-      page.getByText(/^(Leitura direta do material|Resposta gerada \(Gemini\)) ·/).last()
-    ).toBeVisible({ timeout: 45_000 });
+    const diagnostico = page.getByTestId("diagnostico-resposta").last();
+    await expect(diagnostico).toBeVisible({ timeout: 45_000 });
+    await expect(diagnostico).toHaveAttribute("data-modo", /^(gemini|local)$/);
+    await expect(diagnostico).not.toContainText("Gemini");
   });
 
   test("a pergunta de enumeração devolve a relação, e não um item só", async ({ page }) => {
@@ -45,15 +45,13 @@ test.describe("assistente de estudos", () => {
     await page.getByLabel("Sua pergunta").fill("Quais são os temas de todas as aulas da disciplina?");
     await page.getByRole("button", { name: "Perguntar" }).click();
 
-    const diagnostico = page
-      .getByText(/^(Leitura direta do material|Resposta gerada \(Gemini\)) ·/)
-      .last();
+    const diagnostico = page.getByTestId("diagnostico-resposta").last();
     await diagnostico.waitFor({ timeout: 60_000 });
 
     const log = page.getByRole("log");
     await expect(log).not.toContainText("Não encontrei");
 
-    if (/Gemini/.test((await diagnostico.innerText()) ?? "")) {
+    if ((await diagnostico.getAttribute("data-modo")) === "gemini") {
       await expect(log).toContainText("agosto");
       await expect(log).toContainText("novembro");
       await expect(log).toContainText(/lógica fuzzy/i);
