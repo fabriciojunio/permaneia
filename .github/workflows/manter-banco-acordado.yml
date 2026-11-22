@@ -28,6 +28,9 @@ concurrency:
   group: manter-banco-acordado
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   visitar:
     name: Uma consulta por dia
